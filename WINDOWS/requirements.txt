@@ -1,0 +1,13 @@
+python-dotenv
+openai
+tkinter
+moviepy
+pydub
+Pillow
+threading
+requests
+pyperclip
+webbrowser
+elevenlabs
+re
+
