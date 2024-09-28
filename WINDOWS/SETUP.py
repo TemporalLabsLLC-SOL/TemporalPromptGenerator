@@ -145,7 +145,7 @@ def install_requirements(venv_dir, requirements_file):
             "Pillow>=9.0.0",
             "requests>=2.25.1",
             "pyperclip>=1.8.2",
-            "torch>=1.13.1",
+            "torch>=1.13.1",  # torch will be reinstalled with CUDA support later
             "diffusers>=0.21.1",
             "transformers>=4.31.0",
             "accelerate>=0.21.0",  # Adding accelerate to handle memory
@@ -166,44 +166,52 @@ def install_requirements(venv_dir, requirements_file):
         print("Failed to install required packages.")
         return False
 
-def install_torch(venv_dir):
+def check_cuda_toolkit():
     """
-    Install torch if not already installed.
+    Check if CUDA toolkit is installed.
     """
-    print("\nChecking for torch installation...")
+    print("\nChecking for CUDA toolkit installation...")
+    try:
+        cuda_version_output = run_command("nvcc --version", capture_output=True)
+        if cuda_version_output:
+            # Parse the CUDA version from the output
+            import re
+            match = re.search(r"release (\d+\.\d+),", cuda_version_output)
+            if match:
+                cuda_version = match.group(1)
+                print(f"Detected CUDA toolkit version: {cuda_version}")
+                return cuda_version
+            else:
+                print("Could not parse CUDA version from nvcc output.")
+                return None
+        else:
+            print("CUDA toolkit not found.")
+            return None
+    except:
+        print("nvcc not found. CUDA toolkit is not installed.")
+        return None
+
+def install_torch(venv_dir, cuda_version):
+    """
+    Install torch with CUDA support.
+    """
+    print(f"\nInstalling torch with CUDA support (CUDA {cuda_version})...")
     pip_executable = Path(venv_dir) / "Scripts" / "pip.exe" if platform.system() == "Windows" else Path(venv_dir) / "bin" / "pip"
     if not pip_executable.exists():
         print(f"pip executable not found at {pip_executable}.")
         return False
-    try:
-        output = run_command(f'"{pip_executable}" show torch', capture_output=True)
-        if output:
-            print("torch is already installed.")
-            return True
-    except:
-        pass
-    # Install torch
-    print("torch is not installed. Installing torch...")
-    # Determine the appropriate torch installation command based on CUDA availability
-    try:
-        import torch
-        cuda_available = torch.cuda.is_available()
-    except ImportError:
-        # If torch is not installed, assume CPU-only installation
-        cuda_available = False
 
-    if cuda_available:
-        # Example for CUDA 11.8; adjust based on your system
-        install_command = f'"{pip_executable}" install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu118'
-    else:
-        install_command = f'"{pip_executable}" install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu'
+    # Convert CUDA version to format used in URL, e.g., '11.8' -> '118'
+    cuda_version_url = cuda_version.replace('.', '')
 
+    # Install torch with the specified CUDA version
+    install_command = f'"{pip_executable}" install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu{cuda_version_url}'
     result = run_command(install_command)
     if result is None:
-        print("torch installed successfully.")
+        print("torch installed successfully with CUDA support.")
         return True
     else:
-        print("Failed to install torch.")
+        print("Failed to install torch with CUDA support.")
         print("Please install it manually from the following link:")
         print("https://pytorch.org/get-started/locally/")
         return False
@@ -381,7 +389,33 @@ def main():
             print("\nOllama installation not completed. Exiting setup.")
             sys.exit(1)
 
-    # Step 3: Set up virtual environment
+    # Step 3: Check for NVIDIA GPU
+    try:
+        gpu_info = run_command("nvidia-smi --query-gpu=name --format=csv,noheader", capture_output=True)
+        if not gpu_info:
+            print("No NVIDIA GPU detected. A CUDA-enabled NVIDIA GPU is required.")
+            sys.exit(1)
+        else:
+            print(f"NVIDIA GPU detected: {gpu_info.strip()}")
+    except:
+        print("nvidia-smi not found. Please ensure that NVIDIA drivers are installed.")
+        sys.exit(1)
+
+    # Step 4: Check for CUDA toolkit
+    cuda_version = check_cuda_toolkit()
+    if not cuda_version:
+        print("\nCUDA toolkit is required for this application.")
+        print("Please install the CUDA toolkit from the official NVIDIA website:")
+        print("https://developer.nvidia.com/cuda-downloads")
+        webbrowser.open("https://developer.nvidia.com/cuda-downloads")
+        input("Press Enter after you have installed the CUDA toolkit to continue...")
+        # Recheck after installation
+        cuda_version = check_cuda_toolkit()
+        if not cuda_version:
+            print("\nCUDA toolkit installation not detected. Exiting setup.")
+            sys.exit(1)
+
+    # Step 5: Set up virtual environment
     venv_dir = "TemporalPromptEngineEnv"  # Updated virtual environment name
     if not Path(venv_dir).exists():
         if not create_virtualenv(venv_dir):
@@ -392,18 +426,18 @@ def main():
         print("\nFailed to locate virtual environment's activation script. Exiting setup.")
         sys.exit(1)
 
-    # Step 4: Upgrade pip
+    # Step 6: Upgrade pip
     if not upgrade_pip(venv_dir):
         print("\nFailed to upgrade pip. Exiting setup.")
         sys.exit(1)
 
-    # Step 5: Install required packages
+    # Step 7: Install required packages
     requirements_file = "requirements.txt"
     if not install_requirements(venv_dir, requirements_file):
         print("\nFailed to install required packages. Exiting setup.")
         sys.exit(1)
 
-    # Step 6: Install diffusers and transformers from GitHub to ensure latest features and compatibility
+    # Step 8: Install diffusers and transformers from GitHub to ensure latest features and compatibility
     if not install_diffusers_from_github(venv_dir):
         print("\ndiffusers installation failed. Exiting setup.")
         sys.exit(1)
@@ -412,24 +446,24 @@ def main():
         print("\ntransformers installation failed. Exiting setup.")
         sys.exit(1)
 
-    # Step 7: Install torch
-    if not install_torch(venv_dir):
+    # Step 9: Install torch with CUDA support
+    if not install_torch(venv_dir, cuda_version):
         print("\ntorch installation failed. Exiting setup.")
         sys.exit(1)
 
-    # Step 8: Create .env file
+    # Step 10: Create .env file
     create_env_file()
 
-    # Step 9: Create or validate JSON configuration files
+    # Step 11: Create or validate JSON configuration files
     create_default_json_files()
 
-    # Step 10: Check for ffmpeg
+    # Step 12: Check for ffmpeg
     if not check_ffmpeg():
         if not prompt_install_ffmpeg():
             print("\nffmpeg installation not completed. Exiting setup.")
             sys.exit(1)
 
-    # Step 11: Prompt to launch the main script
+    # Step 13: Prompt to launch the main script
     prompt_launch_script(venv_dir, main_script_path)
 
     print("\n============================================")
