@@ -14,7 +14,6 @@ def run_command(command, capture_output=False):
         if capture_output:
             result = subprocess.run(
                 command,
-                shell=True,
                 check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -22,7 +21,7 @@ def run_command(command, capture_output=False):
             )
             return result.stdout.strip()
         else:
-            subprocess.run(command, shell=True, check=True)
+            subprocess.run(command, check=True)
             return None
     except subprocess.CalledProcessError as e:
         if capture_output and e.stdout:
@@ -31,32 +30,35 @@ def run_command(command, capture_output=False):
             print(f"Error Output: {e.stderr}")
         return None
 
+
 def check_pip():
     """
     Check if pip is installed.
     """
     try:
-        output = run_command("pip3 --version", capture_output=True)
+        output = run_command([sys.executable, "-m", "pip", "--version"], capture_output=True)
         if output:
-            print(f"pip3 is installed: {output}")
+            print(f"pip is installed: {output}")
             return True
     except:
         pass
-    print("pip3 is not installed.")
+    print("pip is not installed.")
     return False
+
 
 def install_pip():
     """
     Install pip using ensurepip.
     """
     print("Attempting to install pip...")
-    result = run_command(f'"{sys.executable}" -m ensurepip --upgrade')
+    result = run_command([sys.executable, "-m", "ensurepip", "--upgrade"])
     if result is None:
         print("pip installed successfully.")
         return True
     else:
         print("Failed to install pip.")
         return False
+
 
 def check_ollama():
     """
@@ -131,7 +133,7 @@ def install_requirements(venv_dir, requirements_file):
     Install packages from requirements.txt.
     """
     print(f"\nInstalling required packages from '{requirements_file}'...")
-    pip_executable = Path(venv_dir) / "bin" / "pip3"
+    pip_executable = Path(venv_dir) / "bin" / "pip"
     if not pip_executable.exists():
         print(f"pip executable not found at {pip_executable}.")
         return False
@@ -158,7 +160,7 @@ def install_requirements(venv_dir, requirements_file):
                 f.write(f"{pkg}\n")
         print(f"Default '{requirements_file}' created. Please review and modify it as needed.")
         input("Press Enter to continue...")
-    result = run_command(f'"{pip_executable}" install -r "{requirements_file}"')
+    result = run_command([str(pip_executable), "install", "-r", str(requirements_file)])
     if result is None:
         print("Required packages installed successfully.")
         return True
@@ -166,17 +168,18 @@ def install_requirements(venv_dir, requirements_file):
         print("Failed to install required packages.")
         return False
 
+
 def install_torch(venv_dir):
     """
     Install torch if not already installed.
     """
     print("\nChecking for torch installation...")
-    pip_executable = Path(venv_dir) / "bin" / "pip3"
+    pip_executable = Path(venv_dir) / "bin" / "pip"
     if not pip_executable.exists():
         print(f"pip executable not found at {pip_executable}.")
         return False
     try:
-        output = run_command(f'"{pip_executable}" show torch', capture_output=True)
+        output = run_command([str(pip_executable), "show", "torch"], capture_output=True)
         if output:
             print("torch is already installed.")
             return True
@@ -189,7 +192,7 @@ def install_torch(venv_dir):
         cuda_available = False
         cuda_version = ""
         # Check if CUDA is available on the system
-        result = run_command("nvidia-smi", capture_output=True)
+        result = run_command(["nvidia-smi"], capture_output=True)
         if result:
             cuda_available = True
             # Extract CUDA version
@@ -203,10 +206,10 @@ def install_torch(venv_dir):
 
     if cuda_available:
         # Install torch with CUDA support
-        install_command = f'"{pip_executable}" install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu118'
+        install_command = [str(pip_executable), "install", "torch", "torchvision", "torchaudio", "--extra-index-url", "https://download.pytorch.org/whl/cu118"]
     else:
         # Install CPU-only version
-        install_command = f'"{pip_executable}" install torch torchvision torchaudio'
+        install_command = [str(pip_executable), "install", "torch", "torchvision", "torchaudio"]
 
     result = run_command(install_command)
     if result is None:
@@ -218,13 +221,14 @@ def install_torch(venv_dir):
         print("https://pytorch.org/get-started/locally/")
         return False
 
+
 def install_diffusers_from_github(venv_dir):
     """
     Install the latest diffusers from GitHub to ensure compatibility.
     """
     print("\nInstalling diffusers from GitHub to ensure latest features and compatibility...")
-    pip_executable = Path(venv_dir) / "bin" / "pip3"
-    install_command = f'"{pip_executable}" install git+https://github.com/huggingface/diffusers.git@main#egg=diffusers'
+    pip_executable = Path(venv_dir) / "bin" / "pip"
+    install_command = [str(pip_executable), "install", "git+https://github.com/huggingface/diffusers.git@main#egg=diffusers"]
     try:
         run_command(install_command)
         print("diffusers installed successfully from GitHub.")
@@ -232,21 +236,22 @@ def install_diffusers_from_github(venv_dir):
     except subprocess.CalledProcessError as e:
         print(f"Failed to install diffusers from GitHub: {e}")
         print("Please install it manually using the following command:")
-        print(install_command)
+        print(' '.join(install_command))
         return False
     except Exception as e:
         print(f"An unexpected error occurred while installing diffusers: {e}")
         print("Please install it manually using the following command:")
-        print(install_command)
+        print(' '.join(install_command))
         return False
+
 
 def install_transformers_from_github(venv_dir):
     """
     Install the latest transformers from GitHub to ensure compatibility and access to VitsModel.
     """
     print("\nInstalling transformers from GitHub to ensure latest features and compatibility...")
-    pip_executable = Path(venv_dir) / "bin" / "pip3"
-    install_command = f'"{pip_executable}" install git+https://github.com/huggingface/transformers.git@main#egg=transformers'
+    pip_executable = Path(venv_dir) / "bin" / "pip"
+    install_command = [str(pip_executable), "install", "git+https://github.com/huggingface/transformers.git@main#egg=transformers"]
     try:
         run_command(install_command)
         print("transformers installed successfully from GitHub.")
@@ -254,13 +259,14 @@ def install_transformers_from_github(venv_dir):
     except subprocess.CalledProcessError as e:
         print(f"Failed to install transformers from GitHub: {e}")
         print("Please install it manually using the following command:")
-        print(install_command)
+        print(' '.join(install_command))
         return False
     except Exception as e:
         print(f"An unexpected error occurred while installing transformers: {e}")
         print("Please install it manually using the following command:")
-        print(install_command)
+        print(' '.join(install_command))
         return False
+
 
 def create_env_file():
     """
