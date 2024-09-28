@@ -1,5 +1,5 @@
 @echo off
-SET VENV_DIR=venv
+SET VENV_DIR=TemporalPromptEngine
 
 :: Check if virtual environment exists
 IF EXIST %VENV_DIR% (
@@ -28,7 +28,7 @@ pip show pydub >nul 2>&1 || pip install pydub
 pip show Pillow >nul 2>&1 || pip install Pillow
 pip show requests >nul 2>&1 || pip install requests
 pip show pyperclip >nul 2>&1 || pip install pyperclip
-pip show elevenlabs >nul 2>&1 || pip install elevenlabs
+
 
 :: Confirm completion
 echo Setup complete. Would you like to launch the script now? (y/n)
