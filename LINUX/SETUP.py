@@ -181,9 +181,9 @@ def install_and_verify_package(package_name, venv_dir, install_command=None, imp
 
 def install_torch(venv_dir):
     """
-    Install specific versions of torch, torchvision, and torchaudio with CUDA 11.8 support.
+    Install specific versions of torch, torchvision, and torchaudio with CUDA support.
     """
-    print("\nInstalling torch, torchvision, and torchaudio with CUDA 11.8 support...")
+    print("\nInstalling torch, torchvision, and torchaudio with CUDA support...")
     python_executable, pip_executable = get_venv_executables(venv_dir)
     if not pip_executable.exists():
         print(f"pip executable not found at {pip_executable}.")
@@ -508,7 +508,7 @@ def install_ollama_linux(script_dir):
     try:
         # Example installation using a hypothetical .sh installer
         # Replace the URL and installation steps with the actual ones provided by Ollama
-        ollama_url = "https://ollama.com/download/OllamaSetup.run"
+        ollama_url = "https://ollama.com/download/OllamaSetup.run"  # Replace with actual Linux URL
         installer_path = script_dir / "OllamaSetup.run"
 
         if not installer_path.exists():
@@ -526,6 +526,32 @@ def install_ollama_linux(script_dir):
         print(f"Failed to install Ollama on Linux. Error: {e}")
         return False
 
+def install_system_dependencies():
+    """
+    Install necessary system dependencies on Linux.
+    """
+    print("\nInstalling necessary system dependencies...")
+    try:
+        # Update package list
+        run_command("sudo apt-get update")
+        
+        # Install dependencies for Pillow
+        run_command("sudo apt-get install -y libjpeg-dev zlib1g-dev libpng-dev libtiff-dev libfreetype6-dev liblcms2-dev libopenjp2-7-dev libwebp-dev")
+        print("Installed Pillow dependencies successfully.")
+        
+        # Install xclip for pyperclip
+        run_command("sudo apt-get install -y xclip")
+        print("Installed xclip successfully.")
+        
+        # Install ffmpeg
+        run_command("sudo apt-get install -y ffmpeg")
+        print("Installed ffmpeg successfully.")
+        
+        return True
+    except Exception as e:
+        print(f"Failed to install system dependencies. Error: {e}")
+        return False
+
 def main():
     print("============================================")
     print("     Temporal Prompt Engine Setup Script    ")
@@ -538,6 +564,11 @@ def main():
 
     if not main_script_path.exists():
         print(f"\nMain script '{main_script}' not found at {main_script_path}. Please ensure it exists.")
+        sys.exit(1)
+
+    # Step 0: Install system-level dependencies
+    if not install_system_dependencies():
+        print("\nSystem dependencies installation failed. Exiting setup.")
         sys.exit(1)
 
     # Step 1: Check for pip
@@ -600,26 +631,16 @@ def main():
 
     # Step 7: Install and verify required packages individually
     packages_to_install = [
-        {"name": "python-dotenv>=1.0.1"},
+        {"name": "python-dotenv>=0.19.0"},
         {"name": "openai>=0.27.0"},
         {"name": "moviepy>=1.0.3", "import_name": "moviepy.editor"},
         {"name": "pydub>=0.25.1"},
         {"name": "Pillow>=9.0.0", "import_name": "PIL"},
         {"name": "requests>=2.25.1"},
         {"name": "pyperclip>=1.8.2"},
-        {"name": "playsound"},
-        {"name": "scipy>=1.7.0"},
-        {"name": "tk", "import_name": "tkinter"},
-        {"name": "accelerate>=0.21.0"},
-        # Install specific versions of torch, torchvision, torchaudio with CUDA 11.8 support
-        {"name": "torch==2.4.1+cu118", "install_command": f'"{pip_executable}" install torch==2.4.1+cu118 --index-url https://download.pytorch.org/whl/cu118'},
-        {"name": "torchvision==0.19.1+cu118", "install_command": f'"{pip_executable}" install torchvision==0.19.1+cu118 --index-url https://download.pytorch.org/whl/cu118'},
-        {"name": "torchaudio==2.4.1+cu118", "install_command": f'"{pip_executable}" install torchaudio==2.4.1+cu118 --index-url https://download.pytorch.org/whl/cu118'},
-        # Install diffusers and transformers with specific versions
-        {"name": "diffusers==0.21.1", "install_command": f'"{pip_executable}" install diffusers==0.21.1'},
-        {"name": "transformers==4.31.0", "install_command": f'"{pip_executable}" install transformers==4.31.0'},
-        # Install audioldm2 from GitHub
-        {"name": "audioldm2", "install_command": f'"{pip_executable}" install git+https://github.com/haoheliu/AudioLDM2.git#egg=audioldm2'},
+        {"name": "torch>=1.13.1"},  # Consider specifying CUDA version
+        {"name": "diffusers>=0.21.1"},
+        {"name": "transformers>=4.31.0"},
     ]
 
     for pkg in packages_to_install:

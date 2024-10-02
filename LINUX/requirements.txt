@@ -1,13 +1,22 @@
-python-dotenv
-openai
-tkinter
-moviepy
-pydub
-Pillow
-threading
-requests
-pyperclip
-webbrowser
-elevenlabs
-re
+python-dotenv>=0.19.0
+moviepy>=1.0.3
+pydub>=0.25.1
+Pillow>=9.0.0
+requests>=2.25.1
+pyperclip>=1.8.2
+torch>=1.13.1
+diffusers>=0.21.1
+transformers>=4.31.0
 
+# Note:
+# For Linux, ensure the following system packages are installed:
+# - libjpeg-dev
+# - zlib1g-dev
+# - libpng-dev
+# - libtiff-dev
+# - libfreetype6-dev
+# - liblcms2-dev
+# - libopenjp2-7-dev
+# - libwebp-dev
+# - xclip or xsel
+# - ffmpeg
