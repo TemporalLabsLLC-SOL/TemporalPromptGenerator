@@ -25,8 +25,7 @@ import scipy
 import torch
 from diffusers import AudioLDM2Pipeline
 from pathlib import Path
-import shutil
-from moviepy.video import fx as vfx
+import uuid
 
 
 
@@ -69,6 +68,7 @@ def start_or_find_ollama_server():
         start_ollama_server(ollama_port)
         wait_for_ollama_server()
 
+
 def detect_gpu():
     """
     Detects if a GPU is available using torch and returns a boolean value.
@@ -86,48 +86,6 @@ def detect_gpu():
         print("Torch is not installed, assuming no GPU.")
         return False
         
-def clean_prompt_text(raw_prompts):
-    lines = raw_prompts.splitlines()
-    cleaned_prompts = []
-    positive_prompt = ""
-    negative_prompt = ""
-
-    for line in lines:
-        line = line.strip()
-        if line.startswith("positive:"):
-            positive_prompt = line.replace("positive:", "positive:").strip()
-        elif line.startswith("negative:"):
-            negative_prompt = line.strip()
-        if positive_prompt and negative_prompt:
-            cleaned_prompts.append(f"{positive_prompt}\n{negative_prompt}")
-            positive_prompt, negative_prompt = "", ""
-    return "\n--------------------\n".join(cleaned_prompts)
-def remove_unwanted_headers(cleaned_prompts):
-    formatted_prompts = []
-    lines = cleaned_prompts.splitlines()
-    for line in lines:
-        if not line.startswith("Title") and not line.startswith("Options") and not line.startswith("Theme"):
-            formatted_prompts.append(line)
-    return "\n".join(formatted_prompts)
-# Utility function to save data to a file with error handling
-def save_to_file(data, file_path):
-    """
-    Save data to a file with error handling.
-
-    Args:
-        data (str): The data to be saved.
-        file_path (str): The path to the file.
-    """
-    if not file_path:
-        print(f"Error: Invalid file path {file_path}")
-        return
-
-    try:
-        with open(file_path, 'w', encoding='utf-8') as file:
-            file.write(data)
-        print(f"Data successfully saved to {file_path}")
-    except Exception as e:
-        print(f"Failed to save data to {file_path}: {e}")
 
 def run_audioldm2(prompt_text, output_filename, index):
     try:
@@ -305,6 +263,20 @@ def format_prompts_for_output(raw_prompts):
         separator = "--------------------"
         formatted_prompts += positive_prompt + negative_prompt + separator
     return formatted_prompts
+
+def clean_prompt_text(raw_text):
+    """
+    Cleans the raw text response by removing unnecessary whitespace and ensuring proper formatting.
+
+    Args:
+        raw_text (str): The raw text response from the API.
+
+    Returns:
+        str: The cleaned text.
+    """
+    # Remove any leading/trailing whitespace
+    cleaned_text = raw_text.strip()
+    return cleaned_text
 
 
 def format_and_overwrite_prompts_file(file_path):
@@ -587,6 +559,7 @@ def set_output_directory():
         messagebox.showwarning("Output Directory", "No directory selected.")
 
 
+
 # Function to set the ComfyUI INSPIRE prompts folder
 def set_comfyui_prompts_folder():
     global COMFYUI_PROMPTS_FOLDER
@@ -723,7 +696,13 @@ def invert_positive_negative(generated_prompts):
 
 # Function to enable button when appropriate
 def enable_button(button):
-    button.config(state=tk.NORMAL, bg=button['bg'])
+    """
+    Enables a given Tkinter button.
+
+    Args:
+        button (tk.Button): The button to enable.
+    """
+    button.config(state='normal')
 
 # Function to disable button
 def disable_button(button):
@@ -736,15 +715,8 @@ def extract_number_from_filename(filename):
 
 # Function to copy text to clipboard
 def copy_to_clipboard(text):
-    try:
-        pyperclip.copy(text)
-        messagebox.showinfo("Clipboard", "Copied to clipboard.")
-    except pyperclip.PyperclipException:
-        messagebox.showerror(
-            "Clipboard Error",
-            "Failed to copy to clipboard. Please ensure xclip or xsel is installed."
-        )
-
+    pyperclip.copy(text)
+    messagebox.showinfo("Clipboard", f"Copied to clipboard.")
 
 # Function to open website
 def open_website(event):
@@ -831,28 +803,49 @@ class MultimediaSuiteApp:
         # Ensure the model is pulled
         self.ensure_model_available(model_name)
 
+# Utility function to save data to a file with error handling
+    def save_to_file(self, content, file_path):
+        """
+        Saves the given content to the specified file path.
         
-    def validate_prompts(self, generated_prompts):
-        """
-        Validates that each prompt set contains exactly one positive and one negative statement.
-
         Args:
-            generated_prompts (str): The concatenated prompts string.
-
-        Returns:
-            bool: True if all prompt sets are valid, False otherwise.
+            content (str): The content to save.
+            file_path (str): The path to the file where content will be saved.
         """
-        prompt_sets = generated_prompts.strip().split("--------------------")
+        try:
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            print(f"Content saved to {file_path}")
+        except Exception as e:
+            print(f"Error saving file {file_path}: {e}")
+            messagebox.showerror("Save Error", f"Failed to save file {file_path}:\n{e}")
+
+        
+    def validate_prompts(self, generated_prompts, expected_count):
+        """
+        Validates that each prompt contains exactly one positive and one negative section.
+        
+        Args:
+            generated_prompts (str): The concatenated prompts.
+            expected_count (int): The number of prompts expected.
+        
+        Returns:
+            bool: True if all prompts are valid, False otherwise.
+        """
+        prompt_sets = [ps.strip() for ps in generated_prompts.strip().split("--------------------") if ps.strip()]
+        if len(prompt_sets) != expected_count:
+            print(f"Expected {expected_count} prompt sets, but got {len(prompt_sets)}.")
+            return False
+
         for prompt_set in prompt_sets:
-            prompt_set = prompt_set.strip()
-            if not prompt_set:
-                continue
-            positive_count = prompt_set.lower().count("positive:")
-            negative_count = prompt_set.lower().count("negative:")
-            if positive_count != 1 or negative_count != 1:
+            positive_match = re.search(r"^positive:\s*(.+)$", prompt_set, re.IGNORECASE | re.DOTALL)
+            negative_match = re.search(r"^negative:\s*(.+)$", prompt_set, re.IGNORECASE | re.DOTALL)
+            if not positive_match or not negative_match:
                 print(f"Invalid prompt set detected:\n{prompt_set}")
                 return False
         return True
+
         
     def start_ollama_server(self, port):
         """
@@ -975,7 +968,7 @@ class MultimediaSuiteApp:
         # Video Prompt Options Button
         self.video_prompt_options_button = tk.Button(
             self.buttons_frame,
-            text="Video Prompt Options",
+            text="Video Options - REQUIRED",
             command=self.show_video_prompt_options,
             state=tk.NORMAL,
             bg="#28a745",
@@ -992,7 +985,7 @@ class MultimediaSuiteApp:
         # Audio Prompt Options Button
         self.audio_prompt_options_button = tk.Button(
             self.buttons_frame,
-            text="Audio Prompt Options",
+            text="Audio Options",
             command=self.show_audio_prompt_options,
             state=tk.NORMAL,
             bg="#28a745",
@@ -1087,7 +1080,7 @@ class MultimediaSuiteApp:
         # COMBINE button
         self.combine_button = tk.Button(
             self.root,
-            text="COMBINE",
+            text="COMBINE (Under Construction)",
             command=self.combine_media,
             state=tk.DISABLED,
             bg="#FFC107",
@@ -1162,48 +1155,108 @@ class MultimediaSuiteApp:
         if OPENAI_API_KEY:
             save_settings()
 
-    def create_smart_directory_and_filenames(self, input_concept, output_directory):
+    def create_smart_directory_and_filenames(self, input_concept):
         """
-        Creates a smart-named directory based on the input concept and current timestamp.
-        Generates smart filenames for video and audio prompts.
-
+        Creates directories and filenames based on the input concept.
+        
+        Args:
+            input_concept (str): The concept input by the user.
+        
         Returns:
-            directory_path (str): Path to the created directory.
-            video_directory (str): Path to the Video subdirectory.
-            audio_directory (str): Path to the Audio subdirectory.
-            video_filename (str): Smart filename for video prompts.
-            audio_filename (str): Smart filename for audio prompts.
+            tuple: (directory, video_folder, audio_folder, video_filename, audio_filename)
         """
-        # Sanitize the input concept to create a valid directory name
-        sanitized_concept = re.sub(r'[^\w\s-]', '', input_concept).strip().replace(' ', '_')
-
-        # Get current timestamp
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-
-        # Create directory name
-        directory_name = f"{sanitized_concept}_{timestamp}"
-        directory_path = os.path.join(output_directory, directory_name)
-
-        # Create subdirectories for Video and Audio
-        video_directory = os.path.join(directory_path, "Video")
-        audio_directory = os.path.join(directory_path, "Audio")
-
-        os.makedirs(video_directory, exist_ok=True)
-        os.makedirs(audio_directory, exist_ok=True)
-
-        # Create smart filenames
+        # Sanitize the input concept for use in file/directory names
+        sanitized_concept = re.sub(r'[^\w\s-]', '', input_concept).strip().replace(' ', '_')[:30]  # Reduced to 30 chars
+        unique_id = uuid.uuid4().hex[:8]  # 8-character unique identifier
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Create a shorter directory name to prevent exceeding path length
+        directory_name = f"{sanitized_concept}_{unique_id}_{timestamp}"
+        directory = os.path.join(self.output_folder, directory_name)
+        
+        video_folder = os.path.join(directory, "Video")
+        audio_folder = os.path.join(directory, "Audio")
+        
+        # Use shorter filenames
         video_filename = f"{sanitized_concept}_video_prompts.txt"
         audio_filename = f"{sanitized_concept}_audio_prompts.txt"
-
-        return directory_path, video_directory, audio_directory, video_filename, audio_filename
-
-    # Function to open video prompt options
+        
+        # Ensure filenames are not too long
+        max_filename_length = 100  # Adjust as needed
+        video_filename = video_filename[:max_filename_length]
+        audio_filename = audio_filename[:max_filename_length]
+        
+        # Create directories if they don't exist
+        os.makedirs(video_folder, exist_ok=True)
+        os.makedirs(audio_folder, exist_ok=True)
+        
+        return directory, video_folder, audio_folder, video_filename, audio_filename
     def show_video_prompt_options(self):
         self.video_options_window = tk.Toplevel(self.root)
         self.video_options_window.title("Video Prompt Options")
         self.video_options_window.configure(bg='#0A2239')
 
         self.build_video_options(self.video_options_window)
+        
+    def save_to_file(self, content, file_path):
+        """
+        Saves the given content to the specified file path.
+        """
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            print(f"Content saved to {file_path}")
+        except Exception as e:
+            print(f"Error saving file {file_path}: {e}")
+            messagebox.showerror("Save Error", f"Failed to save file {file_path}:\n{e}")
+
+        
+    def clean_prompt_text(self, prompt_text):
+        """
+        Cleans the prompt text by extracting only the positive and negative sections in the required format.
+        
+        Args:
+            prompt_text (str): The raw prompt text from the model.
+        
+        Returns:
+            str: The cleaned and formatted prompts.
+        """
+        # Split the prompt sets based on the separator
+        prompt_sets = prompt_text.strip().split("--------------------")
+
+        cleaned_prompts = []
+        for prompt_set in prompt_sets:
+            prompt_set = prompt_set.strip()
+            if not prompt_set:
+                continue
+
+            # Match the exact format required (case-insensitive)
+            prompt_match = re.search(r"^positive:\s*(.*?)\nnegative:\s*(.*)", prompt_set, re.DOTALL | re.IGNORECASE)
+            if prompt_match:
+                positive_section = prompt_match.group(1).strip()
+                negative_section = prompt_match.group(2).strip()
+
+                # Ensure negative_section starts with 'Avoid' and ends with a period
+                negative_section = re.sub(r"^-*\s*Avoid\s*", "Avoid ", negative_section, flags=re.MULTILINE | re.IGNORECASE)
+                negative_section = re.sub(r"^\s*\*", "", negative_section)  # Remove any leading asterisks
+
+                if not negative_section.lower().startswith("avoid"):
+                    negative_section = f"Avoid {negative_section}"
+
+                if not negative_section.endswith('.'):
+                    negative_section += '.'
+
+                # Reconstruct the prompt in the exact required format
+                cleaned_prompt = f"positive: {positive_section}\nnegative: {negative_section}"
+                cleaned_prompts.append(cleaned_prompt)
+            else:
+                # If the format doesn't match, skip this prompt set or handle accordingly
+                print(f"Skipping malformed prompt set:\n{prompt_set}")
+                continue
+
+        # Join the cleaned prompts with the separator
+        return "\n--------------------\n".join(cleaned_prompts)
+
         
     def ensure_single_negative(self, formatted_prompts):
         """
@@ -1243,7 +1296,7 @@ class MultimediaSuiteApp:
     def validate_prompts(self, generated_prompts, expected_count):
         """
         Validates that the number of prompt sets matches the expected count and 
-        that each set contains exactly one positive and one negative statement.
+        that each set contains exactly one positive and one negative statement with content.
 
         Args:
             generated_prompts (str): The concatenated prompts string.
@@ -1259,17 +1312,22 @@ class MultimediaSuiteApp:
             print(f"Expected {expected_count} prompt sets, but got {len(prompt_sets)}.")
             return False
 
-        for prompt_set in prompt_sets:
+        for idx, prompt_set in enumerate(prompt_sets, start=1):
             prompt_set = prompt_set.strip()
             if not prompt_set:
-                continue
-            positive_count = prompt_set.lower().count("positive:")
-            negative_count = prompt_set.lower().count("negative:")
-            if positive_count != 1 or negative_count != 1:
-                print(f"Invalid prompt set detected:\n{prompt_set}")
+                print(f"Prompt set {idx} is empty.")
+                return False
+            positive_match = re.search(r"positive:\s*(.+)", prompt_set, re.IGNORECASE | re.DOTALL)
+            negative_match = re.search(r"negative:\s*(.+)", prompt_set, re.IGNORECASE | re.DOTALL)
+            if not positive_match or not negative_match:
+                print(f"Prompt set {idx} is missing 'positive' or 'negative' sections.")
+                return False
+            positive_content = positive_match.group(1).strip()
+            negative_content = negative_match.group(1).strip()
+            if not positive_content or not negative_content:
+                print(f"Prompt set {idx} has empty 'positive' or 'negative' content.")
                 return False
         return True
-
 
     # Function to open audio prompt options
     def show_audio_prompt_options(self):
@@ -1281,8 +1339,8 @@ class MultimediaSuiteApp:
 
     def generate_video_prompts(self):
         """
-        Generate video prompts that take all options into account.
-        Ensure that every setting dynamically influences the final prompts, including visual and cinematic elements.
+        Generate video prompts one by one that take all options into account.
+        Automatically retries each prompt generation until a valid prompt is obtained.
         """
         input_concept = self.input_text.get("1.0", tk.END).strip()
 
@@ -1292,114 +1350,137 @@ class MultimediaSuiteApp:
 
         # Ask the user to select an output directory for saving the prompts
         output_directory = filedialog.askdirectory(title="Select Output Directory")
-        
+
         if not output_directory:
             messagebox.showwarning("Directory Selection", "No directory selected. Please select a valid directory.")
             return
-        
+
         self.output_folder = output_directory  # Save the directory for future reference
 
+        # Determine the number of prompts to generate
+        num_prompts = self.video_prompt_number_var.get()
+        generated_prompts = []
+
+        for prompt_index in range(1, num_prompts + 1):
+            while True:
+                try:
+                    # Gather all options set by the user
+                    video_options = {
+                        "theme": self.video_theme_var.get(),
+                        "art_style": self.video_art_style_var.get(),
+                        "lighting": self.video_lighting_var.get(),
+                        "framing": self.video_framing_var.get(),
+                        "camera_movement": self.video_camera_movement_var.get(),
+                        "shot_composition": self.video_shot_composition_var.get(),
+                        "time_of_day": self.video_time_of_day_var.get(),
+                        "decade": self.video_decade_var.get(),  # Keep this as a string
+                        "camera": self.video_camera_var.get(),
+                        "lens": self.video_lens_var.get(),
+                        "resolution": self.video_resolution_var.get(),
+                        "wildlife_animal": self.wildlife_animal_var.get(),
+                        "domesticated_animal": self.domesticated_animal_var.get(),
+                        "soundscape_mode": self.video_soundscape_mode_var.get(),
+                        "holiday_mode": self.video_holiday_mode_var.get(),
+                        "selected_holidays": self.video_holidays_var.get(),
+                        "specific_modes": [mode for mode, var in self.video_specific_modes_vars.items() if var.get()],
+                        "no_people_mode": self.video_no_people_mode_var.get(),
+                        "chaos_mode": self.video_chaos_mode_var.get(),
+                        "story_mode": self.video_story_mode_var.get(),
+                        "remix_mode": self.video_remix_mode_var.get(),
+                    }
+
+                    # Build the context for options
+                    options_context = (
+                        f"Theme: {video_options['theme']}\n"
+                        f"Art Style: {video_options['art_style']}\n"
+                        f"Lighting: {video_options['lighting']}\n"
+                        f"Framing: {video_options['framing']}\n"
+                        f"Camera Movement: {video_options['camera_movement']}\n"
+                        f"Shot Composition: {video_options['shot_composition']}\n"
+                        f"Time of Day: {video_options['time_of_day']}\n"
+                        f"Decade: {video_options['decade']}\n"
+                        f"Camera: {video_options['camera']}, Lens: {video_options['lens']}\n"
+                        f"Resolution: {video_options['resolution']}\n"
+                    )
+
+                    # Add optional elements dynamically
+                    if video_options["wildlife_animal"]:
+                        options_context += f"Feature a {video_options['wildlife_animal']}.\n"
+
+                    if video_options["domesticated_animal"]:
+                        options_context += f"Include a {video_options['domesticated_animal']}.\n"
+
+                    if video_options["soundscape_mode"]:
+                        options_context += "Incorporate soundscapes relevant to the scene.\n"
+
+                    if video_options["holiday_mode"]:
+                        options_context += f"Apply holiday themes: {video_options['selected_holidays']}.\n"
+
+                    if video_options["no_people_mode"]:
+                        options_context += "Focus on the environment or animals, without human figures.\n"
+
+                    if video_options["chaos_mode"]:
+                        options_context += "Introduce chaotic elements that create tension or contrast in the visuals.\n"
+
+                    if video_options["story_mode"]:
+                        options_context += "Ensure prompts flow together as a cohesive narrative.\n"
+
+                    if video_options["remix_mode"]:
+                        options_context += "Add creative variations in visual styles or thematic choices.\n"
+
+                    # Retrieve selected camera and decade
+                    selected_camera = video_options['camera']
+                    selected_decade = video_options['decade']
+
+                    # Build the final prompt for this specific prompt set
+                    single_prompt = (
+                        f"Generate a detailed video prompt for the concept '{input_concept}' "
+                        f"based on the {selected_decade}. Ensure that the prompt includes:\n"
+                        f"Shot on a {selected_camera}.\n"
+                        f"{options_context}"
+                    )
+
+                    # Call Ollama API or model to generate a single video prompt
+                    raw_video_prompt = self.generate_prompts_via_ollama(single_prompt, 'video', 1)
+
+                    if not raw_video_prompt:
+                        raise Exception(f"No video prompt generated for prompt set {prompt_index}. Retrying...")
+
+                    # Clean and format the prompt
+                    cleaned_prompt = self.clean_prompt_text(raw_video_prompt)
+                    formatted_prompt = self.remove_unwanted_headers(cleaned_prompt)
+
+                    # Validate the generated prompt
+                    if self.validate_prompts(formatted_prompt, 1):
+                        generated_prompts.append(formatted_prompt)
+                        print(f"Prompt {prompt_index} generated successfully.")
+                        break  # Move to the next prompt set
+                    else:
+                        print(f"Validation failed for prompt {prompt_index}. Retrying...")
+                        # Optionally, implement a retry limit here
+
+                except Exception as e:
+                    print(f"Error generating video prompt {prompt_index}: {e}. Retrying...")
+
+        # After generating all prompts, save them
         try:
-            # Gather all options set by the user
-            video_options = {
-                "theme": self.video_theme_var.get(),
-                "art_style": self.video_art_style_var.get(),
-                "lighting": self.video_lighting_var.get(),
-                "framing": self.video_framing_var.get(),
-                "camera_movement": self.video_camera_movement_var.get(),
-                "shot_composition": self.video_shot_composition_var.get(),
-                "time_of_day": self.video_time_of_day_var.get(),
-                "decade": self.video_decade_var.get(),  # Keep this as a string, no conversion to int
-                "camera": self.video_camera_var.get(),
-                "lens": self.video_lens_var.get(),
-                "resolution": self.video_resolution_var.get(),
-                "wildlife_animal": self.wildlife_animal_var.get(),
-                "domesticated_animal": self.domesticated_animal_var.get(),
-                "soundscape_mode": self.video_soundscape_mode_var.get(),
-                "holiday_mode": self.video_holiday_mode_var.get(),
-                "selected_holidays": self.video_holidays_var.get(),
-                "specific_modes": [mode for mode, var in self.video_specific_modes_vars.items() if var.get()],
-                "no_people_mode": self.video_no_people_mode_var.get(),
-                "chaos_mode": self.video_chaos_mode_var.get(),
-                "story_mode": self.video_story_mode_var.get(),
-                "remix_mode": self.video_remix_mode_var.get(),
-            }
-
-            # Build the context for options
-            options_context = (
-                f"Generate a detailed video prompt for each year in the {video_options['decade']}s. "
-                f"Each prompt should reflect:\n"
-                f"- Theme: {video_options['theme']}\n"
-                f"- Art Style: {video_options['art_style']}\n"
-                f"- Lighting: {video_options['lighting']}\n"
-                f"- Framing: {video_options['framing']}\n"
-                f"- Camera Movement: {video_options['camera_movement']}\n"
-                f"- Shot Composition: {video_options['shot_composition']}\n"
-                f"- Time of Day: {video_options['time_of_day']}\n"
-                f"- Camera: {video_options['camera']}, Lens: {video_options['lens']}\n"
-                f"- Resolution: {video_options['resolution']}\n"
-            )
-
-            # Add optional elements dynamically
-            if video_options["wildlife_animal"]:
-                options_context += f"- Feature a {video_options['wildlife_animal']}.\n"
-
-            if video_options["domesticated_animal"]:
-                options_context += f"- Include a {video_options['domesticated_animal']}.\n"
-
-            if video_options["soundscape_mode"]:
-                options_context += "- Incorporate soundscapes relevant to the scene.\n"
-
-            if video_options["holiday_mode"]:
-                options_context += f"- Apply holiday themes: {video_options['selected_holidays']}.\n"
-
-            if video_options["no_people_mode"]:
-                options_context += "- Focus on the environment or animals, without human figures.\n"
-
-            if video_options["chaos_mode"]:
-                options_context += "- Introduce chaotic elements that create tension or contrast in the visuals.\n"
-
-            if video_options["story_mode"]:
-                options_context += "- Ensure prompts flow together as a cohesive narrative.\n"
-
-            if video_options["remix_mode"]:
-                options_context += "- Add creative variations in visual styles or thematic choices.\n"
-
-            # Build the final prompt by combining the options context
-            prompt = (
-                f"Generate {self.video_prompt_number_var.get()} detailed video prompts for the concept '{input_concept}' "
-                f"based on the {video_options['decade']}s. Ensure that each prompt includes:\n"
-                f"{options_context}"
-            )
-
-            # Call Ollama API or model to generate raw video prompts
-            raw_video_prompts = self.generate_prompts_via_ollama(prompt, 'video', self.video_prompt_number_var.get())
-
-            if not raw_video_prompts:
-                raise Exception("No video prompts generated. Please try again.")
-
-            # Clean and format the prompts
-            cleaned_prompts = clean_prompt_text(raw_video_prompts)
-            formatted_prompts = remove_unwanted_headers(cleaned_prompts)
-
-            # Validate the generated prompts
-            if not self.validate_prompts(formatted_prompts, self.video_prompt_number_var.get()):
-                messagebox.showerror("Temporal Notification", "Please GENERATE VIDEO PROMPTS again. Occasionally it takes a couple of tries.")
-                return
-
-            # Save the prompts to the selected output folder
-            directory, video_folder, audio_folder, video_filename, _ = self.create_smart_directory_and_filenames(input_concept, self.output_folder)
+            directory, video_folder, audio_folder, video_filename, _ = self.create_smart_directory_and_filenames(input_concept)
             video_save_path = os.path.join(video_folder, video_filename)
-            save_to_file(formatted_prompts, video_save_path)
 
-            # Initialize audio_save_folder if not done already
-            self.audio_save_folder = audio_folder  # This fixes the error
+            # Combine all prompts into a single string separated by the delimiter
+            formatted_prompts = f"\n--------------------\n".join(generated_prompts)
+
+            self.save_to_file(formatted_prompts, video_save_path)
+
+            # Initialize both save folders
+            self.video_save_folder = video_folder
+            self.audio_save_folder = audio_folder  # Ensure this is also set
 
             # Store the prompts in the class-level attribute `self.video_prompts`
             self.video_prompts = formatted_prompts  # Store for later use
 
             # Enable the button to generate audio prompts
-            enable_button(self.generate_audio_prompts_button)
+            self.enable_button(self.generate_audio_prompts_button)
 
             # Display formatted prompts in the output text box
             self.output_text.delete("1.0", tk.END)
@@ -1410,15 +1491,21 @@ class MultimediaSuiteApp:
             print(f"Audio prompts will be saved to: {self.audio_save_folder}")
 
         except Exception as e:
-            messagebox.showerror("Prompt Generation Error", f"Failed to generate video prompts: {e}")
-            print(f"Error generating video prompts: {e}")
+            messagebox.showerror("Prompt Generation Error", f"Failed to save video prompts: {e}")
+            print(f"Error saving video prompts: {e}")
 
-    def set_output_directory(self):
-        self.output_folder = filedialog.askdirectory(title="Select Output Directory")
-        if not self.output_folder:
-            messagebox.showwarning("Directory Selection", "No directory selected. Please select a valid directory.")
-            return
-        print(f"Output directory set to: {self.output_folder}")
+    def ensure_model_available(self, model_name):
+        try:
+            # List available models
+            result = subprocess.run(['ollama', 'list'], capture_output=True, text=True)
+            if model_name not in result.stdout:
+                print(f"Model '{model_name}' is not available locally. Pulling model...")
+                subprocess.run(['ollama', 'pull', model_name], check=True)
+            else:
+                print(f"Model '{model_name}' is already available.")
+        except subprocess.CalledProcessError as e:
+            print(f"Error ensuring model availability: {e}")
+            messagebox.showerror("Ollama Model Error", f"Failed to ensure model '{model_name}' is available.\nError: {e}")
 
     def ensure_prompt_count_update(self):
         """
@@ -1430,8 +1517,8 @@ class MultimediaSuiteApp:
     def generate_audio_prompts(self):
         """
         Generate detailed audio prompts based on the input concept entered by the user.
-        This function validates the input, sends the request to the API, and displays the generated prompts.
-        It now integrates with the multi-layered audio system for more dynamic soundscape generation.
+        Automatically retries each audio prompt generation step until valid prompts are obtained.
+        Ensures the same number of audio prompts as video prompts without blanks.
         """
         if not self.video_prompts:
             messagebox.showerror("Video Prompts Missing", "Please generate video prompts before generating audio prompts.")
@@ -1448,36 +1535,49 @@ class MultimediaSuiteApp:
         print(f"Video Prompt Count: {video_prompt_count}")
 
         try:
-            # Generate sonic descriptions for each video prompt
+            # Gather all video prompts
+            video_prompt_sets = [p.strip() for p in self.video_prompts.split("--------------------") if p.strip()]
+            if len(video_prompt_sets) != video_prompt_count:
+                raise Exception("Mismatch in video prompt count during processing.")
+
             sonic_descriptions = []
-            for video_prompt in self.video_prompts.split("--------------------"):
-                video_prompt = video_prompt.strip()
-                if not video_prompt:
-                    continue
 
-                # Create a sound-specific prompt from the video prompt
-                sound_prompt = (
-                    f"Generate a sonic description based on the following visual scene: '{video_prompt}'. "
-                    "Focus only on the sounds, atmosphere, background noises, ambient audio, and specific sonic elements. "
-                    "Do not describe visual elements. Describe what the listener would hear in this scene, including subtle "
-                    "details like environmental sounds, echoes, footsteps, machinery, voices, or any relevant sonic cues."
-                )
+            for i, video_prompt_set in enumerate(video_prompt_sets, start=1):
+                while True:
+                    try:
+                        # Create a sound-specific prompt from the video prompt
+                        sound_prompt = (
+                            f"Generate a sonic description based on the following visual scene: '{video_prompt_set}'. "
+                            "Focus only on the sounds, atmosphere, background noises, ambient audio, and specific sonic elements. "
+                            "Do not describe visual elements. Describe what the listener would hear in this scene, including subtle "
+                            "details like environmental sounds, echoes, footsteps, machinery, voices, or any relevant sonic cues."
+                        )
 
-                # Send the sound prompt to Ollama to generate the sonic description
-                translated_sonic_prompt = self.generate_prompts_via_ollama(sound_prompt, 'audio', 1)  # Process one audio prompt at a time
-                
-                if not translated_sonic_prompt:
-                    raise Exception("No sonic description generated. Please try again.")
-                
-                # Clean and store the sonic description
-                cleaned_sonic_prompt = clean_prompt_text(translated_sonic_prompt)
-                sonic_descriptions.append(cleaned_sonic_prompt)
+                        # Send the sound prompt to Ollama to generate the sonic description
+                        translated_sonic_prompt = self.generate_prompts_via_ollama(sound_prompt, 'audio', 1)  # Process one audio prompt at a time
+
+                        if not translated_sonic_prompt:
+                            raise Exception("No sonic description generated. Retrying...")
+
+                        # Clean and store the sonic description
+                        cleaned_sonic_prompt = clean_prompt_text(translated_sonic_prompt)
+                        formatted_sonic_prompt = self.remove_unwanted_headers(cleaned_sonic_prompt)
+
+                        # Validate the generated audio prompt
+                        if self.validate_prompts(formatted_sonic_prompt, 1):
+                            sonic_descriptions.append(formatted_sonic_prompt)
+                            break  # Valid prompt obtained, move to the next
+                        else:
+                            print(f"Validation failed for audio prompt {i}. Retrying...")
+
+                    except Exception as e:
+                        print(f"Error generating audio prompt {i}: {e}. Retrying...")
 
             # Join the sonic descriptions together with the same format as video prompts
             formatted_sonic_prompts = "\n--------------------\n".join(sonic_descriptions)
 
             # Save and display the formatted audio prompts
-            directory, _, audio_folder, _, audio_filename = self.create_smart_directory_and_filenames(input_concept, OUTPUT_DIRECTORY)
+            directory, _, audio_folder, _, audio_filename = self.create_smart_directory_and_filenames(input_concept, self.output_folder)
             self.audio_save_folder = audio_folder
             audio_save_path = os.path.join(self.audio_save_folder, audio_filename)
             save_to_file(formatted_sonic_prompts, audio_save_path)
@@ -1490,12 +1590,12 @@ class MultimediaSuiteApp:
             self.output_text.delete("1.0", tk.END)
             self.output_text.insert(tk.END, "Generated Audio Prompts:\n\n" + formatted_sonic_prompts)
 
-            # Now generate the sound effects based on the multi-layer system
-            self.generate_audio_menu()  # Opens the new menu for selecting sound layers
+            print(f"Data successfully saved to {audio_save_path}")
 
         except Exception as e:
             messagebox.showerror("Prompt Generation Error", f"Failed to generate audio prompts: {e}")
             print(f"Error generating audio prompts: {e}")
+
             
     def initialize_ollama(self):
         """
@@ -1545,8 +1645,346 @@ class MultimediaSuiteApp:
             print("Initialized settings.json with default settings.")
         else:
             print("settings.json already exists.")
+            
+    def select_video_file(self, frame, index):
+        """
+        Allows the user to select a video file for a specific video prompt.
 
-        
+        Args:
+            frame (ttk.LabelFrame): The frame containing the video prompt.
+            index (int): The index of the video prompt.
+        """
+        file_path = filedialog.askopenfilename(
+            title=f"Select Video File for Prompt Set {index}",
+            filetypes=[("Video Files", "*.mp4 *.avi *.mov *.mkv")]
+        )
+        if file_path:
+            frame.video_file_var.set(file_path)
+            
+    from playsound import playsound
+
+    def play_audio(self, audio_prompt):
+        """
+        Plays the given audio prompt. Assumes that audio prompts are stored as MP3 files in the audio folder.
+
+        Args:
+            audio_prompt (str): The audio prompt text to be played.
+        """
+        try:
+            # Map the audio prompt text to its corresponding MP3 file.
+            # This assumes that audio files are named uniquely based on the prompt.
+            # Adjust this mapping based on your actual audio file naming convention.
+            sanitized_prompt = re.sub(r'[^\w\s-]', '', audio_prompt).strip().replace(' ', '_')[:50]
+            audio_filename = f"{sanitized_prompt}.mp3"
+            audio_file_path = os.path.join(self.audio_save_folder, audio_filename)
+
+            if os.path.exists(audio_file_path):
+                playsound(audio_file_path)
+            else:
+                messagebox.showerror("Audio Playback Error", f"Audio file not found: {audio_file_path}")
+                print(f"Audio file not found: {audio_file_path}")
+        except Exception as e:
+            messagebox.showerror("Audio Playback Error", f"Failed to play audio prompt: {e}")
+            print(f"Error playing audio: {e}")
+
+    def associate_media(self):
+        """
+        Opens a popup window to associate video files with their respective audio prompts.
+        Allows users to preview and select audio prompts for each video prompt set.
+        """
+        if not self.video_prompts or not self.audio_prompts:
+            messagebox.showerror("Media Association Error", "Please generate both video and audio prompts before associating media.")
+            return
+
+        # Create the popup window
+        popup = tk.Toplevel(self.root)
+        popup.title("Associate Media")
+        popup.geometry("900x700")
+        popup.grab_set()  # Make the popup modal
+
+        # Instructions
+        instructions = tk.Label(
+            popup,
+            text="Associate each video prompt with its corresponding video file and select an audio prompt variant.",
+            wraplength=850,
+            justify="left",
+            bg='#0A2239',
+            fg='white',
+            font=('Helvetica', 12, 'bold')
+        )
+        instructions.pack(pady=10)
+
+        # Create a frame with a scrollbar to hold all associations
+        canvas = tk.Canvas(popup, bg='#0A2239')
+        scrollbar = ttk.Scrollbar(popup, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor='nw')
+
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # List to store user selections
+        self.media_associations = []
+
+        # Iterate over each video prompt set
+        for idx, (video_prompt, audio_prompts) in enumerate(zip(
+            [p.strip() for p in self.video_prompts.split("--------------------") if p.strip()],
+            self.audio_prompts
+        ), start=1):
+            # Frame for each association
+            frame = ttk.LabelFrame(scrollable_frame, text=f"Prompt Set {idx}", padding=10)
+            frame.pack(fill="x", padx=10, pady=5)
+
+            # Display the video prompt
+            prompt_label = tk.Label(
+                frame,
+                text=f"Prompt:\n{video_prompt}",
+                wraplength=800,
+                justify="left",
+                bg='#0A2239',
+                fg='white',
+                font=('Helvetica', 10)
+            )
+            prompt_label.pack(anchor='w')
+
+            # Select Video File
+            select_video_btn = tk.Button(
+                frame,
+                text="Select Video File",
+                command=lambda f=frame, i=idx: self.select_video_file(f, i),
+                bg="#007bff",
+                fg='white',
+                font=('Helvetica', 10, 'bold'),
+                cursor="hand2"
+            )
+            select_video_btn.pack(anchor='w', pady=5)
+
+            # Label to show selected video file path
+            video_file_var = tk.StringVar()
+            video_file_label = tk.Label(
+                frame,
+                textvariable=video_file_var,
+                wraplength=800,
+                justify="left",
+                bg='#0A2239',
+                fg='light gray',
+                font=('Helvetica', 10, 'italic')
+            )
+            video_file_label.pack(anchor='w')
+
+            # Audio Prompt Selection
+            audio_selection_label = tk.Label(
+                frame,
+                text="Select Audio Prompt Variant:",
+                bg='#0A2239',
+                fg='white',
+                font=('Helvetica', 10, 'bold')
+            )
+            audio_selection_label.pack(anchor='w', pady=(10, 0))
+
+            audio_prompts_frame = ttk.Frame(frame)
+            audio_prompts_frame.pack(fill="x", padx=10, pady=5)
+
+            # Variable to store selected audio index
+            selected_audio_var = tk.IntVar()
+            selected_audio_var.set(-1)  # No selection by default
+
+            for a_idx, audio_prompt in enumerate(audio_prompts, start=1):
+                # Frame for each audio variant
+                audio_frame = tk.Frame(audio_prompts_frame, bg='#0A2239')
+                audio_frame.pack(fill="x", padx=5, pady=2)
+
+                # Radio button for selection
+                radio_btn = tk.Radiobutton(
+                    audio_frame,
+                    text=f"Variant {a_idx}",
+                    variable=selected_audio_var,
+                    value=a_idx-1,  # Zero-based index
+                    bg='#0A2239',
+                    fg='white',
+                    selectcolor='#0A2239',
+                    activebackground='#0A2239',
+                    activeforeground='white'
+                )
+                radio_btn.pack(side="left")
+
+                # Button to play audio (implements playback)
+                play_btn = tk.Button(
+                    audio_frame,
+                    text="Play",
+                    command=lambda ap=audio_prompt: self.play_audio(ap),
+                    bg="#28a745",
+                    fg='white',
+                    font=('Helvetica', 8, 'bold'),
+                    cursor="hand2"
+                )
+                play_btn.pack(side="left", padx=5)
+
+                # Display the audio prompt text
+                audio_text = tk.Label(
+                    audio_frame,
+                    text=f"{audio_prompt}",
+                    wraplength=600,
+                    justify="left",
+                    bg='#0A2239',
+                    fg='light gray',
+                    font=('Helvetica', 10)
+                )
+                audio_text.pack(side="left", padx=5)
+
+            # Store the selection variables in the frame for later access
+            frame.audio_var = selected_audio_var
+            frame.video_file_var = video_file_var
+
+        # Save Associations Button
+        save_btn = tk.Button(
+            popup,
+            text="Save Associations",
+            command=lambda: self.save_media_associations(popup),
+            bg="#28a745",
+            fg='white',
+            font=('Helvetica', 12, 'bold'),
+            cursor="hand2",
+            width=20,
+            height=2
+        )
+        save_btn.pack(pady=10)
+
+
+    def select_video_file(self, frame, index):
+        """
+        Allows the user to select a video file for a specific video prompt.
+
+        Args:
+            frame (ttk.LabelFrame): The frame containing the video prompt.
+            index (int): The index of the video prompt.
+        """
+        file_path = filedialog.askopenfilename(
+            title=f"Select Video File for Prompt {index}",
+            filetypes=[("Video Files", "*.mp4 *.avi *.mov *.mkv")]
+        )
+        if file_path:
+            frame.video_file_var.set(file_path)
+
+    def play_audio(self, audio_prompt):
+        """
+        Plays the given audio prompt. Placeholder implementation.
+        You need to implement actual audio playback based on your environment and requirements.
+
+        Args:
+            audio_prompt (str): The audio prompt text to be played.
+        """
+        # Placeholder: Print a message or implement actual audio playback if audio files are available
+        print(f"Playing audio prompt: {audio_prompt}")
+        # Example using simple text-to-speech (optional, requires additional packages)
+        # import pyttsx3
+        # engine = pyttsx3.init()
+        # engine.say(audio_prompt)
+        # engine.runAndWait()
+
+    def save_media_associations(self, popup):
+        """
+        Saves the user's media associations and closes the popup.
+
+        Args:
+            popup (tk.Toplevel): The popup window.
+        """
+        associations = []
+        for idx, (video_prompt, audio_prompts) in enumerate(zip(
+            [p.strip() for p in self.video_prompts.split("--------------------") if p.strip()],
+            self.audio_prompts
+        ), start=1):
+            frame = self.get_frame_by_index(popup, idx)
+            if not frame:
+                continue
+
+            video_file = frame.video_file_var.get()
+            selected_audio_idx = frame.audio_var.get()
+
+            if not video_file:
+                messagebox.showwarning("Association Incomplete", f"No video file selected for Prompt Set {idx}. Skipping.")
+                continue
+
+            if selected_audio_idx == -1 or selected_audio_idx >= len(audio_prompts):
+                messagebox.showwarning("Association Incomplete", f"No audio prompt selected for Prompt Set {idx}. Skipping.")
+                continue
+
+            selected_audio_prompt = audio_prompts[selected_audio_idx]
+
+            # Assume that audio files are named based on sanitized prompts
+            sanitized_audio_prompt = re.sub(r'[^\w\s-]', '', selected_audio_prompt).strip().replace(' ', '_')[:50]
+            audio_filename = f"{sanitized_audio_prompt}.mp3"
+            audio_file_path = os.path.join(self.audio_save_folder, audio_filename)
+
+            if not os.path.exists(audio_file_path):
+                messagebox.showwarning("Audio File Missing", f"Audio file not found for Prompt Set {idx}: {audio_file_path}. Skipping.")
+                continue
+
+            associations.append({
+                "video_prompt": video_prompt,
+                "video_file": video_file,
+                "audio_file": audio_file_path
+            })
+
+        if not associations:
+            messagebox.showwarning("No Associations", "No valid media associations were saved.")
+            popup.destroy()
+            return
+
+        self.media_associations = associations
+        messagebox.showinfo("Associations Saved", "Media associations have been saved successfully.")
+        popup.destroy()
+
+
+    def get_frame_by_index(self, popup, index):
+        """
+        Retrieves the frame associated with a given video prompt index within the popup.
+
+        Args:
+            popup (tk.Toplevel): The popup window.
+            index (int): The index of the video prompt.
+
+        Returns:
+            ttk.LabelFrame or None: The corresponding frame or None if not found.
+        """
+        # Iterate through the children of the scrollable_frame to find the matching frame
+        for child in popup.winfo_children():
+            if isinstance(child, tk.Canvas):
+                canvas_children = child.winfo_children()
+                for canvas_child in canvas_children:
+                    if isinstance(canvas_child, ttk.Frame):
+                        for label_frame in canvas_child.winfo_children():
+                            if isinstance(label_frame, ttk.LabelFrame) and label_frame.cget("text") == f"Prompt Set {index}":
+                                return label_frame
+        return None
+
+
+    def play_audio(self, audio_prompt):
+        """
+        Plays the given audio prompt. Placeholder implementation.
+        You need to implement actual audio playback based on your environment and requirements.
+
+        Args:
+            audio_prompt (str): The audio prompt text to be played.
+        """
+        # Placeholder: Print a message or implement actual audio playback if audio files are available
+        print(f"Playing audio prompt: {audio_prompt}")
+        # Example using simple text-to-speech (optional, requires additional packages)
+        # import pyttsx3
+        # engine = pyttsx3.init()
+        # engine.say(audio_prompt)
+        # engine.runAndWait()
+
 
     def check_coherency_with_ollama(video_prompts, audio_prompts):
         """
@@ -1630,18 +2068,33 @@ class MultimediaSuiteApp:
 
         return inverted_prompts.strip()
 
+    def enable_button(self, button):
+        """
+        Enables the given button widget.
         
+        Args:
+            button (tk.Button): The button widget to enable.
+        """
+        button.config(state=tk.NORMAL)
+
+    def disable_button(self, button):
+        """
+        Disables the given button widget.
+        """
+        button.config(state=tk.DISABLED)
+    
+    
     def generate_prompts_via_ollama(self, input_concept, prompt_type, number_of_prompts, options=None):
         system_prompt = f"""
-        You are an AI assistant tasked with generating prompts for video generation models. Each prompt must strictly follow the format below, with no additional information or explanation:
+        You are an AI assistant tasked with generating a single, detailed and intuitive set of prompts, one positive and one matching negative prompt set for {prompt_type} generation models. Each prompt must strictly follow the format below, with no additional information or explanation:
 
         Example format:
 
-        positive: Describe the positive aspects of the scene or shot in detail.
-        negative: Describe what to avoid in the scene or shot in detail.
+        positive: Describe the positive aspects of the scene or shot in masterful visual detail including specific features.
+        negative: Describe what to avoid in the scene or shot in detail to maintain consistent coherency.
         --------------------
 
-        Generate {number_of_prompts} sets of {prompt_type} prompts based on the following concept: '{input_concept}'. Ensure that each prompt set strictly follows the Correct Examples with both positive and negative format.
+        Generate a single set of prompts, one positive and one complimentary negative, of {prompt_type} prompts based on the following concept: '{input_concept}'. Ensure that each prompt set strictly follows the Correct Examples with both positive and negative format.
         """
         try:
             self.ensure_ollama_installed_and_model_available()
@@ -1663,20 +2116,76 @@ class MultimediaSuiteApp:
         except Exception as e:
             print(f"Error generating prompts via Ollama: {e}")
             return None
-                
-    def ensure_model_available(self, model_name):
-        try:
-            model_list = subprocess.run(["ollama", "list"], capture_output=True, text=True)
-            if model_name not in model_list.stdout:
-                print(f"Model '{model_name}' is not available locally. Pulling model...")
-                subprocess.run(["ollama", "pull", model_name], check=True)
-            print(f"Model '{model_name}' is available.")
-        except Exception as e:
-            print(f"Error ensuring model availability: {e}")
+
+    def clean_prompt_text(self, prompt_text):
+        """
+        Cleans the prompt text by extracting only the positive and negative sections in the required format.
+        
+        Args:
+            prompt_text (str): The raw prompt text from the model.
+        
+        Returns:
+            str: The cleaned and formatted prompt.
+        """
+        # Remove any unwanted prefixes or suffixes
+        cleaned_text = prompt_text.strip()
+
+        # Match the exact format required
+        prompt_match = re.search(r"^positive:\s*(.*?)\nnegative:\s*(.*)", cleaned_text, re.DOTALL | re.IGNORECASE)
+        if prompt_match:
+            positive_section = prompt_match.group(1).strip()
+            negative_section = prompt_match.group(2).strip()
+
+            # Ensure negative_section is in sentence form
+            # Remove any bullet points or list formatting
+            negative_section = re.sub(r"^-*\s*Avoid\s*", "Avoid ", negative_section, flags=re.MULTILINE | re.IGNORECASE)
+            negative_section = re.sub(r"^\s*\*", "", negative_section)  # Remove any leading asterisks
+
+            # Ensure negative_section ends with a period
+            if not negative_section.endswith('.'):
+                negative_section += '.'
+
+            # Reconstruct the prompt in the exact required format
+            cleaned_text = f"positive: {positive_section}\nnegative: {negative_section}"
+        else:
+            # If the format doesn't match, return an empty string to trigger a retry
+            cleaned_text = ""
+
+        return cleaned_text
+
+    def clean_audio_prompt_text(self, prompt_text):
+        """
+        Cleans the audio prompt text by extracting only the list of sounds in sentence form.
+        
+        Args:
+            prompt_text (str): The raw audio prompt text from the model.
+        
+        Returns:
+            str: The cleaned and formatted audio prompt.
+        """
+        # Remove any unwanted prefixes or suffixes
+        cleaned_text = prompt_text.strip()
+
+        # Remove any extra text before or after the list
+        # Assuming the model returns only the list, but to be safe:
+        cleaned_text = re.sub(r'^.*?(?=[\w\s,]+$)', '', cleaned_text, flags=re.DOTALL).strip()
+        cleaned_text = re.sub(r'[^a-zA-Z0-9,\s]', '', cleaned_text)
+
+        # Ensure it's a comma-separated list
+        cleaned_text = ', '.join([s.strip() for s in cleaned_text.split(',') if s.strip()])
+
+        return cleaned_text
+
             
     def parse_raw_response(self, raw_data):
         """
         Parses the raw JSON response from the API and extracts the 'response' field which contains the raw prompts.
+
+        Args:
+            raw_data (str): The raw JSON response from the API.
+
+        Returns:
+            str: The raw prompts extracted from the 'response' field.
         """
         try:
             # Add a debug statement for the raw_data
@@ -1691,11 +2200,10 @@ class MultimediaSuiteApp:
             return ""
 
 
-
     def ensure_audioldm2_installed(self):
         """
         Ensures that AudioLDM2 and torchaudio are installed as Python modules.
-        If not, attempts to install them.
+        If not, attempts to install them. Also checks for system dependencies.
         """
         try:
             import audioldm2
@@ -1727,6 +2235,9 @@ class MultimediaSuiteApp:
             torch_version = torch.__version__.split('+')[0]
             torchaudio_version = torchaudio.__version__.split('+')[0]
 
+            if not torchaudio_version.startswith(torch_version[:5]):
+                raise ImportError("torchaudio version does not match torch version.")
+
             print(f"torch version: {torch_version}, torchaudio version: {torchaudio_version}")
 
         except ImportError as e:
@@ -1744,11 +2255,10 @@ class MultimediaSuiteApp:
                         cuda_available = False
 
                     if cuda_available:
-                        # Install torch and torchaudio with CUDA support
+                        # Example for CUDA 11.8; adjust based on your system
                         subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'torch', 'torchaudio', '--extra-index-url', 'https://download.pytorch.org/whl/cu118'])
                     else:
-                        # Install CPU versions
-                        subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'torch', 'torchaudio'])
+                        subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'torch', 'torchaudio', '--extra-index-url', 'https://download.pytorch.org/whl/cpu'])
 
                     messagebox.showinfo("Reinstallation Complete", "torchaudio has been reinstalled successfully.")
 
@@ -1763,6 +2273,42 @@ class MultimediaSuiteApp:
                 messagebox.showwarning("torchaudio Required", "torchaudio is required for AudioLDM2. Exiting...")
                 sys.exit(1)
 
+        # Check for Microsoft Visual C++ Redistributable
+        if not self.check_visual_cplusplus_installed():
+            response = messagebox.askyesno(
+                "Missing Dependency",
+                "Microsoft Visual C++ Redistributable is not installed. It's required for torchaudio.\nWould you like to download it now?"
+            )
+            if response:
+                try:
+                    webbrowser.open_new("https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170")
+                    messagebox.showinfo("Install Visual C++", "Please install the Microsoft Visual C++ Redistributable from your browser and restart the application.")
+                    sys.exit(1)
+                except Exception as e:
+                    messagebox.showerror("Download Error", f"Failed to open the browser for downloading Visual C++ Redistributable:\n{e}")
+                    sys.exit(1)
+            else:
+                messagebox.showwarning("Dependency Required", "Microsoft Visual C++ Redistributable is required for torchaudio. Exiting...")
+                sys.exit(1)
+
+    def check_visual_cplusplus_installed(self):
+        """
+        Checks if the Microsoft Visual C++ Redistributable is installed.
+        This is a basic check by looking for common registry entries.
+        """
+        import winreg
+
+        try:
+            registry = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
+            key = winreg.OpenKey(registry, r"SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64")
+            value, regtype = winreg.QueryValueEx(key, "Installed")
+            winreg.CloseKey(key)
+            return value == 1
+        except FileNotFoundError:
+            return False
+        except Exception as e:
+            print(f"Error checking Visual C++ Redistributable: {e}")
+            return False
 
             
     def run_audioldm2(self, prompt_text, output_filename, index):
@@ -2008,26 +2554,13 @@ class MultimediaSuiteApp:
         self.ensure_model_available(model_name)
 
 
-    def combine_video(self):
+    def combine_media(self):
         """
-        Combines each video file with the corresponding audio sound effect.
-        Saves the combined media in the specified directories.
-
-        This function performs the following steps:
-        - Reads all video files from the Video folder.
-        - Reads all audio files from the Audio folder.
-        - Combines each video with its corresponding audio.
-        - Saves the combined videos in a new folder named FINAL_VIDEOS_{number_of_prompts}_prompts_expected.
-        - Copies the audio files to a new folder named FINAL_AUDIOS_{number_of_prompts}_prompts_expected.
+        Combines the selected video file with the generated audio sound effects.
+        Saves the combined media in the smart-named directory.
         """
-
-        import shutil
-        from moviepy.video import fx as vfx
-
-        # Collect video files
         video_files = sorted(
-            [os.path.join(self.video_save_folder, f) for f in os.listdir(self.video_save_folder)
-             if f.endswith(('.mp4', '.avi', '.mov', '.mkv'))],
+            [os.path.join(self.video_save_folder, f) for f in os.listdir(self.video_save_folder) if f.endswith(('.mp4', '.avi', '.mov', '.mkv'))],
             key=extract_number_from_filename
         )
 
@@ -2035,10 +2568,8 @@ class MultimediaSuiteApp:
             messagebox.showwarning("No Video Files", "No video files found in the Video folder.")
             return
 
-        # Collect audio files
         audio_files = sorted(
-            [os.path.join(self.audio_save_folder, f) for f in os.listdir(self.audio_save_folder)
-             if f.endswith(('.mp3', '.wav', '.aac'))],
+            [os.path.join(self.audio_save_folder, f) for f in os.listdir(self.audio_save_folder) if f.endswith(('.mp3', '.wav'))],
             key=extract_number_from_filename
         )
 
@@ -2046,55 +2577,21 @@ class MultimediaSuiteApp:
             messagebox.showwarning("No Audio Files", "No audio files found in the Audio folder.")
             return
 
-        # Ensure the number of video files matches the number of audio files
-        if len(video_files) != len(audio_files):
-            messagebox.showwarning("File Mismatch", "The number of video files does not match the number of audio files.")
-            return
-
-        # Get the number of prompts
-        number_of_prompts = self.video_prompt_number_var.get()
-
-        # Ask the user to select the output directory
-        chosen_directory = filedialog.askdirectory(title="Select Output Directory")
-        if not chosen_directory:
-            messagebox.showwarning("Output Directory", "No directory selected.")
-            return
-
-        # Create the output directories
-        final_videos_folder = os.path.join(
-            chosen_directory, f"FINAL_VIDEOS_{number_of_prompts}_prompts_expected")
-        final_audios_folder = os.path.join(
-            chosen_directory, f"FINAL_AUDIOS_{number_of_prompts}_prompts_expected")
-
-        os.makedirs(final_videos_folder, exist_ok=True)
-        os.makedirs(final_audios_folder, exist_ok=True)
-
         try:
-            for i, (video_file, audio_file) in enumerate(zip(video_files, audio_files), start=1):
-                video_clip = VideoFileClip(video_file)
-                audio_clip = AudioFileClip(audio_file)
+            video_clips = [VideoFileClip(video_file) for video_file in video_files]
+            audio_clips = [AudioFileClip(audio_file) for audio_file in audio_files]
 
-                # Adjust audio duration to match video duration
-                if audio_clip.duration < video_clip.duration:
-                    # Loop the audio to match video duration
-                    audio_clip = audio_clip.fx(vfx.loop, duration=video_clip.duration)
-                elif audio_clip.duration > video_clip.duration:
-                    # Trim the audio to match video duration
-                    audio_clip = audio_clip.subclip(0, video_clip.duration)
+            # Concatenate video and audio clips
+            final_video = concatenate_videoclips(video_clips)
+            combined_audio = concatenate_audioclips(audio_clips)
 
-                # Set audio to video
-                final_clip = video_clip.set_audio(audio_clip)
+            final_video = final_video.set_audio(combined_audio)
 
-                # Save the combined video
-                output_video_filename = os.path.join(final_videos_folder, f"combined_video_{i}.mp4")
-                final_clip.write_videofile(output_video_filename, codec="libx264", audio_codec="aac")
+            # Define the save path within the master directory
+            save_path = os.path.join(self.video_save_folder, "combined_media.mp4")
 
-                # Copy the audio file to the final_audios_folder
-                output_audio_filename = os.path.join(final_audios_folder, os.path.basename(audio_file))
-                shutil.copy(audio_file, output_audio_filename)
-
-            messagebox.showinfo(
-                "Combine Successful", f"Media combined and saved to: {final_videos_folder}")
+            final_video.write_videofile(save_path, codec="libx264", audio_codec="aac")
+            messagebox.showinfo("Combine Successful", f"Media combined and saved to: {save_path}")
 
         except Exception as e:
             print(f"Error during media combination: {e}")
@@ -2182,7 +2679,7 @@ class MultimediaSuiteApp:
         # Prompt Count Selection
         prompt_number_label = tk.Label(
             options_label_frame,
-            text="Prompt Count",
+            text="Prompt Count - REQUIRED",
             bg='#0A2239',
             fg='white',
             font=('Helvetica', 12)
@@ -2223,7 +2720,7 @@ class MultimediaSuiteApp:
         self.video_story_mode_var = tk.BooleanVar()
         self.video_story_mode_checkbox = ttk.Checkbutton(
             options_label_frame,
-            text="Story Mode - Ensures prompts flow cohesively as a narrative",
+            text="Story Mode - Coming VERY soon",
             variable=self.video_story_mode_var,
             style='TCheckbutton'
         )
@@ -2693,7 +3190,7 @@ class MultimediaSuiteApp:
         # ---------------------
         save_button = tk.Button(
             parent,
-            text="Save Audio Options",
+            text="Save Audio Options - Does NOT Close Window",
             command=self.save_audio_options,
             bg="#28a745",
             fg='white',
@@ -2701,7 +3198,7 @@ class MultimediaSuiteApp:
             activebackground="#1e7e34",
             activeforeground='white',
             cursor="hand2",
-            width=20,
+            width=40,
             height=2
         )
         save_button.pack(pady=10)
@@ -2858,6 +3355,28 @@ class MultimediaSuiteApp:
         }
         self.save_options_to_file('video_options', cinematic_options)
         self.video_options_window.destroy()
+        
+    def remove_unwanted_headers(self, cleaned_prompt):
+        """
+        Removes any unwanted headers or metadata from the cleaned prompt.
+        
+        Args:
+            cleaned_prompt (str): The prompt text after initial cleaning.
+        
+        Returns:
+            str: The prompt text without unwanted headers.
+        """
+        # Assuming headers like {"done":true,...} are present, remove them
+        # This regex removes JSON-like structures
+        cleaned_prompt = re.sub(r'\{.*?\}', '', cleaned_prompt, flags=re.DOTALL)
+        
+        # Also remove any remaining unwanted text after negative section
+        cleaned_prompt = re.split(r'\n--------------------\n', cleaned_prompt)[0]
+        
+        # Trim any leading/trailing whitespace
+        cleaned_prompt = cleaned_prompt.strip()
+        
+        return cleaned_prompt
 
     def save_audio_options(self):
         """
