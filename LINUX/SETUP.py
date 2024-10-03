@@ -9,6 +9,7 @@ import urllib.request
 import zipfile
 import shutil
 import tempfile
+import re
 
 def run_command(command, capture_output=False, cwd=None, shell=True):
     """
@@ -139,21 +140,6 @@ def install_git_linux():
         print("❌ Failed to install Git.")
         return False
 
-def check_ollama(cwd=None):
-    """
-    Check if Ollama is installed.
-    """
-    print("\n🔍 Checking for Ollama installation...")
-    try:
-        output = run_command("ollama --version", capture_output=True, cwd=cwd)
-        if output:
-            print(f"✅ Ollama is installed: {output}")
-            return True
-    except:
-        pass
-    print("⚠️ Ollama is not installed.")
-    return False
-
 def prompt_install_ollama_linux():
     """
     Prompt the user to install Ollama with a friendly message.
@@ -169,16 +155,30 @@ def prompt_install_ollama_linux():
         print("\n🛑 Installation of Ollama aborted by the user.")
     return False  # Exiting setup to allow user to install manually
 
+def check_ollama(cwd=None):
+    """
+    Check if Ollama is installed.
+    """
+    print("\n🔍 Checking for Ollama installation...")
+    try:
+        output = run_command("ollama --version", capture_output=True, cwd=cwd)
+        if output:
+            print(f"✅ Ollama is installed: {output}")
+            return True
+    except:
+        pass
+    print("⚠️ Ollama is not installed.")
+    return False
+
 def check_cuda_toolkit(cwd=None):
     """
-    Check if CUDA toolkit is installed.
+    Check if CUDA toolkit is installed and retrieve its version.
     """
     print("\n🔍 Checking for CUDA toolkit installation...")
     try:
         cuda_version_output = run_command("nvcc --version", capture_output=True, cwd=cwd)
         if cuda_version_output:
             # Parse the CUDA version from the output
-            import re
             match = re.search(r"release (\d+\.\d+),", cuda_version_output)
             if match:
                 cuda_version = match.group(1)
@@ -365,27 +365,40 @@ def install_diffusers_transformers_accelerate(venv_dir):
         print(f"❌ Failed to verify diffusers, transformers, or accelerate. Error: {e}")
         return False
 
-def install_torch_packages(venv_dir):
+def install_torch_packages(venv_dir, cuda_version):
     """
-    Install torch and related packages.
+    Install PyTorch and related packages with CUDA support.
     """
-    print("\n🔧 Installing PyTorch and related packages...")
+    print("\n🔧 Installing PyTorch and related packages with CUDA support...")
     python_executable, pip_executable = get_venv_executables(venv_dir)
     if not pip_executable.exists():
         print(f"❌ pip executable not found at {pip_executable}.")
         return False
 
-    # Install torch, torchvision, torchaudio
-    torch_packages = ["torch", "torchvision", "torchaudio"]
-    for pkg in torch_packages:
-        try:
-            run_command(f"{pip_executable} install {pkg}", cwd=venv_dir)
-            print(f"✅ Installed {pkg} successfully.")
-        except Exception as e:
-            print(f"❌ Failed to install {pkg}. Error: {e}")
-            return False
+    # Define the appropriate index-url based on CUDA version
+    cuda_version_map = {
+        "11.8": "https://download.pytorch.org/whl/cu118",
+        "11.7": "https://download.pytorch.org/whl/cu117",
+        "11.6": "https://download.pytorch.org/whl/cu116",
+        "11.3": "https://download.pytorch.org/whl/cu113",
+        "10.2": "https://download.pytorch.org/whl/cu102",
+    }
 
-    # Verify torch installation
+    if cuda_version not in cuda_version_map:
+        print(f"⚠️ Unsupported CUDA version: {cuda_version}. Falling back to CPU-only installation.")
+        install_command = f"{pip_executable} install torch torchvision torchaudio"
+    else:
+        index_url = cuda_version_map[cuda_version]
+        install_command = f"{pip_executable} install torch torchvision torchaudio --index-url {index_url}"
+
+    try:
+        run_command(install_command, cwd=venv_dir)
+        print("✅ PyTorch and related packages installed successfully with CUDA support.")
+    except Exception as e:
+        print(f"❌ Failed to install PyTorch with CUDA support. Error: {e}")
+        return False
+
+    # Verify installation by checking CUDA availability in PyTorch
     try:
         command = f"{python_executable} -c 'import torch; print(torch.__version__); print(torch.cuda.is_available())'"
         output = run_command(command, capture_output=True, cwd=venv_dir)
@@ -400,7 +413,7 @@ def install_torch_packages(venv_dir):
                 if cuda_available.lower() == "true":
                     print("✅ CUDA is available for PyTorch.")
                 else:
-                    print("⚠️ CUDA is not available for PyTorch.")
+                    print("⚠️ CUDA is not available for PyTorch. Please check your CUDA installation.")
             else:
                 print("⚠️ Unexpected output during PyTorch verification.")
         else:
@@ -564,6 +577,65 @@ def prompt_launch_script(venv_dir, main_script_path):
     else:
         print("\n🛠️ Setup completed. You can run the Temporal Prompt Engine later using the virtual environment's Python.")
 
+def install_torch_packages(venv_dir, cuda_version):
+    """
+    Install PyTorch and related packages with CUDA support.
+    """
+    print("\n🔧 Installing PyTorch and related packages with CUDA support...")
+    python_executable, pip_executable = get_venv_executables(venv_dir)
+    if not pip_executable.exists():
+        print(f"❌ pip executable not found at {pip_executable}.")
+        return False
+
+    # Define the appropriate index-url based on CUDA version
+    cuda_version_map = {
+        "11.8": "https://download.pytorch.org/whl/cu118",
+        "11.7": "https://download.pytorch.org/whl/cu117",
+        "11.6": "https://download.pytorch.org/whl/cu116",
+        "11.3": "https://download.pytorch.org/whl/cu113",
+        "10.2": "https://download.pytorch.org/whl/cu102",
+    }
+
+    if cuda_version not in cuda_version_map:
+        print(f"⚠️ Unsupported CUDA version: {cuda_version}. Falling back to CPU-only installation.")
+        install_command = f"{pip_executable} install torch torchvision torchaudio"
+    else:
+        index_url = cuda_version_map[cuda_version]
+        install_command = f"{pip_executable} install torch torchvision torchaudio --index-url {index_url}"
+
+    try:
+        run_command(install_command, cwd=venv_dir)
+        print("✅ PyTorch and related packages installed successfully with CUDA support.")
+    except Exception as e:
+        print(f"❌ Failed to install PyTorch with CUDA support. Error: {e}")
+        return False
+
+    # Verify installation by checking CUDA availability in PyTorch
+    try:
+        command = f"{python_executable} -c 'import torch; print(torch.__version__); print(torch.cuda.is_available())'"
+        output = run_command(command, capture_output=True, cwd=venv_dir)
+        if output:
+            print(f"🖥️ PyTorch Output:\n{output}")
+            # Parse the torch version and CUDA availability
+            lines = output.splitlines()
+            if len(lines) >= 2:
+                installed_version = lines[0].strip()
+                cuda_available = lines[1].strip()
+                print(f"✅ PyTorch Version: {installed_version}, CUDA Available: {cuda_available}")
+                if cuda_available.lower() == "true":
+                    print("✅ CUDA is available for PyTorch.")
+                else:
+                    print("⚠️ CUDA is not available for PyTorch. Please check your CUDA installation.")
+            else:
+                print("⚠️ Unexpected output during PyTorch verification.")
+        else:
+            print("⚠️ No output received during PyTorch verification.")
+    except Exception as e:
+        print(f"❌ Failed to verify PyTorch installation. Error: {e}")
+        return False
+
+    return True
+
 def main():
     print("============================================")
     print("    🌌 Welcome to Temporal Setup 🌌       ")
@@ -617,6 +689,11 @@ def main():
     if not cuda_version:
         if not prompt_install_cuda_linux():
             print("\n🔧 Please install the CUDA Toolkit and then re-run the setup script to continue.")
+            sys.exit(1)
+        # After installation, recheck the CUDA version
+        cuda_version = check_cuda_toolkit(cwd=script_dir)
+        if not cuda_version:
+            print("\n❌ CUDA Toolkit installation verification failed. Exiting setup.")
             sys.exit(1)
 
     # Step 5: Install FFmpeg
@@ -672,9 +749,9 @@ def main():
         print("\n❌ Failed to install diffusers, transformers, or accelerate. Exiting setup.")
         sys.exit(1)
 
-    # Step 11: Install torch and related packages
-    if not install_torch_packages(venv_dir):
-        print("\n❌ Failed to install PyTorch packages. Exiting setup.")
+    # Step 11: Install torch and related packages with CUDA support
+    if not install_torch_packages(venv_dir, cuda_version):
+        print("\n❌ Failed to install PyTorch with CUDA support. Exiting setup.")
         sys.exit(1)
 
     # Step 12: Install additional torch-related packages
