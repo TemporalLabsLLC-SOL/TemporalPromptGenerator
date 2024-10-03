@@ -80,6 +80,70 @@ def install_pip(script_dir):
         print("❌ Failed to install pip.")
         return False
 
+def check_git(cwd=None):
+    """
+    Check if Git is installed.
+    """
+    print("\n🔍 Checking for Git installation...")
+    try:
+        output = run_command("git --version", capture_output=True, cwd=cwd)
+        if output:
+            print(f"✅ Git is installed: {output}")
+            return True
+    except:
+        pass
+    print("⚠️ Git is not installed.")
+    return False
+
+def install_git_windows(script_dir):
+    """
+    Automatically install Git on Windows.
+    """
+    print("\n🔧 Starting Git installation for Windows...")
+
+    # Define Git installer URL for the latest version
+    git_download_url = "https://github.com/git-for-windows/git/releases/latest/download/Git-2.42.0-64-bit.exe"
+
+    # Define the path to save the Git installer
+    try:
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tmpdir = Path(tmpdirname)
+            git_installer_path = tmpdir / "git_installer.exe"
+
+            print(f"📥 Downloading Git from {git_download_url}...")
+            urllib.request.urlretrieve(git_download_url, git_installer_path)
+            print("✅ Download completed.")
+
+            print("🔧 Running Git installer silently...")
+            # Silent installation flags for Git
+            # /VERYSILENT: Silent install
+            # /NORESTART: Do not restart after install
+            # /SP-: Disable the splash screen
+            install_command = f'"{git_installer_path}" /VERYSILENT /NORESTART /SP-'
+            run_command(install_command, cwd=tmpdir)
+            print("✅ Git installed successfully.")
+
+        # Verify Git installation
+        return check_git(cwd=script_dir)
+
+    except Exception as e:
+        print(f"❌ An error occurred during Git installation: {e}")
+        return False
+
+def prompt_install_git(download_url, script_dir):
+    """
+    Prompt the user to install Git with a friendly message.
+    """
+    print("\n🚀 Oh! Looks like we need to install Git on your system.")
+    choice = input("🔗 Would you like me to open the browser to download Git? (y/n): ").strip().lower()
+    if choice == 'y':
+        webbrowser.open(download_url)
+        print("\n📥 Please install Git from your browser.")
+        print("🛠️ After installation, please restart this command window or your system and re-run the SETUP script to continue.")
+    else:
+        print("\n🛑 Installation of Git aborted by the user.")
+    return False  # Exiting setup to allow user to install manually
+
 def check_ollama(cwd=None):
     """
     Check if Ollama is installed.
@@ -562,7 +626,20 @@ def main():
         print(f"\n❌ Main script '{main_script}' not found at {main_script_path}. Please ensure it exists.")
         sys.exit(1)
 
-    # Step 1: Check for NVIDIA GPU
+    # Step 1: Check and install Git
+    if not check_git(cwd=script_dir):
+        # Attempt to install Git automatically
+        print("\n🔧 Attempting to install Git automatically...")
+        if install_git_windows(script_dir):
+            print("✅ Git installed and verified successfully.")
+        else:
+            # Prompt user to install Git manually
+            print("\n⚠️ Automatic Git installation failed.")
+            prompt_install_git("https://git-scm.com/download/win", script_dir)
+            print("\n🔧 Please install Git and then re-run the SETUP script to continue.")
+            sys.exit(1)
+
+    # Step 2: Check for NVIDIA GPU
     print("\n🔍 Checking for NVIDIA GPU...")
     try:
         gpu_info = run_command("nvidia-smi --query-gpu=name --format=csv,noheader", capture_output=True, cwd=script_dir)
@@ -575,33 +652,33 @@ def main():
         print("❌ nvidia-smi not found. Please ensure that NVIDIA drivers are installed.")
         sys.exit(1)
 
-    # Step 2: Check for Ollama
+    # Step 3: Check for Ollama
     if not check_ollama(cwd=script_dir):
         if not prompt_install_ollama("https://ollama.com/download/OllamaSetup.exe", script_dir):
             print("\n🔧 Please install Ollama and then re-run the setup script to continue.")
             sys.exit(1)
 
-    # Step 3: Check for CUDA toolkit
+    # Step 4: Check for CUDA toolkit
     cuda_version = check_cuda_toolkit(cwd=script_dir)
     if not cuda_version:
         if not prompt_install_cuda("https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_522.06_windows.exe", script_dir):
             print("\n🔧 Please install the CUDA Toolkit and then re-run the setup script to continue.")
             sys.exit(1)
 
-    # Step 4: Install FFmpeg
+    # Step 5: Install FFmpeg
     if not check_ffmpeg(cwd=script_dir):
         if not install_ffmpeg(script_dir):
             print("\n🔧 Please install FFmpeg and then re-run the setup script to continue.")
             sys.exit(1)
 
-    # Step 5: Set up virtual environment
+    # Step 6: Set up virtual environment
     venv_dir = script_dir / "TemporalPromptEngineEnv"
     if not venv_dir.exists():
         if not create_virtualenv(venv_dir):
             print("\n❌ Failed to create virtual environment. Exiting setup.")
             sys.exit(1)
 
-    # Step 6: Upgrade pip
+    # Step 7: Upgrade pip
     if not upgrade_pip(venv_dir):
         print("\n❌ Failed to upgrade pip. Exiting setup.")
         sys.exit(1)
@@ -609,7 +686,7 @@ def main():
     # Get the virtual environment executables
     python_executable, pip_executable = get_venv_executables(venv_dir)
 
-    # Step 7: Install and verify required packages individually
+    # Step 8: Install and verify required packages individually
     packages_to_install = [
         {"name": "python-dotenv>=1.0.1"},
         {"name": "moviepy>=1.0.3", "import_name": "moviepy.editor"},
@@ -631,33 +708,33 @@ def main():
             print(f"\n❌ Failed to install and verify package '{name}'. Exiting setup.")
             sys.exit(1)
 
-    # Step 8: Install audioldm2
+    # Step 9: Install audioldm2
     if not install_audioldm2(venv_dir):
         print("\n❌ Failed to install audioldm2. Exiting setup.")
         sys.exit(1)
 
-    # Step 9: Install diffusers, transformers, and accelerate
+    # Step 10: Install diffusers, transformers, and accelerate
     if not install_diffusers_transformers_accelerate(venv_dir):
         print("\n❌ Failed to install diffusers, transformers, or accelerate. Exiting setup.")
         sys.exit(1)
 
-    # Step 10: Install torch and related packages
+    # Step 11: Install torch and related packages
     if not install_torch_packages(venv_dir):
         print("\n❌ Failed to install PyTorch packages. Exiting setup.")
         sys.exit(1)
 
-    # Step 11: Install additional torch-related packages
+    # Step 12: Install additional torch-related packages
     if not install_additional_torch_packages(venv_dir):
         print("\n❌ Failed to install additional torch-related packages. Exiting setup.")
         sys.exit(1)
 
-    # Step 12: Create .env file
+    # Step 13: Create .env file
     create_env_file(script_dir)
 
-    # Step 13: Create or validate JSON configuration files
+    # Step 14: Create or validate JSON configuration files
     create_default_json_files(script_dir)
 
-    # Step 14: Prompt to launch the main script
+    # Step 15: Prompt to launch the main script
     prompt_launch_script(venv_dir, main_script_path)
 
     print("\n============================================")
