@@ -10,7 +10,7 @@ import zipfile
 import shutil
 import tempfile
 
-def run_command(command, capture_output=False, cwd=None):
+def run_command(command, capture_output=False, cwd=None, shell=True):
     """
     Run a system command with friendly logging.
     """
@@ -19,7 +19,7 @@ def run_command(command, capture_output=False, cwd=None):
         if capture_output:
             result = subprocess.run(
                 command,
-                shell=True,
+                shell=shell,
                 check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -29,7 +29,7 @@ def run_command(command, capture_output=False, cwd=None):
             print(f"✅ Command succeeded.")
             return result.stdout.strip()
         else:
-            subprocess.run(command, shell=True, check=True, cwd=cwd)
+            subprocess.run(command, shell=shell, check=True, cwd=cwd)
             print(f"✅ Command executed successfully.")
             return None
     except subprocess.CalledProcessError as e:
@@ -44,12 +44,8 @@ def get_venv_executables(venv_dir):
     """
     Get paths to the Python and pip executables in the virtual environment.
     """
-    if platform.system() == "Windows":
-        python_executable = venv_dir / "Scripts" / "python.exe"
-        pip_executable = venv_dir / "Scripts" / "pip.exe"
-    else:
-        python_executable = venv_dir / "bin" / "python"
-        pip_executable = venv_dir / "bin" / "pip"
+    python_executable = venv_dir / "bin" / "python"
+    pip_executable = venv_dir / "bin" / "pip"
     return python_executable, pip_executable
 
 def check_pip(cwd=None):
@@ -67,18 +63,42 @@ def check_pip(cwd=None):
     print("⚠️ pip is not installed.")
     return False
 
-def install_pip(script_dir):
+def install_pip_linux():
     """
-    Install pip using ensurepip.
+    Install pip using the package manager.
     """
     print("\n🔧 Attempting to install pip...")
-    result = run_command(f'"{sys.executable}" -m ensurepip --upgrade', cwd=script_dir)
+    distro = get_linux_distro()
+    if distro in ['ubuntu', 'debian']:
+        install_command = "sudo apt-get update && sudo apt-get install -y python3-pip"
+    elif distro in ['fedora']:
+        install_command = "sudo dnf install -y python3-pip"
+    elif distro in ['centos', 'rhel']:
+        install_command = "sudo yum install -y epel-release && sudo yum install -y python3-pip"
+    else:
+        print(f"❌ Unsupported Linux distribution: {distro}. Please install pip manually.")
+        return False
+
+    result = run_command(install_command)
     if result is None:
         print("✅ pip installed successfully.")
         return True
     else:
         print("❌ Failed to install pip.")
         return False
+
+def get_linux_distro():
+    """
+    Detect the Linux distribution.
+    """
+    try:
+        import distro
+    except ImportError:
+        print("\n🔧 Installing 'distro' package to detect Linux distribution...")
+        run_command("sudo pip install --upgrade pip")
+        run_command("sudo pip install distro")
+        import distro
+    return distro.id()
 
 def check_git(cwd=None):
     """
@@ -95,54 +115,29 @@ def check_git(cwd=None):
     print("⚠️ Git is not installed.")
     return False
 
-def install_git_windows(script_dir):
+def install_git_linux():
     """
-    Automatically install Git on Windows.
+    Install Git using the package manager.
     """
-    print("\n🔧 Starting Git installation for Windows...")
-
-    # Define Git installer URL for the latest version
-    git_download_url = "https://github.com/git-for-windows/git/releases/latest/download/Git-2.42.0-64-bit.exe"
-
-    # Define the path to save the Git installer
-    try:
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            tmpdir = Path(tmpdirname)
-            git_installer_path = tmpdir / "git_installer.exe"
-
-            print(f"📥 Downloading Git from {git_download_url}...")
-            urllib.request.urlretrieve(git_download_url, git_installer_path)
-            print("✅ Download completed.")
-
-            print("🔧 Running Git installer silently...")
-            # Silent installation flags for Git
-            # /VERYSILENT: Silent install
-            # /NORESTART: Do not restart after install
-            # /SP-: Disable the splash screen
-            install_command = f'"{git_installer_path}" /VERYSILENT /NORESTART /SP-'
-            run_command(install_command, cwd=tmpdir)
-            print("✅ Git installed successfully.")
-
-        # Verify Git installation
-        return check_git(cwd=script_dir)
-
-    except Exception as e:
-        print(f"❌ An error occurred during Git installation: {e}")
+    print("\n🔧 Installing Git...")
+    distro = get_linux_distro()
+    if distro in ['ubuntu', 'debian']:
+        install_command = "sudo apt-get update && sudo apt-get install -y git"
+    elif distro in ['fedora']:
+        install_command = "sudo dnf install -y git"
+    elif distro in ['centos', 'rhel']:
+        install_command = "sudo yum install -y git"
+    else:
+        print(f"❌ Unsupported Linux distribution: {distro}. Please install Git manually.")
         return False
 
-def prompt_install_git(download_url, script_dir):
-    """
-    Prompt the user to install Git with a friendly message.
-    """
-    print("\n🚀 Oh! Looks like we need to install Git on your system.")
-    choice = input("🔗 Would you like me to open the browser to download Git? (y/n): ").strip().lower()
-    if choice == 'y':
-        webbrowser.open(download_url)
-        print("\n📥 Please install Git from your browser.")
-        print("🛠️ After installation, please restart this command window or your system and re-run the SETUP script to continue.")
+    result = run_command(install_command)
+    if result is None:
+        print("✅ Git installed successfully.")
+        return True
     else:
-        print("\n🛑 Installation of Git aborted by the user.")
-    return False  # Exiting setup to allow user to install manually
+        print("❌ Failed to install Git.")
+        return False
 
 def check_ollama(cwd=None):
     """
@@ -159,16 +154,17 @@ def check_ollama(cwd=None):
     print("⚠️ Ollama is not installed.")
     return False
 
-def prompt_install_ollama(download_url, script_dir):
+def prompt_install_ollama_linux():
     """
     Prompt the user to install Ollama with a friendly message.
     """
-    print("\n🚀 Oh! Looks like we need to install Ollama on your system.")
+    print("\n🚀 Ollama is required for the Temporal Prompt Engine.")
     choice = input("🔗 Would you like me to open the browser to download Ollama? (y/n): ").strip().lower()
     if choice == 'y':
-        webbrowser.open(download_url)
-        print("\n📥 Please install Ollama from your browser.")
-        print("🛠️ After installation, please restart this command window or your system and re-run the SETUP script to continue.")
+        webbrowser.open("https://ollama.com/download/Linux")
+        print("\n📥 Please follow the instructions on the website to install Ollama.")
+        print("⚠️ **IMPORTANT:** After installation, **RESTART YOUR TERMINAL OR SYSTEM** for the changes to take effect.")
+        print("🔄 Then, please re-run the SETUP script to continue.")
     else:
         print("\n🛑 Installation of Ollama aborted by the user.")
     return False  # Exiting setup to allow user to install manually
@@ -198,16 +194,17 @@ def check_cuda_toolkit(cwd=None):
         print("⚠️ nvcc not found. CUDA toolkit is not installed.")
         return None
 
-def prompt_install_cuda(download_url, script_dir):
+def prompt_install_cuda_linux():
     """
     Prompt the user to install CUDA toolkit with a friendly message.
     """
     print("\n⚡ CUDA Toolkit is required for optimal performance.")
     choice = input("🔗 Would you like me to open the browser to download CUDA Toolkit? (y/n): ").strip().lower()
     if choice == 'y':
-        webbrowser.open(download_url)
-        print("\n📥 Please install the CUDA Toolkit from your browser.")
-        print("🛠️ After installation, please restart this command window or your system and re-run the SETUP script to continue.")
+        webbrowser.open("https://developer.nvidia.com/cuda-downloads")
+        print("\n📥 Please follow the instructions on the NVIDIA website to install the CUDA Toolkit.")
+        print("⚠️ **IMPORTANT:** After installation, **RESTART YOUR TERMINAL OR SYSTEM** for the changes to take effect.")
+        print("🔄 Then, please re-run the SETUP script to continue.")
     else:
         print("\n🛑 Installation of CUDA Toolkit aborted by the user.")
     return False  # Exiting setup to allow user to install manually
@@ -217,7 +214,7 @@ def create_virtualenv(venv_dir):
     Create a virtual environment.
     """
     print(f"\n🔧 Creating a virtual environment in '{venv_dir}'...")
-    result = run_command(f'"{sys.executable}" -m venv "{venv_dir}"')
+    result = run_command(f"python3 -m venv {venv_dir}")
     if result is None:
         print("✅ Virtual environment created successfully.")
         return True
@@ -234,7 +231,7 @@ def upgrade_pip(venv_dir):
     if not pip_executable.exists():
         print(f"❌ pip executable not found at {pip_executable}.")
         return False
-    result = run_command(f'"{python_executable}" -m pip install --upgrade pip', cwd=venv_dir)
+    result = run_command(f"{python_executable} -m pip install --upgrade pip", cwd=venv_dir)
     if result is None:
         print("✅ pip upgraded successfully.")
         return True
@@ -254,7 +251,7 @@ def install_and_verify_package(package_name, venv_dir, install_command=None, imp
 
     # Use custom install command if provided
     if install_command is None:
-        install_command = f'"{pip_executable}" install {package_name}'
+        install_command = f"{pip_executable} install {package_name}"
 
     # Install the package
     try:
@@ -282,7 +279,7 @@ def install_and_verify_package(package_name, venv_dir, install_command=None, imp
         else:
             package_import_name = import_name
 
-        command = f'"{python_executable}" -c "import {package_import_name}"'
+        command = f"{python_executable} -c 'import {package_import_name}'"
         run_command(command, cwd=venv_dir)
         print(f"✅ Package '{package_name}' verified successfully.")
         return True
@@ -296,7 +293,7 @@ def install_audioldm2(venv_dir):
     """
     print("\n📦 Installing audioldm2 from GitHub...")
     python_executable, pip_executable = get_venv_executables(venv_dir)
-    install_command = f'"{pip_executable}" install git+https://github.com/haoheliu/AudioLDM2.git'
+    install_command = f"{pip_executable} install git+https://github.com/haoheliu/AudioLDM2.git"
     try:
         run_command(install_command, cwd=venv_dir)
         print("✅ audioldm2 installed successfully.")
@@ -306,7 +303,7 @@ def install_audioldm2(venv_dir):
 
     # Verify installation
     try:
-        command = f'"{python_executable}" -c "import audioldm2"'
+        command = f"{python_executable} -c 'import audioldm2'"
         run_command(command, cwd=venv_dir)
         print("✅ audioldm2 verified successfully.")
         return True
@@ -320,7 +317,7 @@ def install_diffusers_transformers_accelerate(venv_dir):
     """
     print("\n📦 Installing and upgrading diffusers from GitHub...")
     python_executable, pip_executable = get_venv_executables(venv_dir)
-    diffusers_install_command = f'"{pip_executable}" install --upgrade git+https://github.com/huggingface/diffusers.git'
+    diffusers_install_command = f"{pip_executable} install --upgrade git+https://github.com/huggingface/diffusers.git"
     try:
         run_command(diffusers_install_command, cwd=venv_dir)
         print("✅ diffusers installed and upgraded successfully.")
@@ -330,7 +327,7 @@ def install_diffusers_transformers_accelerate(venv_dir):
 
     # Install transformers
     print("\n📦 Installing transformers...")
-    transformers_install_command = f'"{pip_executable}" install transformers'
+    transformers_install_command = f"{pip_executable} install transformers"
     try:
         run_command(transformers_install_command, cwd=venv_dir)
         print("✅ transformers installed successfully.")
@@ -340,7 +337,7 @@ def install_diffusers_transformers_accelerate(venv_dir):
 
     # Install accelerate
     print("\n📦 Installing accelerate...")
-    accelerate_install_command = f'"{pip_executable}" install accelerate'
+    accelerate_install_command = f"{pip_executable} install accelerate"
     try:
         run_command(accelerate_install_command, cwd=venv_dir)
         print("✅ accelerate installed successfully.")
@@ -348,9 +345,19 @@ def install_diffusers_transformers_accelerate(venv_dir):
         print(f"❌ Failed to install accelerate. Error: {e}")
         return False
 
+    # Upgrade transformers and diffusers to avoid potential errors
+    print("\n🔄 Upgrading transformers and diffusers to ensure compatibility and avoid potential errors...")
+    upgrade_command = f"{pip_executable} install --upgrade transformers diffusers"
+    try:
+        run_command(upgrade_command, cwd=venv_dir)
+        print("✅ transformers and diffusers upgraded successfully.")
+    except Exception as e:
+        print(f"❌ Failed to upgrade transformers and diffusers. Error: {e}")
+        return False
+
     # Verify installations
     try:
-        command = f'"{python_executable}" -c "import diffusers; import transformers; import accelerate"'
+        command = f"{python_executable} -c 'import diffusers; import transformers; import accelerate'"
         run_command(command, cwd=venv_dir)
         print("✅ diffusers, transformers, and accelerate verified successfully.")
         return True
@@ -372,7 +379,7 @@ def install_torch_packages(venv_dir):
     torch_packages = ["torch", "torchvision", "torchaudio"]
     for pkg in torch_packages:
         try:
-            run_command(f'"{pip_executable}" install {pkg}', cwd=venv_dir)
+            run_command(f"{pip_executable} install {pkg}", cwd=venv_dir)
             print(f"✅ Installed {pkg} successfully.")
         except Exception as e:
             print(f"❌ Failed to install {pkg}. Error: {e}")
@@ -380,7 +387,7 @@ def install_torch_packages(venv_dir):
 
     # Verify torch installation
     try:
-        command = f'"{python_executable}" -c "import torch; print(torch.__version__); print(torch.cuda.is_available())"'
+        command = f"{python_executable} -c 'import torch; print(torch.__version__); print(torch.cuda.is_available())'"
         output = run_command(command, capture_output=True, cwd=venv_dir)
         if output:
             print(f"🖥️ PyTorch Output:\n{output}")
@@ -432,92 +439,39 @@ def install_additional_torch_packages(venv_dir):
     print("✅ All additional torch-related packages installed and verified successfully.")
     return True
 
-def install_ffmpeg_windows(script_dir):
+def install_ffmpeg_linux():
     """
-    Automatically install FFmpeg on Windows.
+    Install FFmpeg using the package manager.
     """
-    print("\n🔧 Starting FFmpeg installation for Windows...")
+    print("\n🔧 Installing FFmpeg...")
+    distro = get_linux_distro()
+    if distro in ['ubuntu', 'debian']:
+        install_command = "sudo apt-get update && sudo apt-get install -y ffmpeg"
+    elif distro in ['fedora']:
+        install_command = "sudo dnf install -y ffmpeg ffmpeg-devel"
+    elif distro in ['centos', 'rhel']:
+        install_command = "sudo yum install -y epel-release && sudo yum install -y ffmpeg ffmpeg-devel"
+    else:
+        print(f"❌ Unsupported Linux distribution: {distro}. Please install FFmpeg manually.")
+        return False
 
-    # Define FFmpeg download URL for the latest static build
-    ffmpeg_download_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
-
-    # Define the directory where FFmpeg will be installed
-    ffmpeg_dir = script_dir / "ffmpeg"
-
-    try:
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            tmpdir = Path(tmpdirname)
-            zip_path = tmpdir / "ffmpeg.zip"
-
-            print(f"📥 Downloading FFmpeg from {ffmpeg_download_url}...")
-            urllib.request.urlretrieve(ffmpeg_download_url, zip_path)
-            print("✅ Download completed.")
-
-            print(f"📦 Extracting FFmpeg to temporary directory {tmpdir}...")
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(tmpdir)
-            print("✅ Extraction completed.")
-
-            # Find the extracted FFmpeg folder (it usually contains 'bin', 'doc', etc.)
-            extracted_folders = [f for f in tmpdir.iterdir() if f.is_dir() and "ffmpeg" in f.name.lower()]
-            if not extracted_folders:
-                print("❌ Failed to locate the FFmpeg extracted folder.")
-                return False
-            ffmpeg_extracted = extracted_folders[0]
-
-            # Move the extracted FFmpeg to the desired directory
-            if ffmpeg_dir.exists():
-                print(f"🗑️ FFmpeg directory {ffmpeg_dir} already exists. Removing it...")
-                shutil.rmtree(ffmpeg_dir)
-            print(f"📂 Moving FFmpeg to {ffmpeg_dir}...")
-            shutil.move(str(ffmpeg_extracted), str(ffmpeg_dir))
-            print("✅ FFmpeg moved successfully.")
-
-        # Add FFmpeg to PATH
-        ffmpeg_bin = ffmpeg_dir / "bin"
-        current_path = os.environ.get("PATH", "")
-        ffmpeg_bin_str = str(ffmpeg_bin)
-
-        if ffmpeg_bin_str not in current_path:
-            print(f"🔧 Adding FFmpeg to system PATH...")
-            # Add to user PATH
-            subprocess.run(f'setx PATH "%PATH%;{ffmpeg_bin_str}"', shell=True, check=True)
-            print("✅ FFmpeg has been added to the system PATH.")
-            print("🔄 Please restart your terminal or system for the changes to take effect.")
-        else:
-            print("ℹ️ FFmpeg bin directory is already in the system PATH.")
-
+    result = run_command(install_command)
+    if result is None:
+        print("✅ FFmpeg installed successfully.")
+        print("⚠️ **IMPORTANT:** Please **RESTART YOUR TERMINAL OR SYSTEM** for the changes to take effect.")
         return True
-
-    except Exception as e:
-        print(f"❌ An error occurred during FFmpeg installation: {e}")
+    else:
+        print("❌ Failed to install FFmpeg.")
         return False
 
 def install_ffmpeg(script_dir):
     """
     Install FFmpeg automatically if not installed.
     """
-    system = platform.system()
-    if system == "Windows":
-        success = install_ffmpeg_windows(script_dir)
-        if success:
-            # Recheck after installation
-            return check_ffmpeg(cwd=script_dir)
-        else:
-            print("\n❌ FFmpeg installation failed.")
-            return False
+    if check_ffmpeg():
+        return True
     else:
-        print("\n🔧 Automated FFmpeg installation is only supported on Windows by this script.")
-        print("📥 Please install FFmpeg manually from the official website:")
-        print("🌐 https://ffmpeg.org/download.html")
-        choice = input("🔗 Would you like me to open the browser to download FFmpeg? (y/n): ").strip().lower()
-        if choice == 'y':
-            webbrowser.open("https://ffmpeg.org/download.html")
-            print("\n📥 Please install FFmpeg from your browser.")
-            print("🛠️ After installation, please restart this command window or your system and re-run the SETUP script to continue.")
-        else:
-            print("\n🛑 Installation of FFmpeg aborted by the user.")
-        return False  # Exiting setup to allow user to install manually
+        return install_ffmpeg_linux()
 
 def check_ffmpeg(cwd=None):
     """
@@ -630,12 +584,12 @@ def main():
     if not check_git(cwd=script_dir):
         # Attempt to install Git automatically
         print("\n🔧 Attempting to install Git automatically...")
-        if install_git_windows(script_dir):
+        if install_git_linux():
             print("✅ Git installed and verified successfully.")
         else:
             # Prompt user to install Git manually
             print("\n⚠️ Automatic Git installation failed.")
-            prompt_install_git("https://git-scm.com/download/win", script_dir)
+            prompt_install_git_linux()
             print("\n🔧 Please install Git and then re-run the SETUP script to continue.")
             sys.exit(1)
 
@@ -654,14 +608,14 @@ def main():
 
     # Step 3: Check for Ollama
     if not check_ollama(cwd=script_dir):
-        if not prompt_install_ollama("https://ollama.com/download/OllamaSetup.exe", script_dir):
+        if not prompt_install_ollama_linux():
             print("\n🔧 Please install Ollama and then re-run the setup script to continue.")
             sys.exit(1)
 
     # Step 4: Check for CUDA toolkit
     cuda_version = check_cuda_toolkit(cwd=script_dir)
     if not cuda_version:
-        if not prompt_install_cuda("https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_522.06_windows.exe", script_dir):
+        if not prompt_install_cuda_linux():
             print("\n🔧 Please install the CUDA Toolkit and then re-run the setup script to continue.")
             sys.exit(1)
 

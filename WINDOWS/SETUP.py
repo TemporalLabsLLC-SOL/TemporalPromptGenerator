@@ -139,7 +139,8 @@ def prompt_install_git(download_url, script_dir):
     if choice == 'y':
         webbrowser.open(download_url)
         print("\n📥 Please install Git from your browser.")
-        print("🛠️ After installation, please restart this command window or your system and re-run the SETUP script to continue.")
+        print("⚠️ **IMPORTANT:** After installation, **RESTART YOUR COMMAND PROMPT OR SYSTEM** for the changes to take effect.")
+        print("🔄 Then, please re-run the SETUP script to continue.")
     else:
         print("\n🛑 Installation of Git aborted by the user.")
     return False  # Exiting setup to allow user to install manually
@@ -168,7 +169,8 @@ def prompt_install_ollama(download_url, script_dir):
     if choice == 'y':
         webbrowser.open(download_url)
         print("\n📥 Please install Ollama from your browser.")
-        print("🛠️ After installation, please restart this command window or your system and re-run the SETUP script to continue.")
+        print("⚠️ **IMPORTANT:** After installation, **RESTART YOUR COMMAND PROMPT OR SYSTEM** for the changes to take effect.")
+        print("🔄 Then, please re-run the SETUP script to continue.")
     else:
         print("\n🛑 Installation of Ollama aborted by the user.")
     return False  # Exiting setup to allow user to install manually
@@ -207,7 +209,8 @@ def prompt_install_cuda(download_url, script_dir):
     if choice == 'y':
         webbrowser.open(download_url)
         print("\n📥 Please install the CUDA Toolkit from your browser.")
-        print("🛠️ After installation, please restart this command window or your system and re-run the SETUP script to continue.")
+        print("⚠️ **IMPORTANT:** After installation, **RESTART YOUR COMMAND PROMPT OR SYSTEM** for the changes to take effect.")
+        print("🔄 Then, please re-run the SETUP script to continue.")
     else:
         print("\n🛑 Installation of CUDA Toolkit aborted by the user.")
     return False  # Exiting setup to allow user to install manually
@@ -348,6 +351,16 @@ def install_diffusers_transformers_accelerate(venv_dir):
         print(f"❌ Failed to install accelerate. Error: {e}")
         return False
 
+    # Upgrade transformers and diffusers to avoid potential errors
+    print("\n🔄 Upgrading transformers and diffusers to ensure compatibility and avoid potential errors...")
+    upgrade_command = f'"{pip_executable}" install --upgrade transformers diffusers'
+    try:
+        run_command(upgrade_command, cwd=venv_dir)
+        print("✅ transformers and diffusers upgraded successfully.")
+    except Exception as e:
+        print(f"❌ Failed to upgrade transformers and diffusers. Error: {e}")
+        return False
+
     # Verify installations
     try:
         command = f'"{python_executable}" -c "import diffusers; import transformers; import accelerate"'
@@ -356,6 +369,21 @@ def install_diffusers_transformers_accelerate(venv_dir):
         return True
     except Exception as e:
         print(f"❌ Failed to verify diffusers, transformers, or accelerate. Error: {e}")
+        return False
+
+def upgrade_transformers_diffusers(venv_dir):
+    """
+    Upgrade transformers and diffusers to ensure the latest versions are installed.
+    """
+    print("\n🔄 Upgrading transformers and diffusers to the latest versions...")
+    python_executable, pip_executable = get_venv_executables(venv_dir)
+    upgrade_command = f'"{pip_executable}" install --upgrade transformers diffusers'
+    try:
+        run_command(upgrade_command, cwd=venv_dir)
+        print("✅ transformers and diffusers upgraded successfully.")
+        return True
+    except Exception as e:
+        print(f"❌ Failed to upgrade transformers and diffusers. Error: {e}")
         return False
 
 def install_torch_packages(venv_dir):
@@ -483,7 +511,7 @@ def install_ffmpeg_windows(script_dir):
             # Add to user PATH
             subprocess.run(f'setx PATH "%PATH%;{ffmpeg_bin_str}"', shell=True, check=True)
             print("✅ FFmpeg has been added to the system PATH.")
-            print("🔄 Please restart your terminal or system for the changes to take effect.")
+            print("⚠️ **IMPORTANT:** Please **RESTART YOUR COMMAND PROMPT OR SYSTEM** for the changes to take effect.")
         else:
             print("ℹ️ FFmpeg bin directory is already in the system PATH.")
 
@@ -514,7 +542,8 @@ def install_ffmpeg(script_dir):
         if choice == 'y':
             webbrowser.open("https://ffmpeg.org/download.html")
             print("\n📥 Please install FFmpeg from your browser.")
-            print("🛠️ After installation, please restart this command window or your system and re-run the SETUP script to continue.")
+            print("⚠️ **IMPORTANT:** After installation, **RESTART YOUR COMMAND PROMPT OR SYSTEM** for the changes to take effect.")
+            print("🔄 Then, please re-run the SETUP script to continue.")
         else:
             print("\n🛑 Installation of FFmpeg aborted by the user.")
         return False  # Exiting setup to allow user to install manually
