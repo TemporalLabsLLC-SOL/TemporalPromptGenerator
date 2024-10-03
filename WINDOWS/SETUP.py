@@ -22,7 +22,7 @@ def run_command(command, capture_output=False, cwd=None):
                 text=True,
                 cwd=cwd
             )
-            print(f"🟢 Command output: {result.stdout}")
+            print(f"Command output: {result.stdout}")
             return result.stdout.strip()
         else:
             subprocess.run(command, shell=True, check=True, cwd=cwd)
@@ -30,9 +30,9 @@ def run_command(command, capture_output=False, cwd=None):
     except subprocess.CalledProcessError as e:
         print(f"❌ Command failed with error code {e.returncode}")
         if e.stdout:
-            print(f"📄 Output: {e.stdout}")
+            print(f"Output: {e.stdout}")
         if e.stderr:
-            print(f"⚠️ Error Output: {e.stderr}")
+            print(f"Error Output: {e.stderr}")
         return None
 
 def get_venv_executables(venv_dir):
@@ -66,7 +66,7 @@ def install_pip(script_dir):
     """
     Install pip using ensurepip.
     """
-    print("🚀 Attempting to install pip...")
+    print("🔧 Attempting to install pip...")
     result = run_command(f'"{sys.executable}" -m ensurepip --upgrade', cwd=script_dir)
     if result is None:
         print("✅ pip installed successfully.")
@@ -94,17 +94,18 @@ def prompt_install_ollama(download_url, script_dir):
     """
     Prompt the user to install Ollama.
     """
-    print("\n🚨 Ollama is required for the Temporal Prompt Engine!")
-    print(f"🔗 Please install it from the following link: {download_url}")
+    print("\nOllama is not installed. Please install it from the following link:")
+    print(download_url)
     webbrowser.open(download_url)
     input("📥 Press Enter after you have installed Ollama to continue...")
+    # Recheck after installation
     return check_ollama(cwd=script_dir)
 
 def create_virtualenv(venv_dir):
     """
     Create a virtual environment.
     """
-    print(f"\n🛠️ Creating a virtual environment in '{venv_dir}'...")
+    print(f"\n🔧 Creating a virtual environment in '{venv_dir}'...")
     result = run_command(f'"{sys.executable}" -m venv "{venv_dir}"')
     if result is None:
         print("✅ Virtual environment created successfully.")
@@ -133,24 +134,34 @@ def upgrade_pip(venv_dir):
 def install_and_verify_package(package_name, venv_dir, install_command=None, import_name=None):
     """
     Install a package using pip from the virtual environment and verify its installation.
+    Skip verification for certain packages like 'wheel' that do not need to be imported.
     """
-    print(f"\n📦 Installing package '{package_name}'...")
+    print(f"\nInstalling package '{package_name}'...")
     python_executable, pip_executable = get_venv_executables(venv_dir)
     if not pip_executable.exists():
-        print(f"⚠️ pip executable not found at {pip_executable}.")
+        print(f"pip executable not found at {pip_executable}.")
         return False
 
+    # Use custom install command if provided
     if install_command is None:
         install_command = f'"{pip_executable}" install {package_name}'
 
+    # Install the package
     try:
         run_command(install_command, cwd=venv_dir)
-        print(f"✅ Package '{package_name}' installed successfully.")
+        print(f"Package '{package_name}' installed successfully.")
     except Exception as e:
-        print(f"❌ Failed to install package '{package_name}'. Error: {e}")
+        print(f"Failed to install package '{package_name}'. Error: {e}")
         return False
 
+    # Skip verification for 'wheel' as it does not need to be imported
+    if package_name.startswith("--upgrade wheel"):
+        print(f"Skipping import verification for '{package_name}'.")
+        return True
+
+    # Verify installation by attempting to import the package
     try:
+        # Use custom import name if provided
         if import_name is None:
             package_import_name = package_name.split('==')[0].split('>=')[0].split('<=')[0].split('~=')[0]
             if package_import_name == 'Pillow':
@@ -161,6 +172,8 @@ def install_and_verify_package(package_name, venv_dir, install_command=None, imp
                 package_import_name = 'tkinter'
             elif package_import_name.startswith('audioldm2'):
                 package_import_name = 'audioldm2'
+            elif package_import_name == 'pyyaml':
+                package_import_name = 'yaml'
             else:
                 package_import_name = package_import_name.replace('-', '_')
         else:
@@ -168,27 +181,30 @@ def install_and_verify_package(package_name, venv_dir, install_command=None, imp
 
         command = f'"{python_executable}" -c "import {package_import_name}"'
         run_command(command, cwd=venv_dir)
-        print(f"✅ Package '{package_name}' verified successfully.")
+        print(f"Package '{package_name}' verified successfully.")
         return True
     except Exception as e:
-        print(f"❌ Failed to verify package '{package_name}'. Error: {e}")
+        print(f"Failed to verify package '{package_name}'. Error: {e}")
         return False
+
 
 def install_torch(venv_dir):
     """
     Install specific versions of torch, torchvision, and torchaudio with CUDA 11.8 support.
     """
-    print("\n🔥 Installing torch, torchvision, and torchaudio with CUDA 11.8 support...")
+    print("\n📦 Installing torch, torchvision, and torchaudio with CUDA 11.8 support...")
     python_executable, pip_executable = get_venv_executables(venv_dir)
     if not pip_executable.exists():
         print(f"⚠️ pip executable not found at {pip_executable}.")
         return False
 
+    # Define the exact versions to install
     torch_version = "torch==2.4.1+cu118"
     torchvision_version = "torchvision==0.19.1+cu118"
     torchaudio_version = "torchaudio==2.4.1+cu118"
     index_url = "https://download.pytorch.org/whl/cu118"
 
+    # Install torch
     try:
         run_command(f'"{pip_executable}" install {torch_version} --index-url {index_url}', cwd=venv_dir)
         print(f"✅ Installed {torch_version} successfully.")
@@ -196,6 +212,7 @@ def install_torch(venv_dir):
         print(f"❌ Failed to install {torch_version}. Error: {e}")
         return False
 
+    # Install torchvision
     try:
         run_command(f'"{pip_executable}" install {torchvision_version} --index-url {index_url}', cwd=venv_dir)
         print(f"✅ Installed {torchvision_version} successfully.")
@@ -203,6 +220,7 @@ def install_torch(venv_dir):
         print(f"❌ Failed to install {torchvision_version}. Error: {e}")
         return False
 
+    # Install torchaudio
     try:
         run_command(f'"{pip_executable}" install {torchaudio_version} --index-url {index_url}', cwd=venv_dir)
         print(f"✅ Installed {torchaudio_version} successfully.")
@@ -210,11 +228,13 @@ def install_torch(venv_dir):
         print(f"❌ Failed to install {torchaudio_version}. Error: {e}")
         return False
 
+    # Verify torch installation
     try:
         command = f'"{python_executable}" -c "import torch; print(torch.__version__); print(torch.cuda.is_available())"'
         output = run_command(command, capture_output=True, cwd=venv_dir)
         if output:
             print(f"🖥️ Command output:\n{output}")
+            # Parse the torch version and CUDA availability
             lines = output.splitlines()
             if len(lines) >= 2:
                 installed_version = lines[0].strip()
@@ -279,6 +299,7 @@ def create_default_json_files(script_dir):
                 json.dump(default_content, f, indent=4)
             print(f"✅ '{file_name}' created with default content.")
         else:
+            # Optionally, validate JSON structure here
             try:
                 with open(file_path, 'r') as f:
                     json.load(f)
@@ -308,23 +329,27 @@ def prompt_install_ffmpeg(script_dir):
     """
     Prompt the user to install ffmpeg.
     """
-    print("\n📽️ ffmpeg is required for video processing.")
-    print("🔗 Please install ffmpeg from the official website: https://ffmpeg.org/download.html")
+    print("\n⚠️ ffmpeg is required for video processing.")
+    print("📥 Please install ffmpeg from the official website:")
+    print("🌐 https://ffmpeg.org/download.html")
     webbrowser.open("https://ffmpeg.org/download.html")
     input("📥 Press Enter after you have installed ffmpeg to continue...")
+    # Recheck after installation
     return check_ffmpeg(cwd=script_dir)
 
 def prompt_launch_script(venv_dir, main_script_path):
     """
     Prompt the user to launch the main Python script.
     """
-    choice = input("\n🎉 Setup complete. Would you like to launch the Temporal Prompt Engine now? (y/n): ").strip().lower()
+    choice = input("\n🎉 Setup complete! Would you like to launch the Temporal Prompt Engine now? (y/n): ").strip().lower()
     if choice == 'y':
         print("\n🚀 Launching the Temporal Prompt Engine...")
         try:
+            # Use the virtual environment's Python executable to run the main script
             python_executable, _ = get_venv_executables(venv_dir)
             if not python_executable.exists():
-                print(f"⚠️ Virtual environment's Python executable not found at {python_executable}.")
+                print(f"❌ Virtual environment's Python executable not found at {python_executable}.")
+                print("🔧 Please ensure the virtual environment is set up correctly.")
                 return
             subprocess.run([str(python_executable), str(main_script_path)], check=True)
             print("\n✅ TemporalPromptEngine.py launched successfully.")
@@ -332,7 +357,7 @@ def prompt_launch_script(venv_dir, main_script_path):
             print("\n❌ Failed to launch TemporalPromptEngine.py. Please check the setup and try running the script manually.")
             print(f"⚠️ Error: {e}")
     else:
-        print("\n🛠️ Setup completed. You can run the script later using the virtual environment's Python.")
+        print("\n🛠️ Setup completed. You can run the Temporal Prompt Engine later using the virtual environment's Python.")
 
 def check_cuda_toolkit(cwd=None):
     """
@@ -342,6 +367,7 @@ def check_cuda_toolkit(cwd=None):
     try:
         cuda_version_output = run_command("nvcc --version", capture_output=True, cwd=cwd)
         if cuda_version_output:
+            # Parse the CUDA version from the output
             import re
             match = re.search(r"release (\d+\.\d+),", cuda_version_output)
             if match:
@@ -360,7 +386,7 @@ def check_cuda_toolkit(cwd=None):
 
 def main():
     print("============================================")
-    print("    ✨ Temporal Prompt Engine Setup Script ✨ ")
+    print("     ✨ Temporal Prompt Engine Setup ✨      ")
     print("============================================\n")
 
     # Define the main script path relative to setup.py
@@ -399,9 +425,12 @@ def main():
     # Step 4: Check for CUDA toolkit
     cuda_version = check_cuda_toolkit(cwd=script_dir)
     if not cuda_version:
-        print("\n⚠️ CUDA toolkit is required. Please install it from NVIDIA's official website.")
+        print("\n❌ CUDA toolkit is required for this application.")
+        print("🌐 Please install the CUDA toolkit from the official NVIDIA website:")
+        print("🌐 https://developer.nvidia.com/cuda-downloads")
         webbrowser.open("https://developer.nvidia.com/cuda-downloads")
         input("📥 Press Enter after you have installed the CUDA toolkit to continue...")
+        # Recheck after installation
         cuda_version = check_cuda_toolkit(cwd=script_dir)
         if not cuda_version:
             print("\n❌ CUDA toolkit installation not detected. Exiting setup.")
@@ -422,25 +451,28 @@ def main():
     # Get the virtual environment executables
     python_executable, pip_executable = get_venv_executables(venv_dir)
 
-    # Step 7: Install and verify required packages individually
+    # Step 7: Install required packages
     packages_to_install = [
-        {"name": "python-dotenv>=1.0.1"},
+        {"name": "--upgrade wheel"},  # Run this before playsound
+        {"name": "playsound"},  # Installing playsound after upgrading wheel
+        {"name": "python-dotenv>=1.0.1"},  # Fix for python-dotenv import
         {"name": "openai>=0.27.0"},
         {"name": "moviepy>=1.0.3", "import_name": "moviepy.editor"},
         {"name": "pydub>=0.25.1"},
         {"name": "Pillow>=9.0.0", "import_name": "PIL"},
         {"name": "requests>=2.25.1"},
         {"name": "pyperclip>=1.8.2"},
-        {"name": "--upgrade wheel"},
-        {"name": "playsound"},
         {"name": "scipy>=1.7.0"},
         {"name": "tk", "import_name": "tkinter"},
         {"name": "accelerate>=0.21.0"},
+        # Install torch, torchvision, torchaudio with CUDA 11.8 support
         {"name": "torch==2.4.1+cu118", "install_command": f'"{pip_executable}" install torch==2.4.1+cu118 --index-url https://download.pytorch.org/whl/cu118'},
         {"name": "torchvision==0.19.1+cu118", "install_command": f'"{pip_executable}" install torchvision==0.19.1+cu118 --index-url https://download.pytorch.org/whl/cu118'},
         {"name": "torchaudio==2.4.1+cu118", "install_command": f'"{pip_executable}" install torchaudio==2.4.1+cu118 --index-url https://download.pytorch.org/whl/cu118'},
+        # Install diffusers and transformers with specific versions
         {"name": "diffusers==0.21.1", "install_command": f'"{pip_executable}" install diffusers==0.21.1'},
         {"name": "transformers==4.31.0", "install_command": f'"{pip_executable}" install transformers==4.31.0'},
+        # Install audioldm2 from GitHub
         {"name": "audioldm2", "install_command": f'"{pip_executable}" install git+https://github.com/haoheliu/AudioLDM2.git#egg=audioldm2'},
     ]
 
@@ -452,7 +484,7 @@ def main():
             print(f"\n❌ Failed to install and verify package '{name}'. Exiting setup.")
             sys.exit(1)
 
-    # Step 8: (Optional) Install Additional Torch-Related Packages
+    # Step 8: Install Additional Torch-Related Packages
     additional_torch_packages = [
         {"name": "torch-audiomentations==0.11.1"},
         {"name": "torch-pitch-shift==1.2.4"},
@@ -464,6 +496,7 @@ def main():
         {"name": "torchlibrosa==0.1.0"},
         {"name": "torchmetrics==0.11.4"},
         {"name": "torchsde==0.2.6"},
+        # Add other packages as needed
     ]
 
     for pkg in additional_torch_packages:
@@ -488,7 +521,7 @@ def main():
     prompt_launch_script(venv_dir, main_script_path)
 
     print("\n============================================")
-    print("      ✨ Temporal Prompt Engine Ready ✨      ")
+    print("        ✨ Setup Completed Successfully ✨     ")
     print("============================================")
     input("🔒 Press Enter to exit...")
 

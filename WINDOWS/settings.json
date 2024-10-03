@@ -2,16 +2,16 @@
     "audio_options": {
         "exclude_music": true,
         "holiday_mode": true,
-        "selected_holidays": "SEASONAL HOLIDAYS - Halloween",
+        "selected_holidays": "S",
         "open_source_mode": true,
         "model_name": "audioldm2-full-large-1150k",
         "guidance_scale": 10.0,
         "ddim_steps": 300,
-        "n_candidate": 15,
+        "n_candidate": 5,
         "seed": 12345,
         "device": "gpu",
-        "inference_steps": 300,
+        "inference_steps": 200,
         "audio_length": 10.0,
-        "waveforms_per_prompt": 6
+        "waveforms_per_prompt": 3
     }
 }

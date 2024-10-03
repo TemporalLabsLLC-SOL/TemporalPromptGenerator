@@ -4985,6 +4985,9 @@ class MultimediaSuiteApp:
         # Initialize settings.json if it doesn't exist
         self.initialize_settings()
 
+        # Check for Hugging Face API token
+        self.check_huggingface_token()
+
         
     def ensure_ollama_installed_and_model_available(self, model_name="llama3.2"):
         try:
@@ -5082,6 +5085,100 @@ class MultimediaSuiteApp:
                 pass  # Server not up yet
             time.sleep(interval)
         return False
+
+    
+    def check_huggingface_token(self):
+        """
+        Checks if the Huggingface API token is stored either in environment variables or settings file.
+        If not found, prompts the user to enter it.
+        """
+        # Try to get from environment variable
+        token = os.environ.get('HUGGINGFACE_API_TOKEN')
+        if token:
+            self.huggingface_api_token = token
+            print("Huggingface API token loaded from environment variable.")
+            return
+        
+        # Try to get from settings.json
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, 'r') as f:
+                try:
+                    settings = json.load(f)
+                except json.JSONDecodeError:
+                    settings = {}
+            token = settings.get('huggingface_api_token')
+            if token:
+                self.huggingface_api_token = token
+                print("Huggingface API token loaded from settings file.")
+                return
+        
+        # If not found, prompt the user to enter it
+        self.prompt_huggingface_token()
+    
+    def prompt_huggingface_token(self):
+        """
+        Displays a popup window to prompt the user to enter their Huggingface API token.
+        """
+        popup = tk.Toplevel(self.root)
+        popup.title("Huggingface API Token Required")
+        popup.configure(bg='#0A2239')
+        popup.geometry("500x200")
+        popup.grab_set()  # Make it modal
+
+        label = tk.Label(
+            popup,
+            text="Huggingface API token is required for Ollama.\nPlease enter your Huggingface API token below:",
+            bg='#0A2239',
+            fg='white',
+            font=('Helvetica', 12),
+            justify='left'
+        )
+        label.pack(pady=20, padx=20)
+
+        token_entry = tk.Entry(
+            popup,
+            show='*',
+            width=50,
+            font=('Helvetica', 12)
+        )
+        token_entry.pack(pady=10)
+
+        def save_token():
+            token = token_entry.get().strip()
+            if not token:
+                messagebox.showerror("Input Error", "Huggingface API token cannot be empty.")
+                return
+            # Save to settings.json
+            settings = {}
+            if os.path.exists(SETTINGS_FILE):
+                with open(SETTINGS_FILE, 'r') as f:
+                    try:
+                        settings = json.load(f)
+                    except json.JSONDecodeError:
+                        settings = {}
+            settings['huggingface_api_token'] = token
+            try:
+                with open(SETTINGS_FILE, 'w') as f:
+                    json.dump(settings, f, indent=4)
+                self.huggingface_api_token = token
+                messagebox.showinfo("Token Saved", "Huggingface API token has been saved successfully.")
+                popup.destroy()
+            except Exception as e:
+                messagebox.showerror("Save Error", f"Failed to save the token: {e}")
+
+        save_button = tk.Button(
+            popup,
+            text="Save Token",
+            command=save_token,
+            bg="#28a745",
+            fg='white',
+            font=('Helvetica', 12, 'bold'),
+            activebackground="#1e7e34",
+            activeforeground='white',
+            cursor="hand2",
+            width=15
+        )
+        save_button.pack(pady=10)
 
     @staticmethod
     def detect_gpu():
@@ -5704,6 +5801,7 @@ class MultimediaSuiteApp:
         except subprocess.CalledProcessError as e:
             print(f"Error ensuring model availability: {e}")
             messagebox.showerror("Ollama Model Error", f"Failed to ensure model '{model_name}' is available.\nError: {e}")
+    
 
     def ensure_prompt_count_update(self):
         """
@@ -5842,7 +5940,20 @@ class MultimediaSuiteApp:
                 json.dump(DEFAULT_SETTINGS, f, indent=4)
             print("Initialized settings.json with default settings.")
         else:
-            print("settings.json already exists.")
+            # Ensure that 'huggingface_api_token' exists in settings
+            with open(SETTINGS_FILE, 'r') as f:
+                try:
+                    settings = json.load(f)
+                except json.JSONDecodeError:
+                    settings = {}
+            
+            if "huggingface_api_token" not in settings:
+                settings["huggingface_api_token"] = ""
+                with open(SETTINGS_FILE, 'w') as f:
+                    json.dump(settings, f, indent=4)
+                print("Added 'huggingface_api_token' to settings.json.")
+            else:
+                print("settings.json already contains 'huggingface_api_token'.")
             
     def select_video_file(self, frame, index):
         """
