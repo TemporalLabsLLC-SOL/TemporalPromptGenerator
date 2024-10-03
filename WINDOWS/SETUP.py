@@ -265,7 +265,6 @@ def create_env_file(script_dir):
         return
     print("\n📝 Creating a default .env file...")
     default_env = {
-        "OPENAI_API_KEY": "your_openai_api_key_here",
         "COMFYUI_PROMPTS_FOLDER": "path_to_comfyui_prompts_folder",
         "LAST_USED_DIRECTORY": "path_to_last_used_directory"
     }
@@ -456,7 +455,6 @@ def main():
         {"name": "--upgrade wheel"},  # Run this before playsound
         {"name": "playsound"},  # Installing playsound after upgrading wheel
         {"name": "python-dotenv>=1.0.1"},  # Fix for python-dotenv import
-        {"name": "openai>=0.27.0"},
         {"name": "moviepy>=1.0.3", "import_name": "moviepy.editor"},
         {"name": "pydub>=0.25.1"},
         {"name": "Pillow>=9.0.0", "import_name": "PIL"},
