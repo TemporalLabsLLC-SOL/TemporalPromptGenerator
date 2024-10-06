@@ -5221,7 +5221,7 @@ class MultimediaSuiteApp:
         # Instructions
         self.instructions = tk.Label(
             self.root,
-            text="Enter the desired prompt concept (max 450 characters):",
+            text="Enter the desired prompt concept (max 400 characters):",
             bg='#0A2239',
             fg='white',
             font=('Helvetica', 14, 'bold')
@@ -5634,8 +5634,8 @@ class MultimediaSuiteApp:
 
     def generate_video_prompts(self):
         """
-        Generate video prompts one by one that take all options into account.
-        Automatically retries each prompt generation until a valid prompt is obtained.
+        Generate video prompts that take all options into account.
+        In 'Story Mode', generate prompts sequentially, passing previous prompts as context.
         """
         input_concept = self.input_text.get("1.0", tk.END).strip()
 
@@ -5654,108 +5654,150 @@ class MultimediaSuiteApp:
 
         # Determine the number of prompts to generate
         num_prompts = self.video_prompt_number_var.get()
+
+        # Gather all options set by the user
+        video_options = {
+            "theme": self.video_theme_var.get(),
+            "art_style": self.video_art_style_var.get(),
+            "lighting": self.video_lighting_var.get(),
+            "framing": self.video_framing_var.get(),
+            "camera_movement": self.video_camera_movement_var.get(),
+            "shot_composition": self.video_shot_composition_var.get(),
+            "time_of_day": self.video_time_of_day_var.get(),
+            "decade": self.video_decade_var.get(),  # Keep this as a string
+            "camera": self.video_camera_var.get(),
+            "lens": self.video_lens_var.get(),
+            "resolution": self.video_resolution_var.get(),
+            "wildlife_animal": self.wildlife_animal_var.get(),
+            "domesticated_animal": self.domesticated_animal_var.get(),
+            "soundscape_mode": self.video_soundscape_mode_var.get(),
+            "holiday_mode": self.video_holiday_mode_var.get(),
+            "selected_holidays": self.video_holidays_var.get(),
+            "specific_modes": [mode for mode, var in self.video_specific_modes_vars.items() if var.get()],
+            "no_people_mode": self.video_no_people_mode_var.get(),
+            "chaos_mode": self.video_chaos_mode_var.get(),
+            "story_mode": self.video_story_mode_var.get(),
+            "remix_mode": self.video_remix_mode_var.get(),
+        }
+
+        # Build the context for options
+        options_context = (
+            f"Theme: {video_options['theme']}\n"
+            f"Art Style: {video_options['art_style']}\n"
+            f"Lighting: {video_options['lighting']}\n"
+            f"Framing: {video_options['framing']}\n"
+            f"Camera Movement: {video_options['camera_movement']}\n"
+            f"Shot Composition: {video_options['shot_composition']}\n"
+            f"Time of Day: {video_options['time_of_day']}\n"
+            f"Decade: {video_options['decade']}\n"
+            f"Camera: {video_options['camera']}, Lens: {video_options['lens']}\n"
+            f"Resolution: {video_options['resolution']}\n"
+        )
+
+        # Add optional elements dynamically
+        if video_options["wildlife_animal"]:
+            options_context += f"Feature a {video_options['wildlife_animal']}.\n"
+
+        if video_options["domesticated_animal"]:
+            options_context += f"Include a {video_options['domesticated_animal']}.\n"
+
+        if video_options["soundscape_mode"]:
+            options_context += "Incorporate soundscapes relevant to the scene.\n"
+
+        if video_options["holiday_mode"]:
+            options_context += f"Apply holiday themes: {video_options['selected_holidays']}.\n"
+
+        if video_options["no_people_mode"]:
+            options_context += "Focus on the environment or animals, without human figures.\n"
+
+        if video_options["chaos_mode"]:
+            options_context += "Introduce chaotic elements that create tension or contrast in the visuals.\n"
+
+        if video_options["remix_mode"]:
+            options_context += "Add creative variations in visual styles or thematic choices.\n"
+
+        # Retrieve selected camera and decade
+        selected_camera = video_options['camera']
+        selected_decade = video_options['decade']
+
         generated_prompts = []
 
-        for prompt_index in range(1, num_prompts + 1):
-            while True:
-                try:
-                    # Gather all options set by the user
-                    video_options = {
-                        "theme": self.video_theme_var.get(),
-                        "art_style": self.video_art_style_var.get(),
-                        "lighting": self.video_lighting_var.get(),
-                        "framing": self.video_framing_var.get(),
-                        "camera_movement": self.video_camera_movement_var.get(),
-                        "shot_composition": self.video_shot_composition_var.get(),
-                        "time_of_day": self.video_time_of_day_var.get(),
-                        "decade": self.video_decade_var.get(),  # Keep this as a string
-                        "camera": self.video_camera_var.get(),
-                        "lens": self.video_lens_var.get(),
-                        "resolution": self.video_resolution_var.get(),
-                        "wildlife_animal": self.wildlife_animal_var.get(),
-                        "domesticated_animal": self.domesticated_animal_var.get(),
-                        "soundscape_mode": self.video_soundscape_mode_var.get(),
-                        "holiday_mode": self.video_holiday_mode_var.get(),
-                        "selected_holidays": self.video_holidays_var.get(),
-                        "specific_modes": [mode for mode, var in self.video_specific_modes_vars.items() if var.get()],
-                        "no_people_mode": self.video_no_people_mode_var.get(),
-                        "chaos_mode": self.video_chaos_mode_var.get(),
-                        "story_mode": self.video_story_mode_var.get(),
-                        "remix_mode": self.video_remix_mode_var.get(),
-                    }
+        if video_options["story_mode"]:
+            # Initialize previous prompt variable
+            previous_prompt = ""
 
-                    # Build the context for options
-                    options_context = (
-                        f"Theme: {video_options['theme']}\n"
-                        f"Art Style: {video_options['art_style']}\n"
-                        f"Lighting: {video_options['lighting']}\n"
-                        f"Framing: {video_options['framing']}\n"
-                        f"Camera Movement: {video_options['camera_movement']}\n"
-                        f"Shot Composition: {video_options['shot_composition']}\n"
-                        f"Time of Day: {video_options['time_of_day']}\n"
-                        f"Decade: {video_options['decade']}\n"
-                        f"Camera: {video_options['camera']}, Lens: {video_options['lens']}\n"
-                        f"Resolution: {video_options['resolution']}\n"
-                    )
+            for prompt_index in range(1, num_prompts + 1):
+                while True:
+                    try:
+                        # Build the prompt with previous context
+                        single_prompt = (
+                            f"Generate a detailed video prompt that continues the narrative for the concept '{input_concept}' "
+                            f"based on the {selected_decade}. Ensure that the prompt includes:\n"
+                            f"Shot on a {selected_camera}.\n"
+                            f"{options_context}"
+                            f"Your prompt should follow from the previous scene and progress the story.\n"
+                            f"Previous prompt: '{previous_prompt}'\n"
+                            f"Provide the next prompt in the format:\n"
+                            f"positive: [Your positive prompt]\n"
+                            f"negative: [Your negative prompt]\n"
+                        )
 
-                    # Add optional elements dynamically
-                    if video_options["wildlife_animal"]:
-                        options_context += f"Feature a {video_options['wildlife_animal']}.\n"
+                        # Call the model to generate a single video prompt
+                        raw_video_prompt = self.generate_prompts_via_ollama(single_prompt, 'video', 1)
 
-                    if video_options["domesticated_animal"]:
-                        options_context += f"Include a {video_options['domesticated_animal']}.\n"
+                        if not raw_video_prompt:
+                            raise Exception(f"No video prompt generated for prompt set {prompt_index}. Retrying...")
 
-                    if video_options["soundscape_mode"]:
-                        options_context += "Incorporate soundscapes relevant to the scene.\n"
+                        # Clean and format the prompt
+                        cleaned_prompt = self.clean_prompt_text(raw_video_prompt)
+                        formatted_prompt = self.remove_unwanted_headers(cleaned_prompt)
 
-                    if video_options["holiday_mode"]:
-                        options_context += f"Apply holiday themes: {video_options['selected_holidays']}.\n"
+                        # Validate the generated prompt
+                        if self.validate_prompts(formatted_prompt, 1):
+                            generated_prompts.append(formatted_prompt)
+                            previous_prompt = formatted_prompt  # Update previous prompt
+                            print(f"Prompt {prompt_index} generated successfully.")
+                            break  # Move to the next prompt set
+                        else:
+                            print(f"Validation failed for prompt {prompt_index}. Retrying...")
+                            # Optionally, implement a retry limit here
 
-                    if video_options["no_people_mode"]:
-                        options_context += "Focus on the environment or animals, without human figures.\n"
+                    except Exception as e:
+                        print(f"Error generating video prompt {prompt_index}: {e}. Retrying...")
+        else:
+            # Generate prompts individually without story context
+            for prompt_index in range(1, num_prompts + 1):
+                while True:
+                    try:
+                        # Build the final prompt for this specific prompt set
+                        single_prompt = (
+                            f"Generate a detailed video prompt for the concept '{input_concept}' "
+                            f"based on the {selected_decade}. Ensure that the prompt includes:\n"
+                            f"Shot on a {selected_camera}.\n"
+                            f"{options_context}"
+                        )
 
-                    if video_options["chaos_mode"]:
-                        options_context += "Introduce chaotic elements that create tension or contrast in the visuals.\n"
+                        # Call the model to generate a single video prompt
+                        raw_video_prompt = self.generate_prompts_via_ollama(single_prompt, 'video', 1)
 
-                    if video_options["story_mode"]:
-                        options_context += "Ensure prompts flow together as a cohesive narrative.\n"
+                        if not raw_video_prompt:
+                            raise Exception(f"No video prompt generated for prompt set {prompt_index}. Retrying...")
 
-                    if video_options["remix_mode"]:
-                        options_context += "Add creative variations in visual styles or thematic choices.\n"
+                        # Clean and format the prompt
+                        cleaned_prompt = self.clean_prompt_text(raw_video_prompt)
+                        formatted_prompt = self.remove_unwanted_headers(cleaned_prompt)
 
-                    # Retrieve selected camera and decade
-                    selected_camera = video_options['camera']
-                    selected_decade = video_options['decade']
+                        # Validate the generated prompt
+                        if self.validate_prompts(formatted_prompt, 1):
+                            generated_prompts.append(formatted_prompt)
+                            print(f"Prompt {prompt_index} generated successfully.")
+                            break  # Move to the next prompt set
+                        else:
+                            print(f"Validation failed for prompt {prompt_index}. Retrying...")
+                            # Optionally, implement a retry limit here
 
-                    # Build the final prompt for this specific prompt set
-                    single_prompt = (
-                        f"Generate a detailed video prompt for the concept '{input_concept}' "
-                        f"based on the {selected_decade}. Ensure that the prompt includes:\n"
-                        f"Shot on a {selected_camera}.\n"
-                        f"{options_context}"
-                    )
-
-                    # Call Ollama API or model to generate a single video prompt
-                    raw_video_prompt = self.generate_prompts_via_ollama(single_prompt, 'video', 1)
-
-                    if not raw_video_prompt:
-                        raise Exception(f"No video prompt generated for prompt set {prompt_index}. Retrying...")
-
-                    # Clean and format the prompt
-                    cleaned_prompt = self.clean_prompt_text(raw_video_prompt)
-                    formatted_prompt = self.remove_unwanted_headers(cleaned_prompt)
-
-                    # Validate the generated prompt
-                    if self.validate_prompts(formatted_prompt, 1):
-                        generated_prompts.append(formatted_prompt)
-                        print(f"Prompt {prompt_index} generated successfully.")
-                        break  # Move to the next prompt set
-                    else:
-                        print(f"Validation failed for prompt {prompt_index}. Retrying...")
-                        # Optionally, implement a retry limit here
-
-                except Exception as e:
-                    print(f"Error generating video prompt {prompt_index}: {e}. Retrying...")
+                    except Exception as e:
+                        print(f"Error generating video prompt {prompt_index}: {e}. Retrying...")
 
         # After generating all prompts, save them
         try:
@@ -5788,6 +5830,7 @@ class MultimediaSuiteApp:
         except Exception as e:
             messagebox.showerror("Prompt Generation Error", f"Failed to save video prompts: {e}")
             print(f"Error saving video prompts: {e}")
+
 
     def ensure_model_available(self, model_name):
         try:
@@ -7064,7 +7107,7 @@ class MultimediaSuiteApp:
         self.video_story_mode_var = tk.BooleanVar()
         self.video_story_mode_checkbox = ttk.Checkbutton(
             options_label_frame,
-            text="Story Mode - Coming VERY soon",
+            text="Story Mode - BETA",
             variable=self.video_story_mode_var,
             style='TCheckbutton'
         )

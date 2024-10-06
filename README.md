@@ -76,24 +76,19 @@ Setting up the Temporal Prompt Engine is simple and hassle-free, allowing you to
 Before installing the Temporal Prompt Engine, ensure that your system meets the following requirements:
 
 - **Operating System**: Windows 10 or later / Linux (Ubuntu, Debian, Fedora, CentOS, RHEL)
-- **Python**: Version 3.8 or higher
-- **Git**: Installed and configured
-- **NVIDIA GPU**: CUDA-enabled NVIDIA GPU for optimal performance
-- **CUDA Toolkit**: Compatible with your GPU and installed
-- **FFmpeg**: Installed and added to system `PATH`
-- **Internet Connection**: Stable connection for downloading dependencies
+- **Pre-install Essential Tools**:
 
-### <a name="automated-installation"></a>Automated Installation
-
-For ease of installation, an automated setup script is provided for **Windows** users. This script handles the installation of necessary dependencies and sets up the environment.
-
-#### **Windows Automated Installation**
-
-1. **Download Python Installer**:
+   - **Install 7-Zip (if needed)**:
+     - Download 7-Zip from [7-Zip Download](https://www.7-zip.org/download.html).
+     - Run the installer and follow the on-screen instructions.
+   - **Install WinRAR (optional)**:
+     - Download WinRAR from [WinRAR Download](https://www.win-rar.com/download.html).
+     - Run the installer and follow the on-screen instructions.
+- **Python**: Version 3.10.9
+- **Download Python Installer**:
    - Visit the [Python Downloads](https://www.python.org/ftp/python/3.10.9/python-3.10.9-amd64.exe) page.
    - Download the **Python 3.10.9** installer for Windows.
-
-2. **Install Python**:
+   - **Install Python**:
    - **Run the Installer**:
      - Double-click the downloaded `python-3.10.9-amd64.exe` file.
      - **Important**: **Check the box "Add Python to PATH"** at the bottom of the installer window.
@@ -106,12 +101,7 @@ For ease of installation, an automated setup script is provided for **Windows** 
        ```
        - You should see `Python 3.10.9`.
 
-3. **Download the Repository**:
-   - Visit the [TemporalPromptGenerator GitHub Repository](https://github.com/TemporalLabsLLC-SOL/TemporalPromptGenerator).
-   - Click on the **"Code"** button and select **"Download ZIP"**.
-   - Extract the downloaded ZIP file to your desired location, e.g., `C:\TemporalPromptEngine`.
-
-4. **Pre-install Essential Tools**:
+- **Git**: Installed and configured
    - **Install Git**:
      - Download Git from [Git for Windows](https://git-scm.com/download/win).
      - Run the installer with default settings.
@@ -122,29 +112,43 @@ For ease of installation, an automated setup script is provided for **Windows** 
          git --version
          ```
          - You should see the installed Git version.
-   - **Install 7-Zip (if needed)**:
-     - Download 7-Zip from [7-Zip Download](https://www.7-zip.org/download.html).
+- **NVIDIA GPU**: CUDA-enabled NVIDIA GPU for optimal performance
+- **CUDA Toolkit**: Version 11.8 Compatible with your GPU and installed
+- **Install CUDA Toolkit**:
+     - Ensure you have an NVIDIA GPU with the latest drivers.
+     - Download the CUDA Toolkit from [CUDA Toolkit Download](https://developer.nvidia.com/cuda-11-8-0-download-archive).
      - Run the installer and follow the on-screen instructions.
-   - **Install WinRAR (optional)**:
-     - Download WinRAR from [WinRAR Download](https://www.win-rar.com/download.html).
-     - Run the installer and follow the on-screen instructions.
-
-5. **Pre-install Additional Dependencies**:
-   - **Install Ollama**:
+- **FFmpeg**: Installed and added to system `PATH`
+- **Install FFMPEG**:
+     - `https://www.geeksforgeeks.org/how-to-install-ffmpeg-on-windows/`
+- **Install Ollama**:
      - Download Ollama from [Ollama Setup](https://ollama.com/download/OllamaSetup.exe).
      - Run the installer and follow the on-screen instructions.
-   - **Install CUDA Toolkit**:
-     - Ensure you have an NVIDIA GPU with the latest drivers.
-     - Download the CUDA Toolkit from [CUDA Toolkit Download](https://developer.nvidia.com/cuda-11.8.0-download-archive).
-     - Run the installer and follow the on-screen instructions.
+     
+ 
+1. **Download the Repository**:
+   - Visit the [TemporalPromptGenerator GitHub Repository](https://github.com/TemporalLabsLLC-SOL/TemporalPromptGenerator).
+   - Click on the **"Code"** button and select **"Download ZIP"**.
+   - Extract the downloaded ZIP file to your desired location, e.g., `C:\TemporalPromptEngine`.
+ 
 
-6. **Run the Setup Script**:
-   - Navigate to the extracted `TemporalPromptEngine` folder.
-   - Locate the `SETUP.py` script.
+2. **Run the Setup Script**:
    - **Open Command Prompt**:
-     - Navigate to the `TemporalPromptEngine` directory:
+     - Navigate to the extracted `TemporalPromptEngine` directory:
        ```bash
-       cd C:\TemporalPromptEngine
+       cd C:\TemporalPromptEngine-main
+       ```
+       (OR Whatever you extracted it as)
+
+   - Navigate to the respective `WINDOWS or LINUX` folder depending on your system. ONLY WINDOWS WORKS RELIABLY RIGHT NOW.
+     - ```bash
+       cd WINDOWS
+       ```
+
+       OR
+
+       ```bash
+       cd LINUX
        ```
    - **Run the Setup Script**:
      ```bash
@@ -154,272 +158,7 @@ For ease of installation, an automated setup script is provided for **Windows** 
      - The script will automatically set up the environment, install necessary packages, and configure settings.
      - **IMPORTANT**: If the script prompts for a restart, **RESTART YOUR COMPUTER** to apply changes.
 
-7. **Launch the Temporal Prompt Engine**:
-   - After successful installation, locate the `TemporalPromptEngine.py` script in the folder.
-   - **Run the Script**:
-     ```bash
-     python TemporalPromptEngine.py
-     ```
-   - The application will launch, guiding you through the initial setup.
-
-### <a name="manual-installation"></a>Manual Installation
-
-If you prefer a manual installation or encounter issues with the automated script, follow the detailed steps below for your operating system.
-
-#### <a name="windows"></a>Windows Manual Installation
-
-1. **Install Git**:
-   - **Download Git**:
-     - Visit [Git for Windows](https://git-scm.com/download/win).
-     - Download the latest installer.
-   - **Run the Installer**:
-     - Double-click the downloaded `.exe` file.
-     - Follow the installation wizard with default settings.
-   - **Verify Installation**:
-     - Open **Command Prompt**.
-     - Run:
-       ```bash
-       git --version
-       ```
-     - You should see the installed Git version.
-
-2. **Install Python 3.8+**:
-   - **Download Python**:
-     - Visit [Python Downloads](https://www.python.org/ftp/python/3.10.9/python-3.10.9-amd64.exe).
-     - Download the **Python 3.10.9** installer for Windows.
-   - **Run the Installer**:
-     - Double-click the downloaded `.exe` file.
-     - **Important**: **Check the box "Add Python to PATH"** at the bottom of the installer window.
-     - Click **"Install Now"**.
-   - **Verify Installation**:
-     - Open **Command Prompt**.
-     - Run:
-       ```bash
-       python --version
-       ```
-     - You should see `Python 3.10.9`.
-
-3. **Install FFmpeg**:
-   - **Download FFmpeg**:
-     - Visit [FFmpeg Download](https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip).
-     - Download the latest static build (`ffmpeg-release-essentials.zip`).
-   - **Extract FFmpeg**:
-     - Extract the ZIP file to `C:\ffmpeg`.
-   - **Add FFmpeg to PATH**:
-     - Press `Win + R`, type `sysdm.cpl`, and press Enter.
-     - Navigate to **Advanced** > **Environment Variables**.
-     - Under **System variables**, select **Path** and click **Edit**.
-     - Click **New** and add `C:\ffmpeg\bin`.
-     - Click **OK** to save changes.
-   - **Verify Installation**:
-     - Open **Command Prompt**.
-     - Run:
-       ```bash
-       ffmpeg -version
-       ```
-     - You should see FFmpeg version details.
-
-4. **Install Ollama**:
-   - **Download Ollama**:
-     - Visit [Ollama Setup](https://ollama.com/download/OllamaSetup.exe).
-     - Download the installer.
-   - **Run the Installer**:
-     - Double-click the downloaded `.exe` file.
-     - Follow the on-screen instructions to complete the installation.
-   - **Verify Installation**:
-     - Open **Command Prompt**.
-     - Run:
-       ```bash
-       ollama --version
-       ```
-     - You should see the installed Ollama version.
-
-5. **Install CUDA Toolkit**:
-   - **Check GPU Compatibility**:
-     - Ensure you have an NVIDIA GPU that supports CUDA.
-     - Visit [NVIDIA CUDA GPUs](https://developer.nvidia.com/cuda-gpus) to verify compatibility.
-   - **Download CUDA Toolkit**:
-     - Visit [CUDA Toolkit Download](https://developer.nvidia.com/cuda-11.8.0-download-archive).
-     - Select your operating system, architecture, and version.
-     - Download and run the installer.
-   - **Follow Installation Wizard**:
-     - Use default settings unless specific configurations are needed.
-   - **Verify Installation**:
-     - Open **Command Prompt**.
-     - Run:
-       ```bash
-       nvcc --version
-       ```
-     - You should see CUDA version details.
-
-6. **Clone the Repository**:
-   - Open **Command Prompt**.
-   - Navigate to your desired installation directory, e.g., `C:\`:
-     ```bash
-     cd C:\
-     ```
-   - Clone the repository:
-     ```bash
-     git clone https://github.com/TemporalLabsLLC-SOL/TemporalPromptGenerator.git
-     ```
-   - Navigate to the cloned directory:
-     ```bash
-     cd TemporalPromptGenerator
-     ```
-
-7. **Run the Setup Script**:
-   - **Execute the Setup Script**:
-     ```bash
-     python SETUP.py
-     ```
-   - **Follow On-Screen Prompts**:
-     - The script will automatically set up the environment, install necessary packages, and configure settings.
-     - **IMPORTANT**: If the script prompts for a restart, **RESTART YOUR COMPUTER** to apply changes.
-
-8. **Activate the Virtual Environment**:
-   - The `SETUP.py` script creates a virtual environment named `TemporalPromptEngineEnv` within the project directory.
-   - **Activate the Virtual Environment**:
-     - In **Command Prompt**, navigate to the project directory if not already there:
-       ```bash
-       cd C:\TemporalPromptEngine
-       ```
-     - Activate the virtual environment:
-       ```bash
-       TemporalPromptEngineEnv\Scripts\activate
-       ```
-     - **Confirmation**: You should see `(TemporalPromptEngineEnv)` prefixed in your command prompt, indicating that the virtual environment is active.
-
-9. **Launch the Temporal Prompt Engine**:
-   - With the virtual environment activated, run the main script:
-     ```bash
-     python TemporalPromptEngine.py
-     ```
-   - The application will launch, guiding you through the initial setup.
-
-#### <a name="linux"></a>Linux Manual Installation
-
-1. **Install Git**:
-   - **Debian/Ubuntu**:
-     ```bash
-     sudo apt-get update
-     sudo apt-get install -y git
-     ```
-   - **Fedora**:
-     ```bash
-     sudo dnf install -y git
-     ```
-   - **CentOS/RHEL**:
-     ```bash
-     sudo yum install -y git
-     ```
-   - **Verify Installation**:
-     ```bash
-     git --version
-     ```
-     - You should see the installed Git version.
-
-2. **Install Python 3.8+**:
-   - **Debian/Ubuntu**:
-     ```bash
-     sudo apt-get update
-     sudo apt-get install -y python3 python3-venv python3-pip
-     ```
-   - **Fedora**:
-     ```bash
-     sudo dnf install -y python3 python3-venv python3-pip
-     ```
-   - **CentOS/RHEL**:
-     ```bash
-     sudo yum install -y epel-release
-     sudo yum install -y python3 python3-venv python3-pip
-     ```
-   - **Verify Installation**:
-     ```bash
-     python3 --version
-     ```
-     - You should see the installed Python version.
-
-3. **Install FFmpeg**:
-   - **Debian/Ubuntu**:
-     ```bash
-     sudo apt-get update
-     sudo apt-get install -y ffmpeg
-     ```
-   - **Fedora**:
-     ```bash
-     sudo dnf install -y ffmpeg ffmpeg-devel
-     ```
-   - **CentOS/RHEL**:
-     ```bash
-     sudo yum install -y epel-release
-     sudo yum install -y ffmpeg ffmpeg-devel
-     ```
-   - **Verify Installation**:
-     ```bash
-     ffmpeg -version
-     ```
-     - You should see FFmpeg version details.
-
-4. **Install Ollama**:
-   - **Download Ollama**:
-     - Visit [Ollama Setup](https://ollama.com/download/OllamaSetup.exe).
-     - Download the installer suitable for Linux.
-   - **Run the Installer**:
-     - Navigate to the download directory.
-     - Make the installer executable:
-       ```bash
-       chmod +x OllamaSetup.exe
-       ```
-     - Run the installer:
-       ```bash
-       ./OllamaSetup.exe
-       ```
-     - Follow the on-screen instructions to complete the installation.
-   - **Verify Installation**:
-     ```bash
-     ollama --version
-     ```
-     - You should see the installed Ollama version.
-
-5. **Install CUDA Toolkit**:
-   - **Check GPU Compatibility**:
-     - Ensure you have an NVIDIA GPU that supports CUDA.
-     - Visit [NVIDIA CUDA GPUs](https://developer.nvidia.com/cuda-gpus) to verify compatibility.
-   - **Download CUDA Toolkit**:
-     - Visit [CUDA Toolkit Download](https://developer.nvidia.com/cuda-downloads).
-     - Select your Linux distribution, architecture, and version.
-     - Follow the provided installation instructions specific to your system.
-   - **Verify Installation**:
-     ```bash
-     nvcc --version
-     ```
-     - You should see CUDA version details.
-
-6. **Clone the Repository**:
-   - Open **Terminal**.
-   - Navigate to your desired installation directory, e.g., `~/`:
-     ```bash
-     cd ~/
-     ```
-   - Clone the repository:
-     ```bash
-     git clone https://github.com/TemporalLabsLLC-SOL/TemporalPromptGenerator.git
-     ```
-   - Navigate to the cloned directory:
-     ```bash
-     cd TemporalPromptGenerator
-     ```
-
-7. **Run the Setup Script**:
-   - **Execute the Setup Script**:
-     ```bash
-     sudo python3 SETUP.py
-     ```
-   - **Follow On-Screen Prompts**:
-     - The script will automatically set up the environment, install necessary packages, and configure settings.
-     - **IMPORTANT**: If the script prompts for a restart, **RESTART YOUR TERMINAL OR SYSTEM** to apply changes.
-
-8. **Activate the Virtual Environment**:
+**Activate the Virtual Environment**:
    - The `SETUP.py` script creates a virtual environment named `TemporalPromptEngineEnv` within the project directory.
    - **Activate the Virtual Environment**:
      - In **Terminal**, navigate to the project directory if not already there:
@@ -432,14 +171,13 @@ If you prefer a manual installation or encounter issues with the automated scrip
        ```
      - **Confirmation**: You should see `(TemporalPromptEngineEnv)` prefixed in your terminal, indicating that the virtual environment is active.
 
-9. **Launch the Temporal Prompt Engine**:
+**Launch the Temporal Prompt Engine**:
    - With the virtual environment activated, run the main script:
      ```bash
-     python3 TemporalPromptEngine.py
+     python TemporalPromptEngine.py
      ```
    - The application will launch, guiding you through the initial setup.
 
----
 
 <a name="4-quick-start-guide"></a>
 
