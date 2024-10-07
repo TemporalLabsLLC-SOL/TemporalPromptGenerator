@@ -85,36 +85,14 @@ Before installing the Temporal Prompt Engine, ensure that your system meets the 
      - Download WinRAR from [WinRAR Download](https://www.win-rar.com/download.html).
      - Run the installer and follow the on-screen instructions.
 - **Python**: Version 3.10.9
-Here’s a formatted version of the provided content for a GitHub README:
 
-```md
 # Intel & AMD Python Setup
 
 ## Supported Installation Options for Intel® Distribution for Python 3.10.9
 
 To download Intel® Distribution for Python 3.10.9, visit the [official page](https://software.intel.com/en-us/distribution-for-python) and choose the installation method that suits your needs. The tools offered include performance optimization for AI, machine learning, and data science workflows.
 
-## Installation Commands for Intel® Distribution for Python 3.10.9 on Each Platform
-
-### Linux Installation
-
-**Interactive Installation:**
-
-```bash
-bash ~/intelpython3.sh
-```
-
-**CLI Installation (non-interactive):**
-
-```bash
-bash ~/intelpython3.sh -b -u -p ~/intelpython3
-```
-
-In this command:
-
-- `-b`: Batch mode for non-interactive installation.
-- `-u`: Skips updating existing installations.
-- `-p`: Specifies the installation path.
+# Intel® Distribution for Python 3.10.9
 
 ### Windows Installation - Intel Distrubition
 
@@ -142,18 +120,6 @@ In this command:
 
 After installation, the Intel Python environment will be automatically activated, or you can manually activate it as follows:
 
-### Linux:
-
-If you're using the Intel® Developer Cloud or have root access to your oneAPI installation path, the environment is activated by default.
-
-To manually activate:
-
-```bash
-source activate base
-```
-
-### Windows:
-
 Navigate to the installed Python directory and activate the environment:
 
 ```bash
@@ -164,7 +130,7 @@ With these instructions, you're now set up to use the Intel® Distribution for P
 
 ---
 
-## AMD Machines: Python 3.10.9 Setup
+# AMD Machines: Python 3.10.9 Setup
 
 For AMD users, the standard Python 3.10.9 is supported. You can install it by following these steps:
 
