@@ -75,15 +75,8 @@ Setting up the Temporal Prompt Engine is simple and hassle-free, allowing you to
 
 Before installing the Temporal Prompt Engine, ensure that your system meets the following requirements:
 
-- **Operating System**: Windows 10 or later / Linux (Ubuntu, Debian, Fedora, CentOS, RHEL)
+- **Operating System**: Windows 8 or later / Linux COMING SOON
 - **Pre-install Essential Tools**:
-
-   - **Install 7-Zip (if needed)**:
-     - Download 7-Zip from [7-Zip Download](https://www.7-zip.org/download.html).
-     - Run the installer and follow the on-screen instructions.
-   - **Install WinRAR (optional)**:
-     - Download WinRAR from [WinRAR Download](https://www.win-rar.com/download.html).
-     - Run the installer and follow the on-screen instructions.
 - **Python**: Version 3.10.9
 
 # Intel & AMD Python Setup
