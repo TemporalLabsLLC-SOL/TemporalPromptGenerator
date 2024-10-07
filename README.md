@@ -135,7 +135,7 @@ Before installing the Temporal Prompt Engine, ensure that your system meets the 
 
 1. **Install CUDA Toolkit**:
    - Ensure you have an NVIDIA GPU with the latest drivers.
-   - Download the CUDA Toolkit from [CUDA Toolkit Download](https://developer.nvidia.com/cuda-downloads).
+   - Download the CUDA Toolkit from [CUDA Toolkit Download](https://developer.nvidia.com/cuda-11-8-0-download-archive).
    - Run the installer and follow the on-screen instructions.
 
 2. **Verify Installation**:
