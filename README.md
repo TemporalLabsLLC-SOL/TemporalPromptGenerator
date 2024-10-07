@@ -85,21 +85,124 @@ Before installing the Temporal Prompt Engine, ensure that your system meets the 
      - Download WinRAR from [WinRAR Download](https://www.win-rar.com/download.html).
      - Run the installer and follow the on-screen instructions.
 - **Python**: Version 3.10.9
-- **Download Python Installer**:
-   - Visit the [Python Downloads](https://www.python.org/ftp/python/3.10.9/python-3.10.9-amd64.exe) page.
-   - Download the **Python 3.10.9** installer for Windows.
-   - **Install Python**:
-   - **Run the Installer**:
-     - Double-click the downloaded `python-3.10.9-amd64.exe` file.
-     - **Important**: **Check the box "Add Python to PATH"** at the bottom of the installer window.
-     - Click **"Install Now"**.
-   - **Verify Installation**:
-     - Open **Command Prompt**.
-     - Run:
-       ```bash
-       python --version
-       ```
-       - You should see `Python 3.10.9`.
+Here’s a formatted version of the provided content for a GitHub README:
+
+```md
+# Intel & AMD Python Setup
+
+## Supported Installation Options for Intel® Distribution for Python 3.10.9
+
+To download Intel® Distribution for Python 3.10.9, visit the [official page](https://software.intel.com/en-us/distribution-for-python) and choose the installation method that suits your needs. The tools offered include performance optimization for AI, machine learning, and data science workflows.
+
+## Installation Commands for Intel® Distribution for Python 3.10.9 on Each Platform
+
+### Linux Installation
+
+**Interactive Installation:**
+
+```bash
+bash ~/intelpython3.sh
+```
+
+**CLI Installation (non-interactive):**
+
+```bash
+bash ~/intelpython3.sh -b -u -p ~/intelpython3
+```
+
+In this command:
+
+- `-b`: Batch mode for non-interactive installation.
+- `-u`: Skips updating existing installations.
+- `-p`: Specifies the installation path.
+
+### Windows Installation - Intel Distrubition
+
+**Interactive Installation:**
+
+Double-click the installer to launch it:
+
+```bash
+intelpython3.exe
+```
+
+**CLI Installation (non-interactive):**
+
+```bash
+start /wait intelpython3.exe /S /RegisterPython=0 /D=%LOCALAPPDATA%\intelpython3
+```
+
+In this command:
+
+- `/S`: Enables silent mode for non-interactive installation.
+- `/RegisterPython=0`: Skips registering Python to the system environment.
+- `/D`: Specifies the installation directory.
+
+## Activating the Conda Environment for Intel® Python 3.10.9
+
+After installation, the Intel Python environment will be automatically activated, or you can manually activate it as follows:
+
+### Linux:
+
+If you're using the Intel® Developer Cloud or have root access to your oneAPI installation path, the environment is activated by default.
+
+To manually activate:
+
+```bash
+source activate base
+```
+
+### Windows:
+
+Navigate to the installed Python directory and activate the environment:
+
+```bash
+C:\Program Files(x86)\Intel\oneAPI\intelpython\python3.10.9\Scripts\activate
+```
+
+With these instructions, you're now set up to use the Intel® Distribution for Python 3.10.9 with all the optimization tools for AI, machine learning, and data science workflows.
+
+---
+
+## AMD Machines: Python 3.10.9 Setup
+
+For AMD users, the standard Python 3.10.9 is supported. You can install it by following these steps:
+
+### Download Standard Python 3.10.9
+
+1. Visit the [official Python 3.10.9 Release Page](https://www.python.org/downloads/release/python-3109/).
+2. Download the Windows installer (64-bit).
+
+### Install Python
+
+Run the installer and make sure "Add Python to PATH" is checked.
+
+### Verify Installation
+
+Open Command Prompt and run:
+
+```bash
+python --version
+```
+
+Expected Output: `Python 3.10.9`
+
+
+## Quick Start Guide
+
+### Activate the Virtual Environment:
+
+#### Windows:
+
+```bash
+TemporalPromptEngineEnv\Scripts\activate
+```
+
+### Launch the Application:
+
+```bash
+py -3.10 TemporalPromptEngine.py
+```
 
 - **Git**: Installed and configured
    - **Install Git**:
