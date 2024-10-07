@@ -145,24 +145,6 @@ python --version
 ```
 
 Expected Output: `Python 3.10.9`
-
-
-## Quick Start Guide
-
-### Activate the Virtual Environment:
-
-#### Windows:
-
-```bash
-TemporalPromptEngineEnv\Scripts\activate
-```
-
-### Launch the Application:
-
-```bash
-py -3.10 TemporalPromptEngine.py
-```
-
 - **Git**: Installed and configured
    - **Install Git**:
      - Download Git from [Git for Windows](https://git-scm.com/download/win).
@@ -192,8 +174,8 @@ py -3.10 TemporalPromptEngine.py
    - Visit the [TemporalPromptGenerator GitHub Repository](https://github.com/TemporalLabsLLC-SOL/TemporalPromptGenerator).
    - Click on the **"Code"** button and select **"Download ZIP"**.
    - Extract the downloaded ZIP file to your desired location, e.g., `C:\TemporalPromptEngine`.
- 
 
+ 
 2. **Run the Setup Script**:
    - **Open Command Prompt**:
      - Navigate to the extracted `TemporalPromptEngine` directory:
@@ -214,7 +196,7 @@ py -3.10 TemporalPromptEngine.py
        ```
    - **Run the Setup Script**:
      ```bash
-     python SETUP.py
+     py -3.10 SETUP.py
      ```
    - **Follow On-Screen Prompts**:
      - The script will automatically set up the environment, install necessary packages, and configure settings.
@@ -223,65 +205,18 @@ py -3.10 TemporalPromptEngine.py
 **Activate the Virtual Environment**:
    - The `SETUP.py` script creates a virtual environment named `TemporalPromptEngineEnv` within the project directory.
    - **Activate the Virtual Environment**:
-     - In **Terminal**, navigate to the project directory if not already there:
-       ```bash
-       cd ~/TemporalPromptGenerator
-       ```
-     - Activate the virtual environment:
-       ```bash
-       source TemporalPromptEngineEnv/bin/activate
-       ```
-     - **Confirmation**: You should see `(TemporalPromptEngineEnv)` prefixed in your terminal, indicating that the virtual environment is active.
 
-**Launch the Temporal Prompt Engine**:
-   - With the virtual environment activated, run the main script:
-     ```bash
-     python TemporalPromptEngine.py
-     ```
-   - The application will launch, guiding you through the initial setup.
+#### Windows:
 
+```bash
+TemporalPromptEngineEnv\Scripts\activate
+```
 
-<a name="4-quick-start-guide"></a>
+### Launch the Application:
 
-## 4. Quick Start Guide
-
-Follow these simple steps to begin creating your immersive video and audio scenes:
-
-1. **Activate the Virtual Environment**:
-   - **Windows**:
-     - Open **Command Prompt**.
-     - Navigate to the `TemporalPromptEngine` directory:
-       ```bash
-       cd C:\TemporalPromptEngine
-       ```
-     - Activate the virtual environment:
-       ```bash
-       TemporalPromptEngineEnv\Scripts\activate
-       ```
-     - **Confirmation**: You should see `(TemporalPromptEngineEnv)` prefixed in your command prompt.
-   - **Linux**:
-     - Open **Terminal**.
-     - Navigate to the `TemporalPromptEngine` directory:
-       ```bash
-       cd ~/TemporalPromptGenerator
-       ```
-     - Activate the virtual environment:
-       ```bash
-       source TemporalPromptEngineEnv/bin/activate
-       ```
-     - **Confirmation**: You should see `(TemporalPromptEngineEnv)` prefixed in your terminal.
-
-2. **Launch the Application**:
-   - With the virtual environment activated, run the main script.
-   - **Windows**:
-     ```bash
-     python TemporalPromptEngine.py
-     ```
-   - **Linux**:
-     ```bash
-     python3 TemporalPromptEngine.py
-     ```
-   - The application will launch, guiding you through the initial setup.
+```bash
+py -3.10 TemporalPromptEngine.py
+```
 
 3. **Enter Your Scene Concept**:
    - Input your creative idea or scene description (up to 450 characters).
