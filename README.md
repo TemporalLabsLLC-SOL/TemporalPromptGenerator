@@ -37,7 +37,7 @@ The Temporal Prompt Engine allows you to select standard film terms through user
 
 - **Intuitive Interface**: Designed for both beginners and professionals, making complex scene creation accessible to everyone.
 - **Advanced Customization**: Select from a wide range of film terms to fine-tune your prompts.
-- **Story Mode**: Seamlessly blend prompts across frames to create cohesive narratives, enabling you to craft epic stories or intimate tales.
+- **Story Mode - BIG UPDATE IMPLEMENTED**: Seamlessly blend prompts across frames to create cohesive narratives, enabling you to craft epic stories or intimate tales.
 - **Holiday Mode**: Generate seasonal content tailored to holidays, perfect for festive branding and marketing.
 - **Seamless Integration**: Works flawlessly with tools like ComfyUI for enhanced video generation.
 - **Cross-Platform Compatibility**: Available for Windows, with Linux support coming soon.
