@@ -4985,6 +4985,9 @@ class MultimediaSuiteApp:
         # Initialize settings.json if it doesn't exist
         self.initialize_settings()
 
+        # Check for Hugging Face API token
+        self.check_huggingface_token()
+
         
     def ensure_ollama_installed_and_model_available(self, model_name="llama3.2"):
         try:
@@ -5083,6 +5086,100 @@ class MultimediaSuiteApp:
             time.sleep(interval)
         return False
 
+    
+    def check_huggingface_token(self):
+        """
+        Checks if the Huggingface API token is stored either in environment variables or settings file.
+        If not found, prompts the user to enter it.
+        """
+        # Try to get from environment variable
+        token = os.environ.get('HUGGINGFACE_API_TOKEN')
+        if token:
+            self.huggingface_api_token = token
+            print("Huggingface API token loaded from environment variable.")
+            return
+        
+        # Try to get from settings.json
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, 'r') as f:
+                try:
+                    settings = json.load(f)
+                except json.JSONDecodeError:
+                    settings = {}
+            token = settings.get('huggingface_api_token')
+            if token:
+                self.huggingface_api_token = token
+                print("Huggingface API token loaded from settings file.")
+                return
+        
+        # If not found, prompt the user to enter it
+        self.prompt_huggingface_token()
+    
+    def prompt_huggingface_token(self):
+        """
+        Displays a popup window to prompt the user to enter their Huggingface API token.
+        """
+        popup = tk.Toplevel(self.root)
+        popup.title("Huggingface API Token Required")
+        popup.configure(bg='#0A2239')
+        popup.geometry("500x200")
+        popup.grab_set()  # Make it modal
+
+        label = tk.Label(
+            popup,
+            text="Huggingface API token is required for Ollama.\nPlease enter your Huggingface API token below:",
+            bg='#0A2239',
+            fg='white',
+            font=('Helvetica', 12),
+            justify='left'
+        )
+        label.pack(pady=20, padx=20)
+
+        token_entry = tk.Entry(
+            popup,
+            show='*',
+            width=50,
+            font=('Helvetica', 12)
+        )
+        token_entry.pack(pady=10)
+
+        def save_token():
+            token = token_entry.get().strip()
+            if not token:
+                messagebox.showerror("Input Error", "Huggingface API token cannot be empty.")
+                return
+            # Save to settings.json
+            settings = {}
+            if os.path.exists(SETTINGS_FILE):
+                with open(SETTINGS_FILE, 'r') as f:
+                    try:
+                        settings = json.load(f)
+                    except json.JSONDecodeError:
+                        settings = {}
+            settings['huggingface_api_token'] = token
+            try:
+                with open(SETTINGS_FILE, 'w') as f:
+                    json.dump(settings, f, indent=4)
+                self.huggingface_api_token = token
+                messagebox.showinfo("Token Saved", "Huggingface API token has been saved successfully.")
+                popup.destroy()
+            except Exception as e:
+                messagebox.showerror("Save Error", f"Failed to save the token: {e}")
+
+        save_button = tk.Button(
+            popup,
+            text="Save Token",
+            command=save_token,
+            bg="#28a745",
+            fg='white',
+            font=('Helvetica', 12, 'bold'),
+            activebackground="#1e7e34",
+            activeforeground='white',
+            cursor="hand2",
+            width=15
+        )
+        save_button.pack(pady=10)
+
     @staticmethod
     def detect_gpu():
         """
@@ -5124,7 +5221,7 @@ class MultimediaSuiteApp:
         # Instructions
         self.instructions = tk.Label(
             self.root,
-            text="Enter the desired prompt concept (max 450 characters):",
+            text="Enter the desired prompt concept (max 400 characters):",
             bg='#0A2239',
             fg='white',
             font=('Helvetica', 14, 'bold')
@@ -5534,11 +5631,49 @@ class MultimediaSuiteApp:
         self.audio_options_window.configure(bg='#0A2239')
 
         self.build_audio_options(self.audio_options_window)
+        
+    def parse_outline(self, raw_outline, num_prompts):
+        """
+        Parses the outline returned by the model into a list of scene descriptions.
+
+        Args:
+            raw_outline (str): The raw outline text from the model.
+            num_prompts (int): The expected number of scenes.
+
+        Returns:
+            list: A list of scene descriptions.
+        """
+        scene_descriptions = []
+        lines = raw_outline.strip().split('\n')
+        for line in lines:
+            # Match lines that start with a number followed by a period or parenthesis
+            match = re.match(r'^\s*\d+\s*[\.\)]\s*(.*)', line)
+            if match:
+                scene_description = match.group(1).strip()
+                if scene_description:
+                    scene_descriptions.append(scene_description)
+        if len(scene_descriptions) != num_prompts:
+            print(f"Expected {num_prompts} scenes in the outline, but got {len(scene_descriptions)}.")
+            return None
+        return scene_descriptions
+
+    def contains_year(self, text):
+        """
+        Checks if the provided text contains a four-digit year between 1900 and 2099.
+
+        Args:
+            text (str): The text to check for a year.
+
+        Returns:
+            bool: True if a year is found, False otherwise.
+        """
+        return bool(re.search(r'\b(19|20)\d{2}\b', text))
 
     def generate_video_prompts(self):
         """
-        Generate video prompts one by one that take all options into account.
-        Automatically retries each prompt generation until a valid prompt is obtained.
+        Generate video prompts optimized for CogVideoX Prompting Standards.
+        In 'Story Mode', first generate a story outline and then create detailed prompts for each scene.
+        In 'Non-Story Mode', generate prompts individually without any overlap.
         """
         input_concept = self.input_text.get("1.0", tk.END).strip()
 
@@ -5557,108 +5692,216 @@ class MultimediaSuiteApp:
 
         # Determine the number of prompts to generate
         num_prompts = self.video_prompt_number_var.get()
+
+        # Gather all options set by the user
+        video_options = {
+            "theme": self.video_theme_var.get(),
+            "art_style": self.video_art_style_var.get(),
+            "lighting": self.video_lighting_var.get(),
+            "framing": self.video_framing_var.get(),
+            "camera_movement": self.video_camera_movement_var.get(),
+            "shot_composition": self.video_shot_composition_var.get(),
+            "time_of_day": self.video_time_of_day_var.get(),
+            "decade": self.video_decade_var.get(),  # Keep this as a string
+            "camera": self.video_camera_var.get(),
+            "lens": self.video_lens_var.get(),
+            "resolution": self.video_resolution_var.get(),
+            "wildlife_animal": self.wildlife_animal_var.get(),
+            "domesticated_animal": self.domesticated_animal_var.get(),
+            "soundscape_mode": self.video_soundscape_mode_var.get(),
+            "holiday_mode": self.video_holiday_mode_var.get(),
+            "selected_holidays": self.video_holidays_var.get(),
+            "specific_modes": [mode for mode, var in self.video_specific_modes_vars.items() if var.get()],
+            "no_people_mode": self.video_no_people_mode_var.get(),
+            "chaos_mode": self.video_chaos_mode_var.get(),
+            "story_mode": self.video_story_mode_var.get(),
+            "remix_mode": self.video_remix_mode_var.get(),
+        }
+
+        # Build the base options context as a list for easy manipulation
+        base_options_context = [
+            f"Theme: {video_options['theme']}",
+            f"Art Style: {video_options['art_style']}",
+            f"Lighting: {video_options['lighting']}",
+            f"Framing: {video_options['framing']}",
+            f"Camera Movement: {video_options['camera_movement']}",
+            f"Shot Composition: {video_options['shot_composition']}",
+            f"Time of Day: {video_options['time_of_day']}",
+            f"Camera: {video_options['camera']}, Lens: {video_options['lens']}",
+            f"Resolution: {video_options['resolution']}"
+        ]
+
+        # Add optional elements dynamically
+        if video_options["wildlife_animal"]:
+            base_options_context.append(f"Feature a {video_options['wildlife_animal']}.")
+
+        if video_options["domesticated_animal"]:
+            base_options_context.append(f"Include a {video_options['domesticated_animal']}.")
+
+        if video_options["soundscape_mode"]:
+            base_options_context.append("Incorporate soundscapes relevant to the scene.")
+
+        if video_options["holiday_mode"]:
+            base_options_context.append(f"Apply holiday themes: {video_options['selected_holidays']}.")
+
+        if video_options["no_people_mode"]:
+            base_options_context.append("Focus on the environment or animals, without human figures.")
+
+        if video_options["chaos_mode"]:
+            base_options_context.append("Introduce chaotic elements that create tension or contrast in the visuals.")
+
+        if video_options["remix_mode"]:
+            base_options_context.append("Add creative variations in visual styles or thematic choices.")
+
         generated_prompts = []
 
-        for prompt_index in range(1, num_prompts + 1):
-            while True:
+        if video_options["story_mode"]:
+            # Story Mode: Generate a story outline first
+            outline_generated = False
+            max_outline_retries = 3
+            outline_retry_count = 0
+
+            while not outline_generated and outline_retry_count < max_outline_retries:
                 try:
-                    # Gather all options set by the user
-                    video_options = {
-                        "theme": self.video_theme_var.get(),
-                        "art_style": self.video_art_style_var.get(),
-                        "lighting": self.video_lighting_var.get(),
-                        "framing": self.video_framing_var.get(),
-                        "camera_movement": self.video_camera_movement_var.get(),
-                        "shot_composition": self.video_shot_composition_var.get(),
-                        "time_of_day": self.video_time_of_day_var.get(),
-                        "decade": self.video_decade_var.get(),  # Keep this as a string
-                        "camera": self.video_camera_var.get(),
-                        "lens": self.video_lens_var.get(),
-                        "resolution": self.video_resolution_var.get(),
-                        "wildlife_animal": self.wildlife_animal_var.get(),
-                        "domesticated_animal": self.domesticated_animal_var.get(),
-                        "soundscape_mode": self.video_soundscape_mode_var.get(),
-                        "holiday_mode": self.video_holiday_mode_var.get(),
-                        "selected_holidays": self.video_holidays_var.get(),
-                        "specific_modes": [mode for mode, var in self.video_specific_modes_vars.items() if var.get()],
-                        "no_people_mode": self.video_no_people_mode_var.get(),
-                        "chaos_mode": self.video_chaos_mode_var.get(),
-                        "story_mode": self.video_story_mode_var.get(),
-                        "remix_mode": self.video_remix_mode_var.get(),
-                    }
-
-                    # Build the context for options
-                    options_context = (
-                        f"Theme: {video_options['theme']}\n"
-                        f"Art Style: {video_options['art_style']}\n"
-                        f"Lighting: {video_options['lighting']}\n"
-                        f"Framing: {video_options['framing']}\n"
-                        f"Camera Movement: {video_options['camera_movement']}\n"
-                        f"Shot Composition: {video_options['shot_composition']}\n"
-                        f"Time of Day: {video_options['time_of_day']}\n"
-                        f"Decade: {video_options['decade']}\n"
-                        f"Camera: {video_options['camera']}, Lens: {video_options['lens']}\n"
-                        f"Resolution: {video_options['resolution']}\n"
+                    # Step 1: Generate a story outline
+                    outline_prompt = (
+                        f"Based on the concept '{input_concept}', generate a detailed outline for a story divided into exactly {num_prompts} scenes. "
+                        f"Each scene should be a brief description of what happens, and should not include any positive or negative prompts. "
+                        f"Provide the outline as a numbered list, with each scene on a new line. Do not include any additional text before or after the outline.\n"
                     )
 
-                    # Add optional elements dynamically
-                    if video_options["wildlife_animal"]:
-                        options_context += f"Feature a {video_options['wildlife_animal']}.\n"
+                    # Call the model to generate the outline
+                    raw_outline = self.generate_prompts_via_ollama(outline_prompt, 'text', 1)
 
-                    if video_options["domesticated_animal"]:
-                        options_context += f"Include a {video_options['domesticated_animal']}.\n"
+                    # Parse the outline into scenes
+                    scene_descriptions = self.parse_outline(raw_outline, num_prompts)
 
-                    if video_options["soundscape_mode"]:
-                        options_context += "Incorporate soundscapes relevant to the scene.\n"
-
-                    if video_options["holiday_mode"]:
-                        options_context += f"Apply holiday themes: {video_options['selected_holidays']}.\n"
-
-                    if video_options["no_people_mode"]:
-                        options_context += "Focus on the environment or animals, without human figures.\n"
-
-                    if video_options["chaos_mode"]:
-                        options_context += "Introduce chaotic elements that create tension or contrast in the visuals.\n"
-
-                    if video_options["story_mode"]:
-                        options_context += "Ensure prompts flow together as a cohesive narrative.\n"
-
-                    if video_options["remix_mode"]:
-                        options_context += "Add creative variations in visual styles or thematic choices.\n"
-
-                    # Retrieve selected camera and decade
-                    selected_camera = video_options['camera']
-                    selected_decade = video_options['decade']
-
-                    # Build the final prompt for this specific prompt set
-                    single_prompt = (
-                        f"Generate a detailed video prompt for the concept '{input_concept}' "
-                        f"based on the {selected_decade}. Ensure that the prompt includes:\n"
-                        f"Shot on a {selected_camera}.\n"
-                        f"{options_context}"
-                    )
-
-                    # Call Ollama API or model to generate a single video prompt
-                    raw_video_prompt = self.generate_prompts_via_ollama(single_prompt, 'video', 1)
-
-                    if not raw_video_prompt:
-                        raise Exception(f"No video prompt generated for prompt set {prompt_index}. Retrying...")
-
-                    # Clean and format the prompt
-                    cleaned_prompt = self.clean_prompt_text(raw_video_prompt)
-                    formatted_prompt = self.remove_unwanted_headers(cleaned_prompt)
-
-                    # Validate the generated prompt
-                    if self.validate_prompts(formatted_prompt, 1):
-                        generated_prompts.append(formatted_prompt)
-                        print(f"Prompt {prompt_index} generated successfully.")
-                        break  # Move to the next prompt set
+                    if scene_descriptions and len(scene_descriptions) == num_prompts:
+                        outline_generated = True
+                        print("Story outline generated successfully.")
                     else:
-                        print(f"Validation failed for prompt {prompt_index}. Retrying...")
-                        # Optionally, implement a retry limit here
-
+                        outline_retry_count += 1
+                        print(f"Outline generation failed or unexpected number of scenes. Retrying... ({outline_retry_count}/{max_outline_retries})")
                 except Exception as e:
-                    print(f"Error generating video prompt {prompt_index}: {e}. Retrying...")
+                    outline_retry_count += 1
+                    print(f"Error generating outline: {e}. Retrying... ({outline_retry_count}/{max_outline_retries})")
+
+            if not outline_generated:
+                messagebox.showerror("Outline Generation Error", "Failed to generate a valid story outline after multiple attempts.")
+                # Fallback: Proceed without story mode
+                video_options["story_mode"] = False
+                print("Proceeding without 'Story Mode' due to outline generation failure.")
+
+        if video_options["story_mode"]:
+            # Story Mode: Check for years in scene descriptions
+            year_present = any(self.contains_year(scene) for scene in scene_descriptions)
+            print(f"Year present in scene descriptions: {year_present}")
+
+            if not year_present:
+                # If no year is present, include the selected decade
+                base_options_context.append(f"Decade: {video_options['decade']}")
+
+            # Else, do not include the decade to avoid confusion
+
+            # Story Mode: Generate detailed prompts for each scene
+            for prompt_index, scene_description in enumerate(scene_descriptions, start=1):
+                retry_count = 0
+                max_retries = 3  # Set a maximum number of retries
+
+                while retry_count < max_retries:
+                    try:
+                        # Build the final prompt for this specific prompt set
+                        single_prompt = (
+                            f"Using CogVideoX Prompting Standards and best expert practices, create a detailed video prompt based on the following scene description.\n"
+                            f"Scene {prompt_index}: {scene_description}\n"
+                            f"The scene is part of a story based on the concept '{input_concept}' and is set in the {video_options['decade']}, shot on a {video_options['camera']}.\n"
+                            f"Ensure that the prompt includes the following elements:\n"
+                            + "\n".join(base_options_context) + "\n"
+                            f"Do not mention video durations or phrases like 'generate a video' or 'create a clip'.\n"
+                            f"Provide the prompt in the format:\n"
+                            f"positive: [Your positive prompt]\n"
+                            f"negative: [Your negative prompt]\n"
+                        )
+
+                        # Call the model to generate the detailed video prompt
+                        raw_video_prompt = self.generate_prompts_via_ollama(single_prompt, 'video', 1)
+
+                        if not raw_video_prompt:
+                            raise Exception(f"No video prompt generated for prompt {prompt_index}. Retrying...")
+
+                        # Clean and format the prompt
+                        cleaned_prompt = self.clean_prompt_text(raw_video_prompt)
+                        formatted_prompt = self.remove_unwanted_headers(cleaned_prompt)
+
+                        # Validate the generated prompt
+                        if self.validate_prompts(formatted_prompt, 1):
+                            generated_prompts.append(formatted_prompt)
+                            print(f"Prompt {prompt_index} generated successfully.")
+                            break  # Move to the next prompt set
+                        else:
+                            retry_count += 1
+                            print(f"Validation failed for prompt {prompt_index}. Retrying... ({retry_count}/{max_retries})")
+                            time.sleep(1)  # Optional: wait before retrying
+                    except Exception as e:
+                        retry_count += 1
+                        print(f"Error generating video prompt {prompt_index}: {e}. Retrying... ({retry_count}/{max_retries})")
+                        time.sleep(1)  # Optional: wait before retrying
+                else:
+                    print(f"Failed to generate a valid prompt after {max_retries} attempts for prompt {prompt_index}.")
+                    messagebox.showerror("Prompt Generation Error", f"Failed to generate a valid prompt after {max_retries} attempts for prompt {prompt_index}.")
+                    return  # Exit the function if unable to generate valid prompts
+        else:
+            # Non-Story Mode: Always include the selected decade
+            base_options_context.append(f"Decade: {video_options['decade']}")
+
+            # Non-Story Mode: Generate prompts individually without overlap
+            for prompt_index in range(1, num_prompts + 1):
+                retry_count = 0
+                max_retries = 3  # Set a maximum number of retries
+
+                while retry_count < max_retries:
+                    try:
+                        # Build the final prompt for this specific prompt set
+                        single_prompt = (
+                            f"Using CogVideoX Prompting Standards and best expert practices, create a detailed video prompt for the concept '{input_concept}'.\n"
+                            f"The scene should be unique, self-contained, and optimized for video generation.\n"
+                            f"Setting: {video_options['decade']}\n"
+                            f"Camera: {video_options['camera']}\n"
+                            f"Ensure that the prompt includes the following elements:\n"
+                            + "\n".join(base_options_context) + "\n"
+                            f"Do not mention video durations or phrases like 'generate a video' or 'create a clip'.\n"
+                            f"Provide the prompt in the format:\n"
+                            f"positive: [Your positive prompt]\n"
+                            f"negative: [Your negative prompt]\n"
+                        )
+
+                        # Call the model to generate a single video prompt
+                        raw_video_prompt = self.generate_prompts_via_ollama(single_prompt, 'video', 1)
+
+                        if not raw_video_prompt:
+                            raise Exception(f"No video prompt generated for prompt {prompt_index}. Retrying...")
+
+                        # Clean and format the prompt
+                        cleaned_prompt = self.clean_prompt_text(raw_video_prompt)
+                        formatted_prompt = self.remove_unwanted_headers(cleaned_prompt)
+
+                        # Validate the generated prompt
+                        if self.validate_prompts(formatted_prompt, 1):
+                            generated_prompts.append(formatted_prompt)
+                            print(f"Prompt {prompt_index} generated successfully.")
+                            break  # Move to the next prompt set
+                        else:
+                            retry_count += 1
+                            print(f"Validation failed for prompt {prompt_index}. Retrying... ({retry_count}/{max_retries})")
+                            time.sleep(1)  # Optional: wait before retrying
+                    except Exception as e:
+                        retry_count += 1
+                        print(f"Error generating video prompt {prompt_index}: {e}. Retrying... ({retry_count}/{max_retries})")
+                        time.sleep(1)  # Optional: wait before retrying
+                else:
+                    print(f"Failed to generate a valid prompt after {max_retries} attempts for prompt {prompt_index}.")
+                    messagebox.showerror("Prompt Generation Error", f"Failed to generate a valid prompt after {max_retries} attempts for prompt {prompt_index}.")
+                    return  # Exit the function if unable to generate valid prompts
 
         # After generating all prompts, save them
         try:
@@ -5666,7 +5909,7 @@ class MultimediaSuiteApp:
             video_save_path = os.path.join(video_folder, video_filename)
 
             # Combine all prompts into a single string separated by the delimiter
-            formatted_prompts = f"\n--------------------\n".join(generated_prompts)
+            formatted_prompts = "\n--------------------\n".join(generated_prompts)
 
             self.save_to_file(formatted_prompts, video_save_path)
 
@@ -5704,6 +5947,7 @@ class MultimediaSuiteApp:
         except subprocess.CalledProcessError as e:
             print(f"Error ensuring model availability: {e}")
             messagebox.showerror("Ollama Model Error", f"Failed to ensure model '{model_name}' is available.\nError: {e}")
+    
 
     def ensure_prompt_count_update(self):
         """
@@ -5714,9 +5958,10 @@ class MultimediaSuiteApp:
 
     def generate_audio_prompts(self):
         """
-        Generate detailed audio prompts based on the input concept entered by the user.
-        Automatically retries each audio prompt generation step until valid prompts are obtained.
-        Ensures the same number of audio prompts as video prompts without blanks.
+        Generate detailed audio prompts optimized for AUDIOLDM2 Sound Effects Prompting Standards.
+        Focuses solely on listing sounds without any filler English.
+        Automatically retries each audio prompt generation step with alternative prompt templates
+        until valid prompts are obtained. Ensures the same number of audio prompts as video prompts without blanks.
         """
         if not self.video_prompts:
             messagebox.showerror("Video Prompts Missing", "Please generate video prompts before generating audio prompts.")
@@ -5741,35 +5986,72 @@ class MultimediaSuiteApp:
             sonic_descriptions = []
 
             for i, video_prompt_set in enumerate(video_prompt_sets, start=1):
-                while True:
-                    try:
-                        # Create a sound-specific prompt from the video prompt
-                        sound_prompt = (
-                            f"Generate a sonic description based on the following visual scene: '{video_prompt_set}'. "
-                            "Focus only on the sounds, atmosphere, background noises, ambient audio, and specific sonic elements. "
-                            "Do not describe visual elements. Describe what the listener would hear in this scene, including subtle "
-                            "details like environmental sounds, echoes, footsteps, machinery, voices, or any relevant sonic cues."
-                        )
+                retry_attempt = 0
+                max_retries = 3  # Maximum number of retries per audio prompt
+                success = False
 
+                # Define prompt templates to request only sounds separated by commas
+                # Each template explicitly instructs the model to generate only a list of sounds
+                alternative_prompts = [
+                    (
+                        f"Based on the following scene description, list all the sounds present in the scene. Provide only the sounds separated by commas without any additional text.\n"
+                        f"Scene Description:\n{video_prompt_set}\n"
+                        f"List of sounds:"
+                    ),
+                    (
+                        f"Create an audio description for the scene below by listing all audible elements. Do not include any sentences or explanations—only list the sounds separated by commas.\n"
+                        f"Scene Description:\n{video_prompt_set}\n"
+                        f"List of sounds:"
+                    ),
+                    (
+                        f"Provide a comprehensive list of sounds for the following scene. Ensure that the response contains only the sounds, separated by commas, without any additional commentary.\n"
+                        f"Scene Description:\n{video_prompt_set}\n"
+                        f"List of sounds:"
+                    )
+                ]
+
+                while retry_attempt < max_retries and not success:
+                    try:
+                        # Select the prompt template based on the current retry attempt
+                        if retry_attempt < len(alternative_prompts):
+                            sound_prompt = alternative_prompts[retry_attempt]
+                        else:
+                            # If all alternative prompts are exhausted, reuse the last one
+                            sound_prompt = alternative_prompts[-1]
+
+                        print(f"Attempting to generate audio prompt {i}, Retry {retry_attempt + 1}/{max_retries}")
                         # Send the sound prompt to Ollama to generate the sonic description
                         translated_sonic_prompt = self.generate_prompts_via_ollama(sound_prompt, 'audio', 1)  # Process one audio prompt at a time
 
                         if not translated_sonic_prompt:
                             raise Exception("No sonic description generated. Retrying...")
 
+                        # Log the raw response for debugging
+                        print(f"Raw response for audio prompt {i}:\n{translated_sonic_prompt}")
+
                         # Clean and store the sonic description
-                        cleaned_sonic_prompt = clean_prompt_text(translated_sonic_prompt)
-                        formatted_sonic_prompt = self.remove_unwanted_headers(cleaned_sonic_prompt)
+                        cleaned_sonic_prompt = self.clean_prompt_text(translated_sonic_prompt)
+                        if not cleaned_sonic_prompt:
+                            raise Exception(f"Invalid prompt format for prompt {i}. Retrying...")
 
                         # Validate the generated audio prompt
-                        if self.validate_prompts(formatted_sonic_prompt, 1):
-                            sonic_descriptions.append(formatted_sonic_prompt)
-                            break  # Valid prompt obtained, move to the next
+                        if self.validate_prompts(cleaned_sonic_prompt, 1):
+                            sonic_descriptions.append(cleaned_sonic_prompt)
+                            print(f"Audio prompt {i} generated successfully.")
+                            success = True
                         else:
-                            print(f"Validation failed for audio prompt {i}. Retrying...")
-
+                            retry_attempt += 1
+                            print(f"Validation failed for audio prompt {i}. Retrying... ({retry_attempt}/{max_retries})")
+                            time.sleep(1)  # Optional: wait before retrying
                     except Exception as e:
-                        print(f"Error generating audio prompt {i}: {e}. Retrying...")
+                        retry_attempt += 1
+                        print(f"Error generating audio prompt {i}: {e}. Retrying... ({retry_attempt}/{max_retries})")
+                        time.sleep(1)  # Optional: wait before retrying
+
+                if not success:
+                    print(f"Failed to generate a valid audio prompt after {max_retries} attempts for prompt {i}.")
+                    messagebox.showerror("Audio Prompt Generation Error", f"Failed to generate a valid audio prompt after {max_retries} attempts for prompt {i}.")
+                    return  # Exit the function if unable to generate valid prompts
 
             # Join the sonic descriptions together with the same format as video prompts
             formatted_sonic_prompts = "\n--------------------\n".join(sonic_descriptions)
@@ -5782,7 +6064,7 @@ class MultimediaSuiteApp:
 
             # Store the audio prompts for later use
             self.audio_prompts = formatted_sonic_prompts
-            enable_button(self.generate_sound_button)
+            self.enable_button(self.generate_sound_button)
 
             # Display the formatted audio prompts
             self.output_text.delete("1.0", tk.END)
@@ -5793,8 +6075,7 @@ class MultimediaSuiteApp:
         except Exception as e:
             messagebox.showerror("Prompt Generation Error", f"Failed to generate audio prompts: {e}")
             print(f"Error generating audio prompts: {e}")
-
-            
+        
     def initialize_ollama(self):
         """
         Initializes the Ollama API URL assuming the server is already running.
@@ -5842,7 +6123,20 @@ class MultimediaSuiteApp:
                 json.dump(DEFAULT_SETTINGS, f, indent=4)
             print("Initialized settings.json with default settings.")
         else:
-            print("settings.json already exists.")
+            # Ensure that 'huggingface_api_token' exists in settings
+            with open(SETTINGS_FILE, 'r') as f:
+                try:
+                    settings = json.load(f)
+                except json.JSONDecodeError:
+                    settings = {}
+            
+            if "huggingface_api_token" not in settings:
+                settings["huggingface_api_token"] = ""
+                with open(SETTINGS_FILE, 'w') as f:
+                    json.dump(settings, f, indent=4)
+                print("Added 'huggingface_api_token' to settings.json.")
+            else:
+                print("settings.json already contains 'huggingface_api_token'.")
             
     def select_video_file(self, frame, index):
         """
@@ -6374,6 +6668,32 @@ class MultimediaSuiteApp:
 
         return cleaned_text
 
+    def parse_outline(self, raw_outline, num_prompts):
+        """
+        Parses the outline returned by the model into a list of scene descriptions.
+
+        Args:
+            raw_outline (str): The raw outline text from the model.
+            num_prompts (int): The expected number of scenes.
+
+        Returns:
+            list: A list of scene descriptions, or None if parsing fails.
+        """
+        scene_descriptions = []
+        lines = raw_outline.strip().split('\n')
+        for line in lines:
+            # Match lines that start with a number followed by a period or parenthesis
+            match = re.match(r'^\s*(\d+)\s*[\.\)]\s*(.*)', line)
+            if match:
+                scene_number = int(match.group(1))
+                scene_description = match.group(2).strip()
+                if scene_description:
+                    scene_descriptions.append(scene_description)
+        if len(scene_descriptions) != num_prompts:
+            print(f"Expected {num_prompts} scenes in the outline, but got {len(scene_descriptions)}.")
+            return None
+        return scene_descriptions
+
             
     def parse_raw_response(self, raw_data):
         """
@@ -6764,10 +7084,10 @@ class MultimediaSuiteApp:
                     self.audio_specific_modes_vars[mode].set(True)
             self.audio_open_source_mode_var.set(audio_options.get("open_source_mode", True))
             self.audio_model_name_var.set(audio_options.get("model_name", "audioldm2-full-large-1150k"))
-            self.audio_guidance_scale_var.set(audio_options.get("guidance_scale", 10.0))
-            self.audio_ddim_steps_var.set(audio_options.get("ddim_steps", 100))
-            self.audio_n_candidate_var.set(audio_options.get("n_candidate_gen_per_text", 5))
-            self.audio_seed_var.set(audio_options.get("seed", 12345))
+            self.audio_guidance_scale_var.set(audio_options.get("guidance_scale", 3.5))
+            self.audio_ddim_steps_var.set(audio_options.get("ddim_steps", 300))
+            self.audio_n_candidate_var.set(audio_options.get("n_candidate_gen_per_text", 15))
+            self.audio_seed_var.set(audio_options.get("seed", 1990))
             
     def ensure_ollama_installed_and_model_available(self, model_name="llama3.2"):
         try:
@@ -6953,7 +7273,7 @@ class MultimediaSuiteApp:
         self.video_story_mode_var = tk.BooleanVar()
         self.video_story_mode_checkbox = ttk.Checkbutton(
             options_label_frame,
-            text="Story Mode - Coming VERY soon",
+            text="Story Mode - BETA",
             variable=self.video_story_mode_var,
             style='TCheckbutton'
         )
@@ -7108,10 +7428,10 @@ class MultimediaSuiteApp:
                     "specific_modes": [],
                     "open_source_mode": True,
                     "model_name": "audioldm2-full-large-1150k",
-                    "guidance_scale": 10.0,
-                    "ddim_steps": 100,
-                    "n_candidate_gen_per_text": 5,
-                    "seed": 12345
+                    "guidance_scale": 3.5,
+                    "ddim_steps": 300,
+                    "n_candidate_gen_per_text": 15,
+                    "seed": 1990
                 }
             }
             with open(SETTINGS_FILE, 'w') as f:
@@ -7184,14 +7504,14 @@ class MultimediaSuiteApp:
         self.audio_specific_modes_vars = {}
         self.audio_open_source_mode_var = tk.BooleanVar(value=True)
         self.audio_model_name_var = tk.StringVar(value="audioldm2-full-large-1150k")
-        self.audio_guidance_scale_var = tk.DoubleVar(value=10.0)
-        self.audio_ddim_steps_var = tk.IntVar(value=100)
-        self.audio_n_candidate_var = tk.IntVar(value=5)
-        self.audio_seed_var = tk.IntVar(value=12345)
+        self.audio_guidance_scale_var = tk.DoubleVar(value=3.5)
+        self.audio_ddim_steps_var = tk.IntVar(value=300)
+        self.audio_n_candidate_var = tk.IntVar(value=15)
+        self.audio_seed_var = tk.IntVar(value=1990)
         self.audio_device_var = tk.StringVar(value="cpu")  # Initialize audio_device_var with default 'cpu'
-        self.audio_inference_steps_var = tk.IntVar(value=200)  # Default inference steps
-        self.audio_length_var = tk.DoubleVar(value=10.0)  # Default audio length in seconds
-        self.audio_waveforms_var = tk.IntVar(value=3)  # Default number of waveforms per prompt
+        self.audio_inference_steps_var = tk.IntVar(value=300)  # Default inference steps
+        self.audio_length_var = tk.DoubleVar(value=8.0)  # Default audio length in seconds
+        self.audio_waveforms_var = tk.IntVar(value=10)  # Default number of waveforms per prompt
 
         # 1. Exclude Music & Musical Instruments Checkbox
         self.audio_exclude_music_checkbox = ttk.Checkbutton(
@@ -7412,7 +7732,7 @@ class MultimediaSuiteApp:
         waveforms_spinbox = tk.Spinbox(
             options_label_frame,
             from_=1,
-            to=10,
+            to=50,
             textvariable=self.audio_waveforms_var,
             font=('Helvetica', 12)
         )
