@@ -4,14 +4,14 @@
         "holiday_mode": false,
         "selected_holidays": "-SEASONAL HOLIDAYS - New Year",
         "open_source_mode": true,
-        "model_name": "audioldm2-full-large-1150k",
-        "guidance_scale": 3.5,
+        "model_name": "audioldm2-full",
+        "guidance_scale": 5.0,
         "ddim_steps": 300,
-        "n_candidate": 20,
-        "seed": 1990,
+        "n_candidate": 5,
+        "seed": 1234,
         "device": "gpu",
         "inference_steps": 300,
-        "audio_length": 10.0,
+        "audio_length": 8.0,
         "waveforms_per_prompt": 10
     }
 }
