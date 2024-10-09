@@ -278,7 +278,7 @@ def main():
         print(f"Prompt: {positive_prompt}")
         print(f"Output: {output_path}")
 
-        # Generate the video
+        # Generate the video - CUSTOMIZE OUTPUT SETTINGS
         generate_video(
             prompt=combined_prompt,
             generate_type="t2v",  # Assuming all prompts are text-to-video
