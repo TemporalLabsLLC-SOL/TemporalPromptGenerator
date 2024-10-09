@@ -57,6 +57,8 @@ Setting up the Temporal Prompt Engine is simple and hassle-free, allowing you to
 <a name="prerequisites"></a>
 ### Prerequisites
 
+[YouTube Setup Guide Part 1](https://youtu.be/8GQr-lePOWw?si=GuEbjGhk-tbelpZ7)
+
 Before installing the Temporal Prompt Engine, ensure that your system meets the following requirements:
 
 - **Operating System**: Windows 10 or later
