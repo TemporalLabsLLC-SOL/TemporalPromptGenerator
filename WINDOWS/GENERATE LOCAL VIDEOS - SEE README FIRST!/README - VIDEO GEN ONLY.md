@@ -46,6 +46,8 @@ This will open the interface to generate CogVideoX videos based on the prompt li
 
 ---
 
+#You CAN Change the Model, Steps, CFG and more by searching for "Customize Output Settings" in PromptList2MP4Utility.py
+
 <a name="10-join-the-temporal-labs-journey"></a>
 ## 10. Join the Temporal Labs Journey
 
