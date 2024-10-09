@@ -5738,6 +5738,7 @@ class MultimediaSuiteApp:
         Generate video prompts optimized for CogVideoX Prompting Standards.
         In 'Story Mode', first generate a story outline and then create detailed prompts for each scene.
         In 'Non-Story Mode', generate prompts individually without any overlap.
+        Incorporates best prompting practices for enhanced prompt quality.
         """
         input_concept = self.input_text.get("1.0", tk.END).strip()
 
@@ -5759,6 +5760,29 @@ class MultimediaSuiteApp:
 
         generated_prompts = []
 
+        # Define system prompts for story and non-story modes
+        sys_prompt_story = """You are part of a team of bots that creates detailed and highly descriptive video prompts optimized for CogVideoX. 
+        Your task is to transform simple scene descriptions into refined, granular prompts that enhance video generation quality.
+        Follow these rules:
+        - Output a single, highly descriptive prompt per request.
+        - Ensure each prompt is self-contained and optimized for video generation.
+        - Do not mention video durations or phrases like 'generate a video' or 'create a clip'.
+        - Provide the prompt in the following format:
+          positive: [Your positive prompt]
+          negative: [Your negative prompt]
+        """
+
+        sys_prompt_non_story = """You are part of a team of bots that creates detailed and highly descriptive video prompts optimized for CogVideoX. 
+        Your task is to transform simple user inputs into refined, granular prompts that enhance video generation quality.
+        Follow these rules:
+        - Output a single, highly descriptive prompt per request.
+        - Ensure each prompt is unique and self-contained.
+        - Do not mention video durations or phrases like 'generate a video' or 'create a clip'.
+        - Provide the prompt in the following format:
+          positive: [Your positive prompt]
+          negative: [Your negative prompt]
+        """
+
         if self.video_story_mode_var.get():
             # Story Mode: Generate a story outline first
             outline_generated = False
@@ -5767,8 +5791,9 @@ class MultimediaSuiteApp:
 
             while not outline_generated and outline_retry_count < max_outline_retries:
                 try:
-                    # Step 1: Generate a story outline
+                    # Step 1: Generate a story outline with system prompt
                     outline_prompt = (
+                        f"{sys_prompt_story}\n"
                         f"Based on the concept '{input_concept}', generate a detailed outline for a story divided into exactly {num_prompts} scenes. "
                         f"Each scene should be a brief description of what happens, and should not include any positive or negative prompts. "
                         f"Provide the outline as a numbered list, with each scene on a new line. Do not include any additional text before or after the outline.\n"
@@ -5887,27 +5912,28 @@ class MultimediaSuiteApp:
                         # Add optional elements dynamically
                         if video_options["wildlife_animal"]:
                             current_options_context.append(f"Feature a {video_options['wildlife_animal']}.")
-
+                        
                         if video_options["domesticated_animal"]:
                             current_options_context.append(f"Include a {video_options['domesticated_animal']}.")
-
+                        
                         if video_options["soundscape_mode"]:
                             current_options_context.append("Incorporate soundscapes relevant to the scene.")
-
+                        
                         if video_options["holiday_mode"]:
                             current_options_context.append(f"Apply holiday themes: {video_options['selected_holidays']}.")
-
+                        
                         if video_options["no_people_mode"]:
                             current_options_context.append("Focus on the environment or animals, without human figures.")
-
+                        
                         if video_options["chaos_mode"]:
                             current_options_context.append("Introduce chaotic elements that create tension or contrast in the visuals.")
-
+                        
                         if video_options["remix_mode"]:
                             current_options_context.append("Add creative variations in visual styles or thematic choices.")
 
-                        # Build the final prompt for this specific prompt set
-                        single_prompt = (
+                        # Construct the detailed prompt with system prompt and user instructions
+                        detailed_prompt = (
+                            f"{sys_prompt_story}\n"
                             f"Using CogVideoX Prompting Standards and best expert practices, create a detailed video prompt based on the following scene description.\n"
                             f"Scene {prompt_index}: {scene_description}\n"
                             f"The scene is part of a story based on the concept '{input_concept}' and is set in the {video_options['decade']}, shot on a {video_options['camera']}.\n"
@@ -5920,7 +5946,7 @@ class MultimediaSuiteApp:
                         )
 
                         # Call the model to generate the detailed video prompt
-                        raw_video_prompt = self.generate_prompts_via_ollama(single_prompt, 'video', 1)
+                        raw_video_prompt = self.generate_prompts_via_ollama(detailed_prompt, 'video', 1)
 
                         if not raw_video_prompt:
                             raise Exception(f"No video prompt generated for prompt {prompt_index}. Retrying...")
@@ -5952,7 +5978,6 @@ class MultimediaSuiteApp:
                     return  # Exit the function if unable to generate valid prompts
         else:
             # Non-Story Mode: Always include the selected decade
-            generated_prompts = []
             for prompt_index in range(1, num_prompts + 1):
                 retry_count = 0
                 max_retries = 10  # Set a maximum number of retries
@@ -6033,27 +6058,28 @@ class MultimediaSuiteApp:
                         # Add optional elements dynamically
                         if video_options["wildlife_animal"]:
                             current_options_context.append(f"Feature a {video_options['wildlife_animal']}.")
-
+                        
                         if video_options["domesticated_animal"]:
                             current_options_context.append(f"Include a {video_options['domesticated_animal']}.")
-
+                        
                         if video_options["soundscape_mode"]:
                             current_options_context.append("Incorporate soundscapes relevant to the scene.")
-
+                        
                         if video_options["holiday_mode"]:
                             current_options_context.append(f"Apply holiday themes: {video_options['selected_holidays']}.")
-
+                        
                         if video_options["no_people_mode"]:
                             current_options_context.append("Focus on the environment or animals, without human figures.")
-
+                        
                         if video_options["chaos_mode"]:
                             current_options_context.append("Introduce chaotic elements that create tension or contrast in the visuals.")
-
+                        
                         if video_options["remix_mode"]:
                             current_options_context.append("Add creative variations in visual styles or thematic choices.")
 
-                        # Build the final prompt for this specific prompt set
-                        single_prompt = (
+                        # Construct the detailed prompt with system prompt and user instructions
+                        detailed_prompt = (
+                            f"{sys_prompt_non_story}\n"
                             f"Using CogVideoX Prompting Standards and best expert practices, create a detailed video prompt for the concept '{input_concept}'.\n"
                             f"The scene should be unique, self-contained, and optimized for video generation.\n"
                             f"Setting: {video_options['decade']}\n"
@@ -6067,7 +6093,7 @@ class MultimediaSuiteApp:
                         )
 
                         # Call the model to generate a single video prompt
-                        raw_video_prompt = self.generate_prompts_via_ollama(single_prompt, 'video', 1)
+                        raw_video_prompt = self.generate_prompts_via_ollama(detailed_prompt, 'video', 1)
 
                         if not raw_video_prompt:
                             raise Exception(f"No video prompt generated for prompt {prompt_index}. Retrying...")
