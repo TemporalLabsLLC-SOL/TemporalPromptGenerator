@@ -75,7 +75,7 @@ Before installing the Temporal Prompt Engine, ensure that your system meets the 
             - Check the box **"Add Python to PATH"** at the bottom of the installer window.
         - Click **"Install Now"**.
     - **Verify Installation**:
-      - Open **Command Prompt**.
+      - Open a new Command Prompt.
       - Run:
         ```bash
         py -3.10 --version
@@ -87,7 +87,7 @@ Before installing the Temporal Prompt Engine, ensure that your system meets the 
       - Download Git from [Git for Windows](https://git-scm.com/download/win).
       - Run the installer with default settings.
     - **Verify Installation**:
-      - Open **Command Prompt**.
+      - Open a new Command Prompt.
       - Run:
         ```bash
         git --version
@@ -102,16 +102,19 @@ Before installing the Temporal Prompt Engine, ensure that your system meets the 
       - Download the CUDA Toolkit from [CUDA Toolkit Download](https://developer.nvidia.com/cuda-11-8-0-download-archive).
       - Run the installer and follow the on-screen instructions.
   - **Verify Installation**:
-      - Open Command Prompt and run:
+      - Open a new Command Prompt and run:
         ```bash
         nvcc --version
         ```
       - You should see the CUDA compilation tools version information.
 
 - **FFmpeg**: Installed and added to system `PATH`
-    - Follow this guide to install: [How to Install FFmpeg on Windows](https://www.geeksforgeeks.org/how-to-install-ffmpeg-on-windows/)
+    - Step 1: Click [here](https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z) to download the zip file of the latest version.
+    - Step 2: Unzip this file by using any file archiver such as Winrar or 7z.
+    - Step 3: Rename the extracted folder to ffmpeg and move it into the root of C: drive.
+    - `setx /m PATH "C:\ffmpeg\bin;%PATH%"`
     - **Verify Installation**:
-      - Open Command Prompt and run:
+      - Open a new Command Prompt and run:
         ```bash
         ffmpeg -version
         ```
