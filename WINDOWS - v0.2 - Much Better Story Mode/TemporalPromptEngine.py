@@ -5668,6 +5668,70 @@ class MultimediaSuiteApp:
             bool: True if a year is found, False otherwise.
         """
         return bool(re.search(r'\b(19|20)\d{2}\b', text))
+        
+    def get_setting_value(self, var, options_list, random_var, custom_entry_var=None):
+        """
+        Retrieves the value for a setting, applying randomization if enabled.
+
+        Args:
+            var (tk.Variable): The tkinter variable associated with the dropdown.
+            options_list (list): The list of predefined options for the dropdown.
+            random_var (tk.BooleanVar): The variable indicating if randomization is enabled.
+            custom_entry_var (tk.Variable, optional): The variable for custom user entries.
+
+        Returns:
+            str: The selected or randomized value.
+        """
+        if random_var.get():
+            # Start with the predefined options
+            choices = options_list.copy()
+
+            # If there's a custom entry (for animals), split and add to choices
+            if custom_entry_var:
+                custom_text = custom_entry_var.get().strip()
+                if custom_text:
+                    custom_options = [item.strip() for item in custom_text.split(',') if item.strip()]
+                    choices.extend(custom_options)
+
+            if choices:
+                return random.choice(choices)
+            else:
+                return ""  # Return empty string if no options are available
+        else:
+            return var.get()
+
+    def get_randomized_setting(self, var, options_list, random_var, custom_entry_var=None):
+        """
+        Retrieves the value for a setting, applying randomization if enabled.
+
+        Args:
+            var (tk.Variable): The tkinter variable associated with the dropdown.
+            options_list (list): The list of predefined options for the dropdown.
+            random_var (tk.BooleanVar): The variable indicating if randomization is enabled.
+            custom_entry_var (tk.Variable, optional): The variable for custom user entries.
+
+        Returns:
+            str: The selected or randomized value.
+        """
+        if random_var.get():
+            # Start with the predefined options
+            choices = options_list.copy()
+
+            # If there's a custom entry (for animals), split and add to choices
+            if custom_entry_var:
+                custom_text = custom_entry_var.get().strip()
+                if custom_text:
+                    custom_options = [item.strip() for item in custom_text.split(',') if item.strip()]
+                    choices.extend(custom_options)
+
+            if choices:
+                return random.choice(choices)
+            else:
+                # Handle empty choices gracefully
+                messagebox.showwarning("Randomization Warning", f"No available options to randomize for this setting. Using selected value.")
+                return var.get()
+        else:
+            return var.get()
 
     def generate_video_prompts(self):
         """
@@ -5693,69 +5757,9 @@ class MultimediaSuiteApp:
         # Determine the number of prompts to generate
         num_prompts = self.video_prompt_number_var.get()
 
-        # Gather all options set by the user
-        video_options = {
-            "theme": self.video_theme_var.get(),
-            "art_style": self.video_art_style_var.get(),
-            "lighting": self.video_lighting_var.get(),
-            "framing": self.video_framing_var.get(),
-            "camera_movement": self.video_camera_movement_var.get(),
-            "shot_composition": self.video_shot_composition_var.get(),
-            "time_of_day": self.video_time_of_day_var.get(),
-            "decade": self.video_decade_var.get(),  # Keep this as a string
-            "camera": self.video_camera_var.get(),
-            "lens": self.video_lens_var.get(),
-            "resolution": self.video_resolution_var.get(),
-            "wildlife_animal": self.wildlife_animal_var.get(),
-            "domesticated_animal": self.domesticated_animal_var.get(),
-            "soundscape_mode": self.video_soundscape_mode_var.get(),
-            "holiday_mode": self.video_holiday_mode_var.get(),
-            "selected_holidays": self.video_holidays_var.get(),
-            "specific_modes": [mode for mode, var in self.video_specific_modes_vars.items() if var.get()],
-            "no_people_mode": self.video_no_people_mode_var.get(),
-            "chaos_mode": self.video_chaos_mode_var.get(),
-            "story_mode": self.video_story_mode_var.get(),
-            "remix_mode": self.video_remix_mode_var.get(),
-        }
-
-        # Build the base options context as a list for easy manipulation
-        base_options_context = [
-            f"Theme: {video_options['theme']}",
-            f"Art Style: {video_options['art_style']}",
-            f"Lighting: {video_options['lighting']}",
-            f"Framing: {video_options['framing']}",
-            f"Camera Movement: {video_options['camera_movement']}",
-            f"Shot Composition: {video_options['shot_composition']}",
-            f"Time of Day: {video_options['time_of_day']}",
-            f"Camera: {video_options['camera']}, Lens: {video_options['lens']}",
-            f"Resolution: {video_options['resolution']}"
-        ]
-
-        # Add optional elements dynamically
-        if video_options["wildlife_animal"]:
-            base_options_context.append(f"Feature a {video_options['wildlife_animal']}.")
-
-        if video_options["domesticated_animal"]:
-            base_options_context.append(f"Include a {video_options['domesticated_animal']}.")
-
-        if video_options["soundscape_mode"]:
-            base_options_context.append("Incorporate soundscapes relevant to the scene.")
-
-        if video_options["holiday_mode"]:
-            base_options_context.append(f"Apply holiday themes: {video_options['selected_holidays']}.")
-
-        if video_options["no_people_mode"]:
-            base_options_context.append("Focus on the environment or animals, without human figures.")
-
-        if video_options["chaos_mode"]:
-            base_options_context.append("Introduce chaotic elements that create tension or contrast in the visuals.")
-
-        if video_options["remix_mode"]:
-            base_options_context.append("Add creative variations in visual styles or thematic choices.")
-
         generated_prompts = []
 
-        if video_options["story_mode"]:
+        if self.video_story_mode_var.get():
             # Story Mode: Generate a story outline first
             outline_generated = False
             max_outline_retries = 10
@@ -5789,19 +5793,19 @@ class MultimediaSuiteApp:
             if not outline_generated:
                 messagebox.showerror("Outline Generation Error", "Failed to generate a valid story outline after multiple attempts.")
                 # Fallback: Proceed without story mode
-                video_options["story_mode"] = False
+                self.video_story_mode_var.set(False)
                 print("Proceeding without 'Story Mode' due to outline generation failure.")
 
-        if video_options["story_mode"]:
+        if self.video_story_mode_var.get():
             # Story Mode: Check for years in scene descriptions
             year_present = any(self.contains_year(scene) for scene in scene_descriptions)
             print(f"Year present in scene descriptions: {year_present}")
 
             if not year_present:
                 # If no year is present, include the selected decade
-                base_options_context.append(f"Decade: {video_options['decade']}")
-
-            # Else, do not include the decade to avoid confusion
+                base_options_context = [f"Decade: {self.get_randomized_setting(self.video_decade_var, DECADES, self.video_randomize_decade_var)}"]
+            else:
+                base_options_context = []
 
             # Story Mode: Generate detailed prompts for each scene
             for prompt_index, scene_description in enumerate(scene_descriptions, start=1):
@@ -5810,13 +5814,105 @@ class MultimediaSuiteApp:
 
                 while retry_count < max_retries:
                     try:
+                        # Gather settings for this specific prompt
+                        video_options = {
+                            "theme": self.get_randomized_setting(
+                                self.video_theme_var, THEMES, self.video_randomize_theme_var
+                            ),
+                            "art_style": self.get_randomized_setting(
+                                self.video_art_style_var, ART_STYLES, self.video_randomize_art_style_var
+                            ),
+                            "lighting": self.get_randomized_setting(
+                                self.video_lighting_var, LIGHTING_OPTIONS, self.video_randomize_lighting_var
+                            ),
+                            "framing": self.get_randomized_setting(
+                                self.video_framing_var, FRAMING_OPTIONS, self.video_randomize_framing_var
+                            ),
+                            "camera_movement": self.get_randomized_setting(
+                                self.video_camera_movement_var, CAMERA_MOVEMENTS, self.video_randomize_camera_movement_var
+                            ),
+                            "shot_composition": self.get_randomized_setting(
+                                self.video_shot_composition_var, SHOT_COMPOSITIONS, self.video_randomize_shot_composition_var
+                            ),
+                            "time_of_day": self.get_randomized_setting(
+                                self.video_time_of_day_var, TIME_OF_DAY_OPTIONS, self.video_randomize_time_of_day_var
+                            ),
+                            "camera": self.get_randomized_setting(
+                                self.video_camera_var, CAMERAS.get(self.video_decade_var.get(), []), self.video_randomize_camera_var
+                            ),
+                            "lens": self.get_randomized_setting(
+                                self.video_lens_var, LENSES, self.video_randomize_lens_var
+                            ),
+                            "resolution": self.get_randomized_setting(
+                                self.video_resolution_var, RESOLUTIONS.get(self.video_decade_var.get(), RESOLUTIONS[DECADES[0]]), self.video_randomize_resolution_var
+                            ),
+                            "wildlife_animal": self.get_randomized_setting(
+                                self.wildlife_animal_var, WILDLIFE_ANIMALS, self.video_randomize_wildlife_animal_var, self.wildlife_animal_entry_var
+                            ),
+                            "domesticated_animal": self.get_randomized_setting(
+                                self.domesticated_animal_var, DOMESTICATED_ANIMALS, self.video_randomize_domesticated_animal_var, self.domesticated_animal_entry_var
+                            ),
+                            "soundscape_mode": self.video_soundscape_mode_var.get(),
+                            "holiday_mode": self.video_holiday_mode_var.get(),
+                            "selected_holidays": self.video_holidays_var.get(),
+                            "specific_modes": [mode for mode, var in self.video_specific_modes_vars.items() if var.get()],
+                            "no_people_mode": self.video_no_people_mode_var.get(),
+                            "chaos_mode": self.video_chaos_mode_var.get(),
+                            "remix_mode": self.video_remix_mode_var.get(),
+                            "decade": self.get_randomized_setting(
+                                self.video_decade_var, DECADES, self.video_randomize_decade_var
+                            )
+                        }
+
+                        # Debug: Print video_options to verify 'decade' is present
+                        print(f"Prompt {prompt_index} video_options: {video_options}")
+
+                        # Ensure 'decade' is present
+                        if "decade" not in video_options or not video_options["decade"]:
+                            raise KeyError("'decade' is missing or empty in video_options.")
+
+                        # Build the base options context for this prompt
+                        current_options_context = [
+                            f"Theme: {video_options['theme']}",
+                            f"Art Style: {video_options['art_style']}",
+                            f"Lighting: {video_options['lighting']}",
+                            f"Framing: {video_options['framing']}",
+                            f"Camera Movement: {video_options['camera_movement']}",
+                            f"Shot Composition: {video_options['shot_composition']}",
+                            f"Time of Day: {video_options['time_of_day']}",
+                            f"Camera: {video_options['camera']}, Lens: {video_options['lens']}",
+                            f"Resolution: {video_options['resolution']}"
+                        ]
+
+                        # Add optional elements dynamically
+                        if video_options["wildlife_animal"]:
+                            current_options_context.append(f"Feature a {video_options['wildlife_animal']}.")
+
+                        if video_options["domesticated_animal"]:
+                            current_options_context.append(f"Include a {video_options['domesticated_animal']}.")
+
+                        if video_options["soundscape_mode"]:
+                            current_options_context.append("Incorporate soundscapes relevant to the scene.")
+
+                        if video_options["holiday_mode"]:
+                            current_options_context.append(f"Apply holiday themes: {video_options['selected_holidays']}.")
+
+                        if video_options["no_people_mode"]:
+                            current_options_context.append("Focus on the environment or animals, without human figures.")
+
+                        if video_options["chaos_mode"]:
+                            current_options_context.append("Introduce chaotic elements that create tension or contrast in the visuals.")
+
+                        if video_options["remix_mode"]:
+                            current_options_context.append("Add creative variations in visual styles or thematic choices.")
+
                         # Build the final prompt for this specific prompt set
                         single_prompt = (
                             f"Using CogVideoX Prompting Standards and best expert practices, create a detailed video prompt based on the following scene description.\n"
                             f"Scene {prompt_index}: {scene_description}\n"
                             f"The scene is part of a story based on the concept '{input_concept}' and is set in the {video_options['decade']}, shot on a {video_options['camera']}.\n"
                             f"Ensure that the prompt includes the following elements:\n"
-                            + "\n".join(base_options_context) + "\n"
+                            + "\n".join(current_options_context) + "\n"
                             f"Do not mention video durations or phrases like 'generate a video' or 'create a clip'.\n"
                             f"Provide the prompt in the format:\n"
                             f"positive: [Your positive prompt]\n"
@@ -5842,6 +5938,10 @@ class MultimediaSuiteApp:
                             retry_count += 1
                             print(f"Validation failed for prompt {prompt_index}. Retrying... ({retry_count}/{max_retries})")
                             time.sleep(1)  # Optional: wait before retrying
+                    except KeyError as ke:
+                        retry_count += 1
+                        print(f"Error generating video prompt {prompt_index}: {ke}. Retrying... ({retry_count}/{max_retries})")
+                        time.sleep(1)  # Optional: wait before retrying
                     except Exception as e:
                         retry_count += 1
                         print(f"Error generating video prompt {prompt_index}: {e}. Retrying... ({retry_count}/{max_retries})")
@@ -5852,15 +5952,106 @@ class MultimediaSuiteApp:
                     return  # Exit the function if unable to generate valid prompts
         else:
             # Non-Story Mode: Always include the selected decade
-            base_options_context.append(f"Decade: {video_options['decade']}")
-
-            # Non-Story Mode: Generate prompts individually without overlap
+            generated_prompts = []
             for prompt_index in range(1, num_prompts + 1):
                 retry_count = 0
                 max_retries = 10  # Set a maximum number of retries
 
                 while retry_count < max_retries:
                     try:
+                        # Gather settings for this specific prompt
+                        video_options = {
+                            "theme": self.get_randomized_setting(
+                                self.video_theme_var, THEMES, self.video_randomize_theme_var
+                            ),
+                            "art_style": self.get_randomized_setting(
+                                self.video_art_style_var, ART_STYLES, self.video_randomize_art_style_var
+                            ),
+                            "lighting": self.get_randomized_setting(
+                                self.video_lighting_var, LIGHTING_OPTIONS, self.video_randomize_lighting_var
+                            ),
+                            "framing": self.get_randomized_setting(
+                                self.video_framing_var, FRAMING_OPTIONS, self.video_randomize_framing_var
+                            ),
+                            "camera_movement": self.get_randomized_setting(
+                                self.video_camera_movement_var, CAMERA_MOVEMENTS, self.video_randomize_camera_movement_var
+                            ),
+                            "shot_composition": self.get_randomized_setting(
+                                self.video_shot_composition_var, SHOT_COMPOSITIONS, self.video_randomize_shot_composition_var
+                            ),
+                            "time_of_day": self.get_randomized_setting(
+                                self.video_time_of_day_var, TIME_OF_DAY_OPTIONS, self.video_randomize_time_of_day_var
+                            ),
+                            "camera": self.get_randomized_setting(
+                                self.video_camera_var, CAMERAS.get(self.video_decade_var.get(), []), self.video_randomize_camera_var
+                            ),
+                            "lens": self.get_randomized_setting(
+                                self.video_lens_var, LENSES, self.video_randomize_lens_var
+                            ),
+                            "resolution": self.get_randomized_setting(
+                                self.video_resolution_var, RESOLUTIONS.get(self.video_decade_var.get(), RESOLUTIONS[DECADES[0]]), self.video_randomize_resolution_var
+                            ),
+                            "decade": self.get_randomized_setting(
+                                self.video_decade_var, DECADES, self.video_randomize_decade_var
+                            ),
+                            "wildlife_animal": self.get_randomized_setting(
+                                self.wildlife_animal_var, WILDLIFE_ANIMALS, self.video_randomize_wildlife_animal_var, self.wildlife_animal_entry_var
+                            ),
+                            "domesticated_animal": self.get_randomized_setting(
+                                self.domesticated_animal_var, DOMESTICATED_ANIMALS, self.video_randomize_domesticated_animal_var, self.domesticated_animal_entry_var
+                            ),
+                            "soundscape_mode": self.video_soundscape_mode_var.get(),
+                            "holiday_mode": self.video_holiday_mode_var.get(),
+                            "selected_holidays": self.video_holidays_var.get(),
+                            "specific_modes": [mode for mode, var in self.video_specific_modes_vars.items() if var.get()],
+                            "no_people_mode": self.video_no_people_mode_var.get(),
+                            "chaos_mode": self.video_chaos_mode_var.get(),
+                            "remix_mode": self.video_remix_mode_var.get(),
+                        }
+
+                        # Debug: Print video_options to verify 'decade' is present
+                        print(f"Non-Story Prompt {prompt_index} video_options: {video_options}")
+
+                        # Ensure 'decade' is present
+                        if "decade" not in video_options or not video_options["decade"]:
+                            raise KeyError("'decade' is missing or empty in video_options.")
+
+                        # Build the base options context for this prompt
+                        current_options_context = [
+                            f"Theme: {video_options['theme']}",
+                            f"Art Style: {video_options['art_style']}",
+                            f"Lighting: {video_options['lighting']}",
+                            f"Framing: {video_options['framing']}",
+                            f"Camera Movement: {video_options['camera_movement']}",
+                            f"Shot Composition: {video_options['shot_composition']}",
+                            f"Time of Day: {video_options['time_of_day']}",
+                            f"Camera: {video_options['camera']}, Lens: {video_options['lens']}",
+                            f"Resolution: {video_options['resolution']}",
+                            f"Decade: {video_options['decade']}"
+                        ]
+
+                        # Add optional elements dynamically
+                        if video_options["wildlife_animal"]:
+                            current_options_context.append(f"Feature a {video_options['wildlife_animal']}.")
+
+                        if video_options["domesticated_animal"]:
+                            current_options_context.append(f"Include a {video_options['domesticated_animal']}.")
+
+                        if video_options["soundscape_mode"]:
+                            current_options_context.append("Incorporate soundscapes relevant to the scene.")
+
+                        if video_options["holiday_mode"]:
+                            current_options_context.append(f"Apply holiday themes: {video_options['selected_holidays']}.")
+
+                        if video_options["no_people_mode"]:
+                            current_options_context.append("Focus on the environment or animals, without human figures.")
+
+                        if video_options["chaos_mode"]:
+                            current_options_context.append("Introduce chaotic elements that create tension or contrast in the visuals.")
+
+                        if video_options["remix_mode"]:
+                            current_options_context.append("Add creative variations in visual styles or thematic choices.")
+
                         # Build the final prompt for this specific prompt set
                         single_prompt = (
                             f"Using CogVideoX Prompting Standards and best expert practices, create a detailed video prompt for the concept '{input_concept}'.\n"
@@ -5868,7 +6059,7 @@ class MultimediaSuiteApp:
                             f"Setting: {video_options['decade']}\n"
                             f"Camera: {video_options['camera']}\n"
                             f"Ensure that the prompt includes the following elements:\n"
-                            + "\n".join(base_options_context) + "\n"
+                            + "\n".join(current_options_context) + "\n"
                             f"Do not mention video durations or phrases like 'generate a video' or 'create a clip'.\n"
                             f"Provide the prompt in the format:\n"
                             f"positive: [Your positive prompt]\n"
@@ -5894,6 +6085,10 @@ class MultimediaSuiteApp:
                             retry_count += 1
                             print(f"Validation failed for prompt {prompt_index}. Retrying... ({retry_count}/{max_retries})")
                             time.sleep(1)  # Optional: wait before retrying
+                    except KeyError as ke:
+                        retry_count += 1
+                        print(f"Error generating video prompt {prompt_index}: {ke}. Retrying... ({retry_count}/{max_retries})")
+                        time.sleep(1)  # Optional: wait before retrying
                     except Exception as e:
                         retry_count += 1
                         print(f"Error generating video prompt {prompt_index}: {e}. Retrying... ({retry_count}/{max_retries})")
@@ -5934,7 +6129,7 @@ class MultimediaSuiteApp:
         except Exception as e:
             messagebox.showerror("Prompt Generation Error", f"Failed to save video prompts: {e}")
             print(f"Error saving video prompts: {e}")
-
+            
     def ensure_model_available(self, model_name):
         try:
             # List available models
@@ -5947,8 +6142,8 @@ class MultimediaSuiteApp:
         except subprocess.CalledProcessError as e:
             print(f"Error ensuring model availability: {e}")
             messagebox.showerror("Ollama Model Error", f"Failed to ensure model '{model_name}' is available.\nError: {e}")
-    
 
+            
     def ensure_prompt_count_update(self):
         """
         Forces the prompt count to update at least once to avoid blank generations.
