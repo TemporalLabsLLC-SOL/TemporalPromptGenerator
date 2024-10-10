@@ -10,14 +10,14 @@ Features:
     - Text-to-Video (t2v)
     - Image-to-Video (i2v)
     - Video-to-Video (v2v)
-- Select the model version (2b or 5b).
+- Select the model version:
+    - CogVideoX-2b (uses float16)
+    - CogVideoX-5b (uses bfloat16)
 - Input image or video paths based on generation type.
 - Adjust generation parameters:
     - Number of Inference Steps
     - Guidance Scale (CFG)
     - Video Length (seconds)
-    - Resolution
-    - Data Type (float16 or bfloat16)
     - Scheduler Selection
     - Seed (for reproducibility)
     - LoRA Weights (optional)
@@ -30,21 +30,20 @@ Prompt List Format:
 Each prompt block should contain 'positive:' and 'negative:' sections, separated by a line of dashes.
 
 Example:
-positive: [Your positive prompt here]
-negative: [Your negative prompt here]
+positive: A serene landscape with mountains and a river.
+negative: No buildings, no people.
 --------------------
-positive: [Next positive prompt]
-negative: [Next negative prompt]
+positive: A bustling city street at night with neon lights.
+negative: No cars, no rain.
 --------------------
 """
 
 import os
 import random
 import threading
-import platform
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
-
+from PIL import Image
 import torch
 from diffusers import (
     CogVideoXPipeline,
@@ -54,7 +53,7 @@ from diffusers import (
     CogVideoXVideoToVideoPipeline,
 )
 from diffusers.utils import export_to_video, load_image, load_video
-
+import queue
 
 def generate_video(
     prompt: str,
@@ -66,17 +65,17 @@ def generate_video(
     lora_rank: int = 128,
     num_inference_steps: int = 50,
     guidance_scale: float = 6.0,
+    num_videos_per_prompt: int = 1,
     dtype: torch.dtype = torch.bfloat16,
     seed: int = 42,
-    video_length_sec: float = 6.0,
-    fps: int = 8,
     scheduler_type: str = "dpm",  # 'dpm' or 'ddim'
+    fps: int = 8,
 ):
     """
     Generates a video based on the given prompt and saves it to the specified path.
 
     Parameters:
-    - prompt (str): The combined 'positive' and 'negative' prompt.
+    - prompt (str): The description of the video to be generated.
     - generate_type (str): The type of video generation ('t2v', 'i2v', 'v2v').
     - model_path (str): The path of the pre-trained model to be used.
     - output_path (str): The path where the generated video will be saved.
@@ -85,11 +84,11 @@ def generate_video(
     - lora_rank (int): The rank of the LoRA weights.
     - num_inference_steps (int): Number of steps for the inference process.
     - guidance_scale (float): The scale for classifier-free guidance.
-    - dtype (torch.dtype): The data type for computation (default is torch.bfloat16).
+    - num_videos_per_prompt (int): Number of videos to generate per prompt.
+    - dtype (torch.dtype): The data type for computation.
     - seed (int): The seed for reproducibility.
-    - video_length_sec (float): Desired length of the video in seconds.
+    - scheduler_type (str): The scheduler to use ('dpm' or 'ddim').
     - fps (int): Frames per second for the output video.
-    - scheduler_type (str): Type of scheduler to use ('dpm' or 'ddim').
     """
     try:
         # Initialize the pipeline based on the generation type
@@ -98,6 +97,7 @@ def generate_video(
             image = load_image(image=image_or_video_path)
             if image is None:
                 raise ValueError(f"Failed to load image from path: {image_or_video_path}")
+            video = None
         elif generate_type == "t2v":
             pipe = CogVideoXPipeline.from_pretrained(model_path, torch_dtype=dtype)
             image = None
@@ -107,6 +107,7 @@ def generate_video(
             video = load_video(image_or_video_path)
             if video is None:
                 raise ValueError(f"Failed to load video from path: {image_or_video_path}")
+            image = None
         else:
             raise ValueError(f"Invalid generate_type: {generate_type}. Choose from 't2v', 'i2v', 'v2v'.")
 
@@ -133,37 +134,36 @@ def generate_video(
         device = "cuda" if torch.cuda.is_available() else "cpu"
         pipe.to(device)
 
-        # Conditionally apply optimizations based on OS
-        if platform.system() != "Windows":
+        # Apply optimizations based on OS
+        if os.name != "nt":  # Not Windows
             pipe.enable_sequential_cpu_offload()
             pipe.vae.enable_slicing()
             pipe.vae.enable_tiling()
-            print("Applied optimizations for non-Windows OS.")
         else:
-            print("Skipped optimizations for Windows OS.")
+            pass  # Skipping optimizations for Windows OS
 
         # Set random seed for reproducibility
         generator = torch.Generator(device=device).manual_seed(seed)
 
         # Determine the number of frames based on video length and fps
-        num_frames = int(video_length_sec * fps)
+        num_frames = 49  # As per the working CLI script
 
         # Generate the video frames based on the prompt
         if generate_type == "i2v":
             video_generate = pipe(
                 prompt=prompt,
-                image=image,  # The path of the image to be used as the background of the video
-                num_videos_per_prompt=1,  # Number of videos to generate per prompt
-                num_inference_steps=num_inference_steps,  # Number of inference steps
-                num_frames=num_frames,  # Number of frames to generate
-                use_dynamic_cfg=True,  # Used for DPM Scheduler
+                image=image,
+                num_videos_per_prompt=num_videos_per_prompt,
+                num_inference_steps=num_inference_steps,
+                num_frames=num_frames,
+                use_dynamic_cfg=True,
                 guidance_scale=guidance_scale,
-                generator=generator,  # Set the seed for reproducibility
+                generator=generator,
             ).frames[0]
         elif generate_type == "t2v":
             video_generate = pipe(
                 prompt=prompt,
-                num_videos_per_prompt=1,
+                num_videos_per_prompt=num_videos_per_prompt,
                 num_inference_steps=num_inference_steps,
                 num_frames=num_frames,
                 use_dynamic_cfg=True,
@@ -173,24 +173,25 @@ def generate_video(
         else:  # v2v
             video_generate = pipe(
                 prompt=prompt,
-                video=video,  # The path of the video to be used as the background of the video
-                num_videos_per_prompt=1,
+                video=video,
+                num_videos_per_prompt=num_videos_per_prompt,
                 num_inference_steps=num_inference_steps,
-                num_frames=num_frames,
                 use_dynamic_cfg=True,
                 guidance_scale=guidance_scale,
-                generator=generator,  # Set the seed for reproducibility
+                generator=generator,
             ).frames[0]
-        # Export the generated frames to a video file. fps must be set as per requirement.
+
+        # Ensure that video_generate is valid
+        if video_generate is None:
+            raise ValueError("No video frames generated.")
+
+        # Export the generated frames to a video file. fps must be 8 for original video.
         export_to_video(video_generate, output_path, fps=fps)
+
         return f"Video saved to: {output_path}"
 
     except Exception as e:
-        # Handle exceptions and provide informative error messages
-        error_message = f"Error during video generation: {e}"
-        print(error_message)
-        return error_message
-
+        return f"Error generating video: {e}"
 
 def parse_prompt_list(file_path: str):
     """
@@ -221,11 +222,13 @@ def parse_prompt_list(file_path: str):
                 prompts.append(current_prompt)
                 current_prompt = {}
             elif set(line) == set("-"):
+                if "positive" in current_prompt and "negative" not in current_prompt:
+                    print(f"Warning: Delimiter found after 'positive:' but before 'negative:' at line {line_num}. Skipping incomplete prompt.")
+                    current_prompt = {}
                 continue  # Delimiter line
             else:
                 print(f"Warning: Unrecognized line format at line {line_num}: '{line}'. Skipping.")
     return prompts
-
 
 def sanitize_filename(filename: str):
     """
@@ -240,7 +243,6 @@ def sanitize_filename(filename: str):
     keepcharacters = (" ", ".", "_", "-")
     return "".join(c for c in filename if c.isalnum() or c in keepcharacters).rstrip()
 
-
 class VideoGeneratorGUI:
     def __init__(self, master):
         self.master = master
@@ -249,29 +251,16 @@ class VideoGeneratorGUI:
         # Initialize variables
         self.prompt_file = tk.StringVar()
         self.generate_type = tk.StringVar(value="t2v")
-        self.model_selection = tk.StringVar(value="CogVideoX-5b")  # New variable for model selection
+        self.model_selection = tk.StringVar(value="CogVideoX-5b")  # Model selection
         self.inference_steps = tk.IntVar(value=50)
         self.guidance_scale = tk.DoubleVar(value=6.0)
         self.video_length = tk.DoubleVar(value=6.0)  # in seconds
-        self.resolution = tk.StringVar(value="4K UHD (3840x2160)")
-        self.data_type = tk.StringVar(value="bfloat16")
         self.scheduler_type = tk.StringVar(value="dpm")  # 'dpm' or 'ddim'
         self.seed = tk.StringVar(value="Random")
         self.lora_path = tk.StringVar()
         self.lora_rank = tk.IntVar(value=128)
-        self.image_or_video_path = tk.StringVar()  # Added missing variable
+        self.image_or_video_path = tk.StringVar()
         self.status_text = tk.StringVar(value="Select a prompt file and set parameters.")
-
-        # Define resolution options
-        self.resolution_options = [
-            "480p (720x480)",
-        ]
-
-        # Define data type options
-        self.data_type_options = [
-            "float16",
-            "bfloat16",
-        ]
 
         # Define scheduler options
         self.scheduler_options = [
@@ -285,10 +274,16 @@ class VideoGeneratorGUI:
             "CogVideoX-5b",
         ]
 
-        self.fps = 8  # Fixed fps as per original script
+        self.fps = 8  # Fixed fps as per CogVideoX capability
+
+        # Create a queue for thread-safe logging
+        self.queue = queue.Queue()
 
         # Create GUI elements
         self.create_widgets()
+
+        # Start the periodic GUI update
+        self.master.after(100, self.process_queue)
 
     def create_widgets(self):
         # Prompt File Selection
@@ -321,7 +316,7 @@ class VideoGeneratorGUI:
         model_label = tk.Label(model_frame, text="Model Selection:")
         model_label.pack(side=tk.LEFT)
 
-        model_menu = tk.OptionMenu(model_frame, self.model_selection, *self.model_options)
+        model_menu = tk.OptionMenu(model_frame, self.model_selection, *self.model_options, command=self.update_dtype)
         model_menu.pack(side=tk.LEFT, padx=5)
 
         # Image or Video Path (Dynamic)
@@ -358,33 +353,21 @@ class VideoGeneratorGUI:
         length_entry = tk.Entry(params_frame, textvariable=self.video_length)
         length_entry.grid(row=2, column=1, padx=5, pady=5)
 
-        # Resolution
-        resolution_label = tk.Label(params_frame, text="Resolution:")
-        resolution_label.grid(row=3, column=0, sticky=tk.W, padx=5, pady=5)
-        resolution_menu = tk.OptionMenu(params_frame, self.resolution, *self.resolution_options)
-        resolution_menu.grid(row=3, column=1, padx=5, pady=5, sticky="ew")
-
-        # Data Type
-        data_type_label = tk.Label(params_frame, text="Data Type:")
-        data_type_label.grid(row=4, column=0, sticky=tk.W, padx=5, pady=5)
-        data_type_menu = tk.OptionMenu(params_frame, self.data_type, *self.data_type_options)
-        data_type_menu.grid(row=4, column=1, padx=5, pady=5, sticky="ew")
-
         # Scheduler Selection
         scheduler_label = tk.Label(params_frame, text="Scheduler:")
-        scheduler_label.grid(row=5, column=0, sticky=tk.W, padx=5, pady=5)
+        scheduler_label.grid(row=3, column=0, sticky=tk.W, padx=5, pady=5)
         scheduler_menu = tk.OptionMenu(params_frame, self.scheduler_type, *self.scheduler_options)
-        scheduler_menu.grid(row=5, column=1, padx=5, pady=5, sticky="ew")
+        scheduler_menu.grid(row=3, column=1, padx=5, pady=5, sticky="ew")
 
         # Seed
         seed_label = tk.Label(params_frame, text="Seed:")
-        seed_label.grid(row=6, column=0, sticky=tk.W, padx=5, pady=5)
+        seed_label.grid(row=4, column=0, sticky=tk.W, padx=5, pady=5)
         seed_entry = tk.Entry(params_frame, textvariable=self.seed)
-        seed_entry.grid(row=6, column=1, padx=5, pady=5)
+        seed_entry.grid(row=4, column=1, padx=5, pady=5)
 
         # LoRA Weights
         lora_frame = tk.Frame(params_frame)
-        lora_frame.grid(row=7, column=0, columnspan=2, sticky=tk.W, padx=5, pady=5)
+        lora_frame.grid(row=5, column=0, columnspan=2, sticky=tk.W, padx=5, pady=5)
 
         lora_label = tk.Label(lora_frame, text="LoRA Weights Path:")
         lora_label.pack(side=tk.LEFT)
@@ -396,7 +379,7 @@ class VideoGeneratorGUI:
         lora_browse_button.pack(side=tk.LEFT)
 
         # Configure grid weights
-        for i in range(8):
+        for i in range(6):
             params_frame.rowconfigure(i, weight=1)
         params_frame.columnconfigure(1, weight=1)
 
@@ -446,10 +429,19 @@ class VideoGeneratorGUI:
             self.log(f"Selected LoRA weights file: {file_path}")
 
     def log(self, message: str):
-        self.log_area.config(state='normal')
-        self.log_area.insert(tk.END, message + "\n")
-        self.log_area.see(tk.END)
-        self.log_area.config(state='disabled')
+        self.queue.put(message)
+
+    def process_queue(self):
+        try:
+            while True:
+                message = self.queue.get_nowait()
+                self.log_area.config(state='normal')
+                self.log_area.insert(tk.END, message + "\n")
+                self.log_area.see(tk.END)
+                self.log_area.config(state='disabled')
+        except queue.Empty:
+            pass
+        self.master.after(100, self.process_queue)
 
     def start_generation_thread(self):
         # Disable the Generate button to prevent multiple clicks
@@ -461,132 +453,137 @@ class VideoGeneratorGUI:
         thread.start()
 
     def generate_videos(self):
-        prompt_path = self.prompt_file.get()
-        generate_type = self.generate_type.get()
-        model_selected = self.model_selection.get()
-        image_or_video_path = self.image_or_video_path.get()
-        lora_path = self.lora_path.get() if generate_type in ["i2v", "v2v"] else None
-        lora_rank = self.lora_rank.get()
-        data_type = self.data_type.get()
-        scheduler_type = self.scheduler_type.get()
+        try:
+            prompt_path = self.prompt_file.get()
+            generate_type = self.generate_type.get()
+            model_selected = self.model_selection.get()
+            image_or_video_path = self.image_or_video_path.get()
+            lora_path = self.lora_path.get() if generate_type in ["i2v", "v2v"] else None
+            lora_rank = self.lora_rank.get()
+            scheduler_type = self.scheduler_type.get()
 
-        # Map model selection to actual model paths
-        model_map = {
-            "CogVideoX-2b": "THUDM/CogVideoX-2b",
-            "CogVideoX-5b": "THUDM/CogVideoX-5b",
-        }
-        model_path = model_map.get(model_selected)
-        if not model_path:
-            self.log(f"Error: Invalid model selected: {model_selected}")
-            messagebox.showerror("Model Error", "Please select a valid model.")
-            self.enable_generate_button()
-            return
+            # Map model selection to actual model paths and set dtype accordingly
+            model_map = {
+                "CogVideoX-2b": ("THUDM/CogVideoX-2b", torch.float16),
+                "CogVideoX-5b": ("THUDM/CogVideoX-5b", torch.bfloat16),
+            }
+            model_info = model_map.get(model_selected)
+            if not model_info:
+                self.log(f"Error: Invalid model selected: {model_selected}")
+                messagebox.showerror("Model Error", "Please select a valid model.")
+                self.enable_generate_button()
+                return
+            model_path, dtype = model_info
 
-        if not prompt_path or not os.path.isfile(prompt_path):
-            self.log("Error: No valid prompt file selected.")
-            messagebox.showerror("File Error", "Please select a valid prompt list file.")
-            self.enable_generate_button()
-            return
+            # Log the dtype being used
+            dtype_str = "float16" if dtype == torch.float16 else "bfloat16"
+            self.log(f"Selected Model: {model_selected} with dtype: {dtype_str}")
 
-        if generate_type in ["i2v", "v2v"] and not image_or_video_path:
-            self.log(f"Error: {generate_type.upper()} requires an image or video path.")
-            messagebox.showerror("Input Error", f"{generate_type.upper()} requires an image or video path.")
-            self.enable_generate_button()
-            return
+            if not prompt_path or not os.path.isfile(prompt_path):
+                self.log("Error: No valid prompt file selected.")
+                messagebox.showerror("File Error", "Please select a valid prompt list file.")
+                self.enable_generate_button()
+                return
 
-        # Read and parse prompts
-        self.log("Parsing prompt list...")
-        prompts = parse_prompt_list(prompt_path)
-        if not prompts:
-            self.log("Error: No valid prompts found.")
-            messagebox.showerror("Parsing Error", "No valid prompts found in the selected file.")
-            self.enable_generate_button()
-            return
+            if generate_type in ["i2v", "v2v"] and not image_or_video_path:
+                self.log(f"Error: {generate_type.upper()} requires an image or video path.")
+                messagebox.showerror("Input Error", f"{generate_type.upper()} requires an image or video path.")
+                self.enable_generate_button()
+                return
 
-        # Retrieve generation parameters
-        num_steps = self.inference_steps.get()
-        guidance_scale = self.guidance_scale.get()
-        video_length_sec = self.video_length.get()
-        resolution = self.resolution.get()
-        seed_input = self.seed.get()
+            # Read and parse prompts
+            self.log("Parsing prompt list...")
+            prompts = parse_prompt_list(prompt_path)
+            if not prompts:
+                self.log("Error: No valid prompts found.")
+                messagebox.showerror("Parsing Error", "No valid prompts found in the selected file.")
+                self.enable_generate_button()
+                return
 
-        # Set FPS based on resolution if needed, or keep fixed
-        fps = self.fps  # Fixed FPS as per original script
+            # Retrieve generation parameters
+            num_steps = self.inference_steps.get()
+            guidance_scale = self.guidance_scale.get()
+            video_length_sec = self.video_length.get()
+            seed_input = self.seed.get()
 
-        # Determine resolution dimensions
-        resolution_dict = {
-            "480p (720x480)": (720,480),
-        }
-        resolution_dim = resolution_dict.get(resolution, (720, 480))  # Default to 4K UHD
+            # Fixed resolution (720x480)
+            width, height = 720, 480
 
-        # Handle seed
-        if seed_input.lower() == "random":
-            seed = random.randint(0, 1000000)
-        else:
-            try:
-                seed = int(seed_input)
-            except ValueError:
-                self.log("Invalid seed input. Using random seed.")
+            # Handle seed
+            if seed_input.lower() == "random":
                 seed = random.randint(0, 1000000)
+                self.log(f"Using random seed: {seed}")
+            else:
+                try:
+                    seed = int(seed_input)
+                    self.log(f"Using provided seed: {seed}")
+                except ValueError:
+                    self.log("Invalid seed input. Using random seed.")
+                    seed = random.randint(0, 1000000)
 
-        # Determine output directory (same as prompt file directory)
-        output_dir = os.path.dirname(prompt_path)
-        if not os.path.isdir(output_dir):
-            self.log(f"Creating output directory: {output_dir}")
-            os.makedirs(output_dir, exist_ok=True)
+            # Determine output directory (same as prompt file directory)
+            output_dir = os.path.dirname(prompt_path)
+            if not os.path.isdir(output_dir):
+                self.log(f"Creating output directory: {output_dir}")
+                os.makedirs(output_dir, exist_ok=True)
 
-        # Update progress bar
-        self.progress['maximum'] = len(prompts)
-        self.progress['value'] = 0
+            # Update progress bar
+            self.progress['maximum'] = len(prompts)
+            self.progress['value'] = 0
 
-        # Iterate through each prompt and generate videos
-        total = len(prompts)
-        for idx, prompt_data in enumerate(prompts, start=1):
-            positive_prompt = prompt_data.get("positive")
-            negative_prompt = prompt_data.get("negative")
+            # Iterate through each prompt and generate videos
+            total = len(prompts)
+            for idx, prompt_data in enumerate(prompts, start=1):
+                positive_prompt = prompt_data.get("positive")
+                negative_prompt = prompt_data.get("negative")
 
-            if not positive_prompt or not negative_prompt:
-                self.log(f"Skipping prompt {idx}: Incomplete 'positive' or 'negative' sections.")
+                if not positive_prompt or not negative_prompt:
+                    self.log(f"Skipping prompt {idx}: Incomplete 'positive' or 'negative' sections.")
+                    self.progress['value'] += 1
+                    continue
+
+                # Combine positive and negative prompts
+                combined_prompt = f"positive: {positive_prompt}\nnegative: {negative_prompt}"
+
+                # Define output path
+                safe_prompt = sanitize_filename(positive_prompt)[:50]  # Limit length to prevent filesystem issues
+                if not safe_prompt:
+                    safe_prompt = f"video_{idx}"
+                output_filename = f"video_{idx}_{safe_prompt}.mp4"
+                output_path = os.path.join(output_dir, output_filename)
+
+                self.log(f"Generating video {idx}/{total}:")
+                self.log(f"Output: {output_path}")
+
+                # Generate the video
+                result = generate_video(
+                    prompt=combined_prompt,
+                    generate_type=generate_type,
+                    model_path=model_path,  # Use the selected model path
+                    output_path=output_path,
+                    image_or_video_path=image_or_video_path if generate_type in ["i2v", "v2v"] else None,
+                    lora_path=lora_path,
+                    lora_rank=lora_rank,
+                    num_inference_steps=num_steps,
+                    guidance_scale=guidance_scale,
+                    num_videos_per_prompt=1,  # Fixed to 1 per prompt
+                    dtype=dtype,  # Automatically set based on model
+                    seed=seed,
+                    scheduler_type=scheduler_type.lower(),
+                    fps=self.fps,
+                )
+
+                self.log(result)
                 self.progress['value'] += 1
-                continue
 
-            # Combine positive and negative prompts
-            combined_prompt = f"positive: {positive_prompt}\nnegative: {negative_prompt}"
+            self.log("\nAll videos have been generated successfully.")
+            messagebox.showinfo("Generation Complete", "All videos have been generated successfully.")
+            self.enable_generate_button()
 
-            # Define output path
-            safe_prompt = sanitize_filename(positive_prompt)[:50]  # Limit length to prevent filesystem issues
-            if not safe_prompt:
-                safe_prompt = f"video_{idx}"
-            output_filename = f"video_{idx}_{safe_prompt}.mp4"
-            output_path = os.path.join(output_dir, output_filename)
-
-            self.log(f"Generating video {idx}/{total}:")
-            self.log(f"Output: {output_path}")
-
-            # Generate the video
-            result = generate_video(
-                prompt=combined_prompt,
-                generate_type=generate_type,
-                model_path=model_path,  # Use the selected model path
-                output_path=output_path,
-                image_or_video_path=image_or_video_path if generate_type in ["i2v", "v2v"] else None,
-                lora_path=lora_path,
-                lora_rank=lora_rank,
-                num_inference_steps=num_steps,
-                guidance_scale=guidance_scale,
-                dtype=torch.float16 if data_type == "float16" else torch.bfloat16,
-                seed=seed,
-                video_length_sec=video_length_sec,
-                fps=fps,
-                scheduler_type=scheduler_type.lower(),
-            )
-
-            self.log(result)
-            self.progress['value'] += 1
-
-        self.log("\nAll videos have been generated successfully.")
-        messagebox.showinfo("Generation Complete", "All videos have been generated successfully.")
-        self.enable_generate_button()
+        except Exception as e:
+            self.log(f"Unexpected error: {e}")
+            messagebox.showerror("Error", f"An unexpected error occurred: {e}")
+            self.enable_generate_button()
 
     def enable_generate_button(self):
         # Re-enable the Generate button after generation is complete
@@ -604,13 +601,22 @@ class VideoGeneratorGUI:
             self.media_entry.pack_forget()
             self.media_browse_button.pack_forget()
 
+    def update_dtype(self, selected_model):
+        # Automatically update dtype based on model selection
+        if selected_model == "CogVideoX-2b":
+            dtype = "float16"
+        elif selected_model == "CogVideoX-5b":
+            dtype = "bfloat16"
+        else:
+            dtype = "bfloat16"  # Default fallback
+        # Log the dtype update
+        self.log(f"Model '{selected_model}' selected. Setting dtype to {dtype}.")
 
 def main():
     # Initialize the main window
     root = tk.Tk()
     app = VideoGeneratorGUI(root)
     root.mainloop()
-
 
 if __name__ == "__main__":
     main()
