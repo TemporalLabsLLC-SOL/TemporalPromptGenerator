@@ -6,13 +6,13 @@
         "open_source_mode": true,
         "model_name": "audioldm2-full-large-1150k",
         "guidance_scale": 10.0,
-        "ddim_steps": 80,
+        "ddim_steps": 200,
         "n_candidate": 5,
         "seed": 12345,
         "device": "gpu",
         "inference_steps": 300,
-        "audio_length": 10.0,
-        "waveforms_per_prompt": 3
+        "audio_length": 6.0,
+        "waveforms_per_prompt": 5
     },
     "huggingface_api_token": ""
 }

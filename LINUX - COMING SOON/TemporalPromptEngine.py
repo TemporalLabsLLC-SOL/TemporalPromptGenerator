@@ -5556,20 +5556,28 @@ class MultimediaSuiteApp:
         # Function to activate the virtual environment and run the selected script
     def activate_and_run_utility(self, cogvideo_path, temporal_script):
         try:
-            # Activate the virtual environment and run the TemporalCog script
-            activation_script = os.path.join(cogvideo_path, "CogVx", "Scripts", "activate")
+            # Path to the virtual environment's Python executable
+            python_executable = os.path.join(cogvideo_path, "CogVx", "Scripts", "python.exe")
+
+            # Full path to the TemporalCog script (2b or 5b)
+            temporal_script_path = os.path.join(cogvideo_path, temporal_script)
 
             if platform.system() == "Windows":
-                # Use `cmd` to run commands with activated virtual environment on Windows
-                subprocess.run(f'cmd.exe /k "{activation_script} & python {temporal_script}"', shell=True)
+                # Directly use the Python executable from the virtual environment to run the script
+                command = f'"{python_executable}" "{temporal_script_path}"'
+                subprocess.run(command, shell=True)
             else:
-                # On Unix-based systems, use `source`
-                subprocess.run(f'bash -c "source {activation_script} && python {temporal_script}"', shell=True)
+                # On Unix systems, adjust the path to the Python executable and run the script
+                python_executable = os.path.join(cogvideo_path, "CogVx", "bin", "python")
+                command = f'{python_executable} {temporal_script_path}'
+                subprocess.run(command, shell=True)
 
             messagebox.showinfo("Script Execution", f"{temporal_script} has been executed successfully.")
         
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to activate virtual environment and run the script: {e}")
+            messagebox.showerror("Error", f"Failed to execute the script: {e}")
+
+
     def create_smart_directory_and_filenames(self, input_concept):
         """
         Creates directories and filenames based on the input concept.
