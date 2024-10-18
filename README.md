@@ -145,6 +145,10 @@ Before installing the Temporal Prompt Engine, ensure that your system meets the 
      ```bash
      py -3.10 SETUP.py
      ```
+     OR
+     ```bash
+     SIMPLY CLICK EASY-ONE-CLICK-SETUP
+     ```
    - Follow the on-screen prompts. The script will automatically set up the environment, install necessary packages, and configure settings.
 
    **IMPORTANT**: If the script prompts for a restart, **RESTART YOUR COMPUTER** to apply changes.
@@ -165,20 +169,26 @@ Before installing the Temporal Prompt Engine, ensure that your system meets the 
    py -3.10 TemporalPromptEngine.py
    ```
 
-   The application will launch, guiding you through the initial setup.
+   The application will launch, guiding you through the initial setup. DURING THIS SETUP, either after you close the app OR denying to open the open during setup, you will have the option to add a work-around shortcut to your desktop. It currently does not have an icon. That will load the env and scripts reliably going forward.
 
 ---
 
 <a name="4-quick-start-guide"></a>
 ## 4. Quick Start Guide
+IF YOU ADDED THE SHORTCUT TO DESKTOP DURING SETUP
+   ```bash
+     Click the Temporal Prompt Engine Shortcut on your Windows Desktop
+   ```
 
-1. **Activate the Virtual Environment**:
+IF YOU DID NOT ADD SHORTCUT TO DESKTOP DURING SETUP
+
+**Activate the Virtual Environment**:
    ```bash
    cd C:\TemporalPromptEngine-main
    TemporalPromptEngineEnv\Scripts\activate
    ```
 
-2. **Launch the Application**:
+**Launch the Application**:
    ```bash
    py -3.10 TemporalPromptEngine.py
    ```
