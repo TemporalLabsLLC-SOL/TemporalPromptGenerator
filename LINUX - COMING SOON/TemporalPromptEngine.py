@@ -85,6 +85,43 @@ def detect_gpu():
         print("Torch is not installed, assuming no GPU.")
         return False
         
+def parse_model_response(response):
+    """
+    Parses the model's response to extract the positive sounds and ensures the negative section is empty.
+
+    Args:
+        response (str): The raw response from the language model.
+
+    Returns:
+        str: Formatted audio prompt with 'positive:' and empty 'negative:' sections.
+    """
+    # Initialize variables
+    positive_content = ""
+    negative_content = ""
+
+    # Use regex to find the 'positive:' section
+    positive_match = re.search(r'positive:\s*(.*?)(?:\n|$)', response, re.IGNORECASE | re.DOTALL)
+    if positive_match:
+        positive_content = positive_match.group(1).strip()
+        # Remove any unintended separators or additional prompt sets
+        positive_content = re.split(r'[-]{4,}', positive_content)[0].strip()
+    else:
+        # If 'positive:' is not found, return an empty string
+        return ""
+
+    # Use regex to find the 'negative:' section
+    negative_match = re.search(r'negative:\s*(.*)', response, re.IGNORECASE | re.DOTALL)
+    if negative_match:
+        negative_content = negative_match.group(1).strip()
+        # Remove any unintended separators or additional prompt sets
+        negative_content = re.split(r'[-]{4,}', negative_content)[0].strip()
+    else:
+        # If 'negative:' is not found, ensure it's present as empty
+        negative_content = ""
+
+    # Return the formatted prompt with 'negative:' empty if necessary
+    formatted_prompt = f"positive: {positive_content}\nnegative: {negative_content}"
+    return formatted_prompt        
 
 def run_audioldm2(prompt_text, output_filename, index):
     try:
@@ -5353,7 +5390,6 @@ class MultimediaSuiteApp:
             self.buttons_frame,
             text="Generate Audio Prompts",
             command=self.generate_audio_prompts,
-            state=tk.DISABLED,
             bg="#007ACC",
             fg='white',
             font=('Helvetica', 14, 'bold'),
@@ -5503,6 +5539,7 @@ class MultimediaSuiteApp:
         else:
             disable_button(self.generate_video_prompts_button)
             
+
     def generate_videos(self):
         # Prompt the user for the desired version
         version = simpledialog.askstring("Select Version", "Which version would you like to use? (2b or 5b)")
@@ -5519,7 +5556,7 @@ class MultimediaSuiteApp:
             # Check if CogVideo repository is cloned, if not, clone it
             if not os.path.exists(os.path.join(os.getcwd(), "CogVideo")):
                 messagebox.showinfo("Cloning CogVideo Repository", "Cloning CogVideo repository into the project directory.")
-                subprocess.run(["git", "clone", "https://github.com/THUDM/CogVideo"], check=True, shell=True)
+                subprocess.run(["git", "clone", "https://github.com/THUDM/CogVideo"], check=True)
                 messagebox.showinfo("Clone Complete", "CogVideo repository successfully cloned.")
 
             # Check if the virtual environment exists
@@ -5538,42 +5575,54 @@ class MultimediaSuiteApp:
             messagebox.showinfo("Creating Virtual Environment", "Setting up CogVx environment with Python 3.12.")
 
             # Ensure Python 3.12 is used for this virtual environment
-            subprocess.run(["py", "-3.12", "-m", "venv", cogvx_venv_path], check=True, shell=True)
+            subprocess.run(["py", "-3.12", "-m", "venv", cogvx_venv_path], check=True)
 
             # Install the necessary dependencies for CogVideo
             pip_executable = os.path.join(cogvx_venv_path, "Scripts", "pip.exe")
             requirements_file = os.path.join(cogvideo_path, "requirements.txt")
 
-            subprocess.run([pip_executable, "install", "-r", requirements_file], check=True, shell=True)
-            subprocess.run([pip_executable, "install", "torch==2.3.1+cu121", "torchvision==0.18.1+cu121", "torchaudio==2.3.1+cu121", "--index-url", "https://download.pytorch.org/whl/cu121"], check=True, shell=True)
-            subprocess.run([pip_executable, "install", "moviepy==2.0.0.dev2"], check=True, shell=True)
+            subprocess.run([pip_executable, "install", "-r", requirements_file], check=True)
+            subprocess.run([pip_executable, "install", "torch==2.0.1+cu118", "torchvision==0.15.2+cu118", "torchaudio==2.0.2+cu118", "--index-url", "https://download.pytorch.org/whl/cu118"], check=True)
+            subprocess.run([pip_executable, "install", "moviepy==2.0.0.dev2"], check=True)
 
             messagebox.showinfo("Environment Setup Complete", "CogVx environment has been successfully created and dependencies installed.")
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to create virtual environment or install dependencies: {e}")
 
-        # Function to activate the virtual environment and run the selected script
     def activate_and_run_utility(self, cogvideo_path, temporal_script):
         try:
+            # Clear any residual memory before running the script
+            import torch
+            import gc
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.ipc_collect()
+            gc.collect()
+
             # Path to the virtual environment's Python executable
-            python_executable = os.path.join(cogvideo_path, "CogVx", "Scripts", "python.exe")
+            if platform.system() == "Windows":
+                python_executable = os.path.join(cogvideo_path, "CogVx", "Scripts", "python.exe")
+            else:
+                python_executable = os.path.join(cogvideo_path, "CogVx", "bin", "python")
 
             # Full path to the TemporalCog script (2b or 5b)
             temporal_script_path = os.path.join(cogvideo_path, temporal_script)
 
-            if platform.system() == "Windows":
-                # Directly use the Python executable from the virtual environment to run the script
-                command = f'"{python_executable}" "{temporal_script_path}"'
-                subprocess.run(command, shell=True)
-            else:
-                # On Unix systems, adjust the path to the Python executable and run the script
-                python_executable = os.path.join(cogvideo_path, "CogVx", "bin", "python")
-                command = f'{python_executable} {temporal_script_path}'
-                subprocess.run(command, shell=True)
+            # Build the command
+            command = [python_executable, temporal_script_path]
 
-            messagebox.showinfo("Script Execution", f"{temporal_script} has been executed successfully.")
-        
+            # Run the script in a new console window and ensure output is visible
+            if platform.system() == "Windows":
+                # Use CREATE_NEW_CONSOLE to open a new console window
+                subprocess.Popen(command, cwd=cogvideo_path, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            else:
+                # For Unix-like systems, run the script normally
+                subprocess.Popen(command, cwd=cogvideo_path)
+
+            messagebox.showinfo("Script Execution", f"{temporal_script} has been started successfully.")
+
         except Exception as e:
             messagebox.showerror("Error", f"Failed to execute the script: {e}")
 
@@ -5724,7 +5773,8 @@ class MultimediaSuiteApp:
     def validate_prompts(self, generated_prompts, expected_count):
         """
         Validates that the number of prompt sets matches the expected count and 
-        that each set contains exactly one positive and one negative statement with content.
+        that each set contains exactly one 'positive:' section and one 'negative:' section.
+        The 'negative:' section can be empty.
 
         Args:
             generated_prompts (str): The concatenated prompts string.
@@ -5733,9 +5783,10 @@ class MultimediaSuiteApp:
         Returns:
             bool: True if all prompt sets are valid, False otherwise.
         """
-        prompt_sets = generated_prompts.strip().split("--------------------")
+        # Split the prompts based on the separator
+        prompt_sets = [p.strip() for p in generated_prompts.strip().split("--------------------") if p.strip()]
         
-        # Validate that the number of prompt sets matches the expected count
+        # Validate the number of prompt sets
         if len(prompt_sets) != expected_count:
             print(f"Expected {expected_count} prompt sets, but got {len(prompt_sets)}.")
             return False
@@ -5745,18 +5796,25 @@ class MultimediaSuiteApp:
             if not prompt_set:
                 print(f"Prompt set {idx} is empty.")
                 return False
-            positive_match = re.search(r"positive:\s*(.+)", prompt_set, re.IGNORECASE | re.DOTALL)
-            negative_match = re.search(r"negative:\s*(.+)", prompt_set, re.IGNORECASE | re.DOTALL)
-            if not positive_match or not negative_match:
-                print(f"Prompt set {idx} is missing 'positive' or 'negative' sections.")
+
+            # Use regex to find 'positive:' and 'negative:' sections
+            positive_match = re.search(r"positive:\s*(.*)", prompt_set, re.IGNORECASE | re.DOTALL)
+            negative_match = re.search(r"negative:\s*(.*)", prompt_set, re.IGNORECASE | re.DOTALL)
+            
+            if not positive_match or negative_match is None:
+                print(f"Prompt set {idx} is missing 'positive:' or 'negative:' sections.")
                 return False
+            
             positive_content = positive_match.group(1).strip()
             negative_content = negative_match.group(1).strip()
-            if not positive_content or not negative_content:
-                print(f"Prompt set {idx} has empty 'positive' or 'negative' content.")
+            
+            if not positive_content:
+                print(f"Prompt set {idx} has an empty 'positive:' section.")
                 return False
+            
+            # 'negative:' section can be empty, so no need to check its content
+            
         return True
-
     # Function to open audio prompt options
     def show_audio_prompt_options(self):
         self.audio_options_window = tk.Toplevel(self.root)
@@ -6336,62 +6394,80 @@ You do not need to worry about things like scents or non-visual aspects. You are
         self.video_prompt_number_var.set(DEFAULT_PROMPTS + 1)  # Increment once
         self.video_prompt_number_var.set(DEFAULT_PROMPTS)  # Reset to the original value
 
+    def ask_for_prompt_list(self):
+        """
+        Asks the user if they want to use the current session's video prompts or load a prompt list from a file.
+        Returns the prompts as a string.
+        """
+        response = messagebox.askyesno(
+            "Load Video Prompt List",
+            "Do you want to use the current session's video prompts?\nClick 'No' to load a prompt list from a file."
+        )
+        if response:
+            # Use current session's video prompts
+            return self.video_prompts
+        else:
+            # Open file dialog to select a prompt list file
+            file_path = filedialog.askopenfilename(
+                title="Select Video Prompt List File",
+                filetypes=[("Text Files", "*.txt")]
+            )
+            if file_path:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    prompts = f.read()
+                return prompts
+            else:
+                # User cancelled the file dialog
+                return None
+
+
     def generate_audio_prompts(self):
         """
-        Using {input_concept} as inspiration and a guide, provide specific, detailed audio description for this prompt, use a format optimized for AUDIOLDM2 Sound Effects Prompting Standards. represent the soundscape of the video prompt it is being associated with wholly including what may be off-screen"
-        Focuses solely on listing sounds without any filler English or mention of resonant sounds or things that may be confused for music. AVOID MENTION OF MELODIES OR MUSIC or instruments or anything similiar AT ALL COSTS UNLESS SPECIFICALLY PROMPTED FOR. 
-        Provide a comprehensive list of sounds for {video_prompt_set}. The sonic focus is relative to the visual focus and composition. remain true to the scene and focus only on providing a list of what the sound scape would consist of. Provide only the sounds separated by commas without any additional text or natural language for exposition or context lending, you are only saying what you would hear as individual sounds,
-        
-        PROPER FORMAT EXAMPLE:
-        Gentle, whooshing sounds of iridescent wingbeats, soft chirping of insectoid creatures, soothing hum of energy-efficient drones, gentle rustling of crystalline structures, soft babbling of bio-luminescent streams, distant rumble of gravitational stabilizers, muted clicks of symbiotic armor plating, gentle thrumming of resonant organs.
+        Generate audio prompts based on video prompts.
         """
-        if not self.video_prompts:
-            messagebox.showerror("Video Prompts Missing", "Please generate video prompts before generating audio prompts.")
+        # Ask the user if they want to use the current session's video prompts or load an existing list
+        video_prompts, prompt_file_path = self.ask_for_prompt_list()
+        if not video_prompts:
+            # User cancelled or no prompts available
             return
-
-        input_concept = self.input_text.get("1.0", tk.END).strip()
-
-        if len(input_concept) == 0 or len(input_concept) > MAX_CHAR_LIMIT:
-            messagebox.showerror("Input Error", f"The prompt must be between 1 and {MAX_CHAR_LIMIT} characters.")
-            return
-
-        # Calculate the number of video prompts
-        video_prompt_count = self.video_prompts.count('positive:')  # Count how many 'positive:' labels exist in video prompts
-        print(f"Video Prompt Count: {video_prompt_count}")
 
         try:
-            # Gather all video prompts
-            video_prompt_sets = [p.strip() for p in self.video_prompts.split("--------------------") if p.strip()]
-            if len(video_prompt_sets) != video_prompt_count:
-                raise Exception("Mismatch in video prompt count during processing.")
+            # Split the video prompts into individual prompts using the separator
+            video_prompt_sets = [p.strip() for p in video_prompts.strip().split('--------------------') if p.strip()]
+            print(f"Number of video prompts: {len(video_prompt_sets)}")
 
             sonic_descriptions = []
 
             for i, video_prompt_set in enumerate(video_prompt_sets, start=1):
-                retry_attempt = 0
-                max_retries = 12  # Maximum number of retries per audio prompt
-                success = False
+                # Extract 'positive:' section using regular expressions
+                positive_prompt = ''
+                positive_match = re.search(r'positive:\s*(.*?)\s*(?=negative:|$)', video_prompt_set, re.DOTALL | re.IGNORECASE)
+                if positive_match:
+                    positive_prompt = positive_match.group(1).strip()
 
-                # Define prompt templates to request only sounds separated by commas
-                # Each template explicitly instructs the model to generate only a list of sounds
-                alternative_prompts = [
-                    (
-                        f"Provide a comprehensive list of sounds for {video_prompt_set}. The sonic focus is relative to the visual focus and composition. remain true to the scene and focus only on providing a list of what the sound scape would consist of. Provide only the sounds separated by commas without any additional text or natural language like, describe the.....IT SHOULD BE JUST SOUNDS LIKE THE FOLLOWING AND NOTHING MORE = Gentle, whooshing sounds of iridescent wingbeats, soft chirping of insectoid creatures, soothing hum of energy-efficient drones, gentle rustling of crystalline structures, soft babbling of bio-luminescent streams, distant rumble of gravitational stabilizers, muted clicks of symbiotic armor plating, gentle thrumming of resonant organs.\n"
-                    )
-                ]
+                # Ensure positive prompt is available
+                if not positive_prompt:
+                    print(f"No 'positive:' section found in prompt {i}. Skipping this prompt.")
+                    continue  # Skip to the next prompt
+
+                # Build the prompt to send to the language model, instructing it to not include negative prompts
+                sound_prompt_template = (
+                    f"Based on the following video description, list the specific sounds that would make up the soundscape for the scene. Include specific details like the camera model, sounds known to the region being represented, etc. Don't just list basic generic noises if possible to include specific guider. You should start ABSOLUTELY first with the camera itself and then move outwards as you build the sonic landscape prompt set. You are only describing things that make noise and can be heard. Not describing abstract ideas. Avoid terms like whine, hiss or other harmonic resonant type things unless EXPLICTLY called for in the prompt exactly. You are creating absolutely diagetic soundscapes. Do not describe scents, light, colors or non-sonic aspects of the scene here in any form."
+                    f"Focus solely on listing positive sounds without any negative descriptions, labels, separators, or explanations. "
+                    f"Provide only the sounds separated by commas. The output should have two sections: 'positive:' followed by the list of sounds, and 'negative:' with no content or comments of any kind.\n\n"
+                    f"Video Description:\n{positive_prompt}\n"
+                )
+
+                retry_attempt = 0
+                max_retries = 3  # Maximum number of retries per audio prompt
+                success = False
 
                 while retry_attempt < max_retries and not success:
                     try:
-                        # Select the prompt template based on the current retry attempt
-                        if retry_attempt < len(alternative_prompts):
-                            sound_prompt = alternative_prompts[retry_attempt]
-                        else:
-                            # If all alternative prompts are exhausted, reuse the last one
-                            sound_prompt = alternative_prompts[-1]
-
                         print(f"Attempting to generate audio prompt {i}, Retry {retry_attempt + 1}/{max_retries}")
-                        # Send the sound prompt to Ollama to generate the sonic description
-                        translated_sonic_prompt = self.generate_prompts_via_ollama(sound_prompt, 'audio', 1)  # Process one audio prompt at a time
+
+                        # Send the sound prompt to your language model to generate the sonic description
+                        translated_sonic_prompt = self.generate_prompts_via_ollama(sound_prompt_template, 'audio', 1)
 
                         if not translated_sonic_prompt:
                             raise Exception("No sonic description generated. Retrying...")
@@ -6399,35 +6475,74 @@ You do not need to worry about things like scents or non-visual aspects. You are
                         # Log the raw response for debugging
                         print(f"Raw response for audio prompt {i}:\n{translated_sonic_prompt}")
 
-                        # Clean and store the sonic description
-                        cleaned_sonic_prompt = self.clean_prompt_text(translated_sonic_prompt)
-                        if not cleaned_sonic_prompt:
-                            raise Exception(f"Invalid prompt format for prompt {i}. Retrying...")
+                        # Parse the model's response to extract positive sounds and set negative empty
+                        formatted_sonic_prompt = parse_model_response(translated_sonic_prompt)
+                        if not formatted_sonic_prompt.startswith("positive:"):
+                            raise Exception("Formatted sonic prompt is missing 'positive:' section.")
 
                         # Validate the generated audio prompt
-                        if self.validate_prompts(cleaned_sonic_prompt, 1):
-                            sonic_descriptions.append(cleaned_sonic_prompt)
+                        if self.validate_prompts(formatted_sonic_prompt, 1):
+                            sonic_descriptions.append(formatted_sonic_prompt)
                             print(f"Audio prompt {i} generated successfully.")
                             success = True
                         else:
                             retry_attempt += 1
                             print(f"Validation failed for audio prompt {i}. Retrying... ({retry_attempt}/{max_retries})")
-                            time.sleep(1)  # Optional: wait before retrying
                     except Exception as e:
                         retry_attempt += 1
                         print(f"Error generating audio prompt {i}: {e}. Retrying... ({retry_attempt}/{max_retries})")
-                        time.sleep(1)  # Optional: wait before retrying
 
                 if not success:
                     print(f"Failed to generate a valid audio prompt after {max_retries} attempts for prompt {i}.")
-                    messagebox.showerror("Audio Prompt Generation Error", f"Failed to generate a valid audio prompt after {max_retries} attempts for prompt {i}.")
-                    return  # Exit the function if unable to generate valid prompts
+                    messagebox.showerror(
+                        "Audio Prompt Generation Error",
+                        f"Failed to generate a valid audio prompt after {max_retries} attempts for prompt {i}."
+                    )
+                    # Optionally, continue with the next prompt instead of stopping
+                    continue
+
+            if not sonic_descriptions:
+                messagebox.showerror("No Audio Prompts Generated", "No valid audio prompts were generated.")
+                return
 
             # Join the sonic descriptions together with the same format as video prompts
             formatted_sonic_prompts = "\n--------------------\n".join(sonic_descriptions)
 
-            # Save and display the formatted audio prompts
-            directory, _, audio_folder, _, audio_filename = self.create_smart_directory_and_filenames(input_concept)
+            # Determine the directory to save audio prompts
+            if prompt_file_path:
+                # Use the root directory from the loaded video prompt file
+                video_prompt_dir = os.path.dirname(prompt_file_path)
+                root_dir = os.path.dirname(video_prompt_dir)  # Go up one level
+                video_prompt_filename = os.path.basename(prompt_file_path)
+            elif hasattr(self, 'video_prompt_save_path') and self.video_prompt_save_path:
+                # Use the root directory from the current session's video prompts
+                video_prompt_dir = os.path.dirname(self.video_prompt_save_path)
+                root_dir = os.path.dirname(video_prompt_dir)
+                video_prompt_filename = os.path.basename(self.video_prompt_save_path)
+            else:
+                # Default to a standard location or ask the user
+                default_root = os.path.join(os.getcwd(), 'TemporalPromptEngineOutputs')
+                root_dir = default_root
+                if not os.path.exists(root_dir):
+                    os.makedirs(root_dir, exist_ok=True)
+                video_prompt_filename = 'video_prompts.txt'  # Default name if not available
+
+            # Debug statements to verify paths
+            print(f"Prompt File Path: {prompt_file_path}")
+            print(f"Video Prompt Directory: {video_prompt_dir}")
+            print(f"Root Directory: {root_dir}")
+
+            # Create the Audio directory under the root directory
+            audio_folder = os.path.join(root_dir, 'Audio')
+            if not os.path.exists(audio_folder):
+                os.makedirs(audio_folder, exist_ok=True)
+
+            # Extract the base name without '_video_prompts'
+            video_prompt_base_name = os.path.splitext(video_prompt_filename)[0].replace('_video_prompts', '')
+
+            # Define the audio prompt filename to match the desired format
+            audio_filename = f"{video_prompt_base_name}_audio_prompts.txt"
+
             self.audio_save_folder = audio_folder
             audio_save_path = os.path.join(self.audio_save_folder, audio_filename)
             self.save_to_file(formatted_sonic_prompts, audio_save_path)
@@ -6445,7 +6560,7 @@ You do not need to worry about things like scents or non-visual aspects. You are
         except Exception as e:
             messagebox.showerror("Prompt Generation Error", f"Failed to generate audio prompts: {e}")
             print(f"Error generating audio prompts: {e}")
-        
+            
     def initialize_ollama(self):
         """
         Initializes the Ollama API URL assuming the server is already running.
@@ -7241,46 +7356,76 @@ You do not need to worry about things like scents or non-visual aspects. You are
 
 
     def ask_for_prompt_list(self):
-        # Create a popup asking the user if they want to load an existing list or use the one from the session
+        """
+        Asks the user if they want to use the current session's video prompts or load a prompt list from a file.
+        Returns a tuple (prompts, prompt_file_path).
+        """
         response = messagebox.askyesno(
-            "Prompt List Selection",
-            "Would you like to load an existing prompt list? Click 'No' to use the generated prompts from this session."
+            "Load Video Prompt List",
+            "Do you want to use the current session's video prompts?\nClick 'No' to load a prompt list from a file."
         )
-
         if response:
-            # If they choose to load an existing prompt list, open a file browser to select the file
-            prompt_file_path = filedialog.askopenfilename(
-                title="Select Prompt List",
-                filetypes=[("Text Files", "*.txt")],
-                defaultextension=".txt"
-            )
-            if not prompt_file_path:
-                messagebox.showerror("File Error", "No file selected. Please select a valid text file.")
-                return None  # Return None if no file is selected
-            else:
-                with open(prompt_file_path, 'r') as file:
-                    prompts = file.read()
-                print(f"Loaded prompt list from file: {prompt_file_path}")
-                return prompts
+            # Use current session's video prompts
+            prompts = self.video_prompts
+            prompt_file_path = self.video_prompt_save_path if hasattr(self, 'video_prompt_save_path') else None
+            return prompts, prompt_file_path
         else:
-            # If they choose to use the generated session list, return the current session's audio prompts
-            if not self.audio_prompts:
-                messagebox.showwarning("Prompt Error", "No audio prompts found. Please generate audio prompts first.")
-                return None
-            return self.audio_prompts
+            # Open file dialog to select a prompt list file
+            file_path = filedialog.askopenfilename(
+                title="Select Video Prompt List File",
+                filetypes=[("Text Files", "*.txt")]
+            )
+            if file_path:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    prompts = f.read()
+                return prompts, file_path
+            else:
+                # User cancelled the file dialog
+                return None, None
+
+
+    def sanitize_filename(self, sound_text):
+        """
+        Sanitize the sound_text to create a valid filename.
+        Removes or replaces invalid characters, including newlines.
+        """
+        # Replace newline characters with a space
+        sound_text = sound_text.replace('\n', ' ').replace('\r', ' ')
+        
+        # Remove all characters except word characters, spaces, and hyphens
+        sanitized = re.sub(r'[^\w\s-]', '', sound_text)
+        
+        # Replace spaces with underscores
+        sanitized = sanitized.strip().replace(' ', '_')
+        
+        # Truncate to 50 characters to prevent excessively long filenames
+        sanitized = sanitized[:50]
+        
+        # If the sanitized string is empty, assign a default name
+        if not sanitized:
+            sanitized = "sound"
+        
+        return sanitized
 
     def generate_sound_effects(self):
         print("generate_sound_effects called")
         
-        # Ask the user if they want to load a prompt list or use the session's prompts
-        prompts = self.ask_for_prompt_list()
+        # Unpack the tuple returned by ask_for_prompt_list()
+        prompts, prompt_file_path = self.ask_for_prompt_list()
         if not prompts:
+            messagebox.showwarning("Prompt Error", "No prompts available for sound effect generation.")
             return
 
         # Continue with the rest of the sound effect generation logic
         duration = self.audio_length_var.get()
         if not duration:
             messagebox.showwarning("Duration Error", "Please provide a valid duration.")
+            return
+
+        try:
+            duration = float(duration)
+        except ValueError:
+            messagebox.showwarning("Duration Error", "Duration must be a number.")
             return
 
         self.duration = duration  # Store duration in the class instance
@@ -7298,18 +7443,45 @@ You do not need to worry about things like scents or non-visual aspects. You are
         os.makedirs(audio_save_folder, exist_ok=True)
         print(f"Audio save folder: {audio_save_folder}")
 
-        # Split the audio prompts into individual prompts and remove any unwanted prefixes
-        prompts = [re.sub(r'negative:\s*', '', p.strip()) for p in prompts.strip().split('--------------------') if p.strip()]
-        print(f"Number of audio prompts to process: {len(prompts)}")
+        # Split the audio prompts into individual prompt sets and remove any unwanted prefixes
+        prompt_sets = [re.sub(r'negative:\s*', '', p.strip()) for p in prompts.strip().split('--------------------') if p.strip()]
+        print(f"Number of audio prompt sets to process: {len(prompt_sets)}")
 
-        # Retrieve the number of prompts to generate
-        number_of_prompts = self.video_prompt_number_var.get()
-        waveforms_per_prompt = self.audio_waveforms_var.get()
+        # Retrieve inference steps and configuration number
         inference_steps = self.audio_inference_steps_var.get()
-        seed = self.audio_seed_var.get()
-        model_name = self.audio_model_name_var.get()
+        try:
+            inference_steps = int(inference_steps)
+        except ValueError:
+            messagebox.showwarning("Inference Steps Error", "Inference steps must be an integer.")
+            return
 
-        print(f"Generating {number_of_prompts} prompts with {waveforms_per_prompt} waveforms each.")
+        seed = self.audio_seed_var.get()
+        try:
+            seed = int(seed)
+        except ValueError:
+            messagebox.showwarning("Seed Error", "Seed must be an integer.")
+            return
+
+        # Include StepsX and CfgX in filenames
+        steps_str = f"Steps{inference_steps}_"
+        cfg_str = f"Cfg{inference_steps}_"  # Assuming cfg is related to inference_steps
+
+        # Organize sounds by prompt set
+        prompt_sets_sounds = []
+        for i, prompt_set in enumerate(prompt_sets, start=1):
+            # Split each prompt set's sounds by commas to get individual sounds
+            sounds = [sound.strip() for sound in prompt_set.split(',') if sound.strip()]
+            prompt_sets_sounds.append(sounds)
+            print(f"Prompt set {i}: {len(sounds)} sounds extracted.")
+
+        # Calculate the total number of individual sounds
+        total_sounds = sum(len(sounds) for sounds in prompt_sets_sounds)
+        print(f"Total number of individual sounds to generate: {total_sounds}")
+
+        # Set the number of prompts for the progress bar
+        number_of_prompts = total_sounds
+
+        print(f"Generating {number_of_prompts} unique sound effects.")
 
         # Ensure AudioLDM2 and torchaudio are installed
         self.ensure_audioldm2_installed()
@@ -7354,47 +7526,71 @@ You do not need to worry about things like scents or non-visual aspects. You are
             style="custom.Horizontal.TProgressbar"
         )
         self.progress_bar.pack(pady=10)
-        self.progress_bar['maximum'] = number_of_prompts * waveforms_per_prompt
+        self.progress_bar['maximum'] = number_of_prompts  # Updated maximum
 
         def run_all_generations():
             print("run_all_generations started")
-            for i, prompt_text in enumerate(prompts[:number_of_prompts], start=1):
-                if prompt_text:
-                    print(f"Generating audio for prompt {i}: {prompt_text}")
-                    try:
-                        generator = torch.Generator(device=device).manual_seed(seed)
-                        audio_samples = pipe(
-                            prompt_text,
-                            negative_prompt="Low quality.",  # You can customize this
-                            num_inference_steps=inference_steps,
-                            audio_length_in_s=duration,
-                            num_waveforms_per_prompt=waveforms_per_prompt,
-                            generator=generator
-                        ).audios
+            generated_audio_files_per_set = [[] for _ in prompt_sets_sounds]  # List of lists to track files per set
+            ratings_per_set = [[] for _ in prompt_sets_sounds]  # To store ratings for each sound
 
-                        for j, audio in enumerate(audio_samples, start=1):
-                            # Sanitize the prompt for filename
-                            sanitized_prompt = re.sub(r'[^\w\s-]', '', prompt_text).strip().replace(' ', '_')[:50]
-                            if not sanitized_prompt:
-                                sanitized_prompt = f"prompt_{i}"
-                            output_filename = os.path.join(audio_save_folder, f"sound_effect_{i}_{j}_{sanitized_prompt}.wav")
+            for set_idx, sounds in enumerate(prompt_sets_sounds, start=1):
+                print(f"Processing Prompt Set {set_idx}")
 
-                            # Save the audio using scipy
-                            scipy.io.wavfile.write(output_filename, rate=16000, data=audio)
-                            print(f"Saved sound effect to {output_filename}")
+                # Create a separate folder for each prompt set
+                video_folder = os.path.join(audio_save_folder, f"Video_{set_idx}")
+                os.makedirs(video_folder, exist_ok=True)
+                print(f"Created/Using folder: {video_folder}")
 
-                            # Update progress bar
-                            self.progress_bar['value'] += 1
-                            self.progress_window.update_idletasks()
+                for sound_idx, sound_text in enumerate(sounds, start=1):
+                    if sound_text:
+                        print(f"Generating audio for set {set_idx}, sound {sound_idx}: {sound_text}")
+                        attempt = 0
+                        max_attempts = 3  # Number of retry attempts
+                        while attempt < max_attempts:
+                            try:
+                                generator = torch.Generator(device=device).manual_seed(seed + set_idx * 1000 + sound_idx)  # Different seed per prompt
+                                audio_samples = pipe(
+                                    sound_text,
+                                    negative_prompt="Low quality.",  # You can customize this
+                                    num_inference_steps=inference_steps,
+                                    audio_length_in_s=duration,
+                                    num_waveforms_per_prompt=1,  # Generate only one waveform per prompt
+                                    generator=generator
+                                ).audios
 
-                    except Exception as e:
-                        print(f"[AudioLDM2 Error] Failed to generate sound effect for prompt {i}: {e}")
-                        messagebox.showerror("AudioLDM2 Error", f"Failed to generate sound effect for prompt {i}.\nError: {e}")
+                                audio = audio_samples[0]  # Since only one waveform is generated
 
-            self.progress_window.destroy()
-            messagebox.showinfo("Sound Effects Generated", f"Sound effects have been generated in the '{audio_save_folder}' folder.")
-            enable_button(self.combine_button)
-            print("Audio generation process completed.")
+                                # Sanitize the sound text for filename
+                                sanitized_sound = self.sanitize_filename(sound_text)
+                                print(f"Sanitized sound text: '{sanitized_sound}'")
+
+                                output_filename = os.path.join(
+                                    video_folder,
+                                    f"{steps_str}Video{set_idx}_SonicLayer{sound_idx}_{sanitized_sound}.wav"
+                                )
+
+                                # Save the audio using scipy
+                                scipy.io.wavfile.write(output_filename, rate=16000, data=audio)
+                                print(f"Saved sound effect to {output_filename}")
+                                generated_audio_files_per_set[set_idx - 1].append(output_filename)
+
+                                # Update progress bar
+                                self.progress_bar['value'] += 1
+                                self.progress_window.update_idletasks()
+
+                                break  # Exit the retry loop on success
+
+                            except Exception as e:
+                                attempt += 1
+                                print(f"[AudioLDM2 Error] Attempt {attempt} failed for set {set_idx}, sound {sound_idx}: {e}")
+                                if attempt < max_attempts:
+                                    print(f"Retrying set {set_idx}, sound {sound_idx} (Attempt {attempt + 1}/{max_attempts})...")
+                                else:
+                                    messagebox.showerror(
+                                        "AudioLDM2 Error",
+                                        f"Failed to generate sound effect for set {set_idx}, sound {sound_idx} after {max_attempts} attempts.\nError: {e}"
+                                    )
+                                    print(f"[AudioLDM2 Error] Giving up on set {set_idx}, sound {sound_idx} after {max_attempts} attempts.")
 
         # Start the thread for generation
         threading.Thread(target=run_all_generations, daemon=True).start()
@@ -7502,140 +7698,200 @@ You do not need to worry about things like scents or non-visual aspects. You are
                     self.audio_specific_modes_vars[mode].set(True)
             self.audio_open_source_mode_var.set(audio_options.get("open_source_mode", True))
             self.audio_model_name_var.set(audio_options.get("model_name", "audioldm2-full-large-1150k"))
-            self.audio_guidance_scale_var.set(audio_options.get("guidance_scale", 3.5))
-            self.audio_ddim_steps_var.set(audio_options.get("ddim_steps", 300))
-            self.audio_n_candidate_var.set(audio_options.get("n_candidate_gen_per_text", 15))
+            self.audio_guidance_scale_var.set(audio_options.get("guidance_scale", 8))
+            self.audio_ddim_steps_var.set(audio_options.get("ddim_steps", 120))
+            self.audio_n_candidate_var.set(audio_options.get("n_candidate_gen_per_text", 8))
             self.audio_seed_var.set(audio_options.get("seed", 1990))
 
 
     def combine_media(self):
         """
-        Combines the selected video file with each available generated audio sound effect.
-        Asks the user if they want to combine all audio variants into a single comparison video for each prompt.
-        Outputs individual videos for each wav, final videos for each prompt, and comparison videos if selected.
+        Combines video files with generated sound effects from respective Video_X folders.
+        Dynamically layers sound effects and optimizes the audio mix.
+        Outputs individual combined video-audio files and optionally combines all audio variants into a comparison video.
         Final videos for each prompt will be combined into FINAL_VIDEO.mp4.
-        Every video will be 6 seconds long, and audio will be trimmed to match the video length (6 seconds).
         """
-        # Check if video_save_folder and audio_save_folder are valid
+
+        import os
+        from pydub import AudioSegment
+        from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
+        import tkinter.filedialog as filedialog
+        import tkinter.messagebox as messagebox
+        import numpy as np
+        from scipy.fft import rfft, rfftfreq
+
+        # Extract the number from filenames for sorting purposes
+        def extract_number(filename):
+            import re
+            match = re.search(r'_(\d+)', filename)
+            return int(match.group(1)) if match else 0
+
+        # Function to combine all audio layers (WAV files) from a Video_X folder into a single soundscape
+        def combine_sound_effects_layers(video_folder):
+            """
+            Combines multiple sound effect layers into a single, dynamically optimized 6-second soundscape.
+            Automatically analyzes sound types (e.g., rain, thunder, footsteps) and adjusts layers based on frequency range,
+            prominence, and perceived distance. Implements environmental mixing techniques.
+            """
+            
+            SAMPLE_RATE = 16000
+            DURATION_MS = 6000  # All sounds are trimmed/padded to 6 seconds
+            
+            # Helper function to perform frequency analysis on sound and classify it
+            def analyze_sound(audio_segment):
+                # Convert the audio segment to raw data for frequency analysis
+                samples = np.array(audio_segment.get_array_of_samples())
+                # Perform the real FFT to get the frequency spectrum
+                freqs = rfftfreq(len(samples), 1 / SAMPLE_RATE)
+                fft_values = np.abs(rfft(samples))
+
+                # Calculate the mean frequency for analysis
+                dominant_frequency = freqs[np.argmax(fft_values)]
+                
+                # Simple heuristic to classify sound based on dominant frequency
+                if dominant_frequency < 200:  # Low-frequency sound, probably bass-heavy (e.g., thunder)
+                    return "low"
+                elif 200 <= dominant_frequency < 1000:  # Mid-range frequencies (e.g., speech, footsteps)
+                    return "mid"
+                else:  # High frequencies (e.g., rain, wind)
+                    return "high"
+
+            # Function to determine volume adjustment based on the sound's classification
+            def get_dynamic_volume(sound_name, sound_classification):
+                volume_adjustments = {
+                    'low': 6,  # Boost low-frequency sounds (e.g., thunder)
+                    'mid': 2,  # Keep mid-range sounds at a moderate level
+                    'high': -4  # Reduce high-frequency background sounds (e.g., rain)
+                }
+
+                # Adjust volume based on sound classification
+                if sound_classification in volume_adjustments:
+                    return volume_adjustments[sound_classification]
+                return 0  # Default no change if unknown
+
+            print(f"Checking folder: {video_folder}")
+            
+            # List all files in the folder
+            all_files = os.listdir(video_folder)
+            print(f"Files in folder: {all_files}")
+
+            # Filter for .wav files (case-insensitive)
+            sound_effect_files = sorted([f for f in all_files if f.lower().endswith('.wav')])
+
+            if not sound_effect_files:
+                print(f"No .wav files found in {video_folder}.")
+                return None
+
+            # Start with a 6-second silent audio segment
+            combined_audio = AudioSegment.silent(duration=DURATION_MS)
+
+            # Dynamic frequency and volume adjustments per sound effect
+            for sound_file in sound_effect_files:
+                sound_file_path = os.path.join(video_folder, sound_file)
+                print(f"Loading sound file: {sound_file_path}")
+                
+                # Load the sound file (trim to 6 seconds)
+                sound = AudioSegment.from_wav(sound_file_path)[:DURATION_MS]
+                
+                # Analyze the sound based on frequency to classify it (e.g., low, mid, high)
+                sound_classification = analyze_sound(sound)
+                print(f"Sound {sound_file} classified as {sound_classification} frequency.")
+
+                # Determine dynamic volume adjustment
+                dynamic_volume = get_dynamic_volume(sound_file, sound_classification)
+                print(f"Applying {dynamic_volume} dB adjustment to {sound_file}.")
+                
+                # Apply the volume adjustment
+                sound = sound + dynamic_volume
+                
+                # Overlay the adjusted sound onto the combined audio
+                combined_audio = combined_audio.overlay(sound)
+
+            # Export the combined audio as a new file
+            combined_audio_path = os.path.join(video_folder, "combined_soundscape.wav")
+            combined_audio.export(combined_audio_path, format="wav")
+            print(f"Combined soundscape saved at {combined_audio_path}")
+
+            return combined_audio_path
+
+        # Ensure video and audio folders are valid
         if not self.video_save_folder or not os.path.exists(self.video_save_folder):
             messagebox.showwarning("No Video Folder Selected", "Please select a valid Video folder.")
             self.video_save_folder = filedialog.askdirectory(title="Select Video Save Folder")
             if not self.video_save_folder:
-                return  # If no folder is selected, exit the method
+                return  # Exit if no folder is selected
 
         if not self.audio_save_folder or not os.path.exists(self.audio_save_folder):
             messagebox.showwarning("No Audio Folder Selected", "Please select a valid Audio folder.")
             self.audio_save_folder = filedialog.askdirectory(title="Select Audio Save Folder")
             if not self.audio_save_folder:
-                return  # If no folder is selected, exit the method
+                return  # Exit if no folder is selected
 
-        # Ask user whether to generate comparison videos for all audio variants
+        # Ask the user if they want to generate comparison videos for all audio variants
         user_choice = messagebox.askyesno("Combine Variants", "Do you want to combine all audio variants into a single comparison video for each prompt?")
 
+        # Retrieve video files from the video folder
         video_files = sorted(
             [os.path.join(self.video_save_folder, f) for f in os.listdir(self.video_save_folder) if f.endswith(('.mp4', '.avi', '.mov', '.mkv'))],
-            key=extract_number_from_filename
+            key=lambda x: extract_number(os.path.basename(x))
         )
 
         if not video_files:
             messagebox.showwarning("No Video Files", "No video files found in the Video folder.")
             return
 
-        audio_files = sorted(
-            [os.path.join(self.audio_save_folder, f) for f in os.listdir(self.audio_save_folder) if f.endswith(('.mp3', '.wav'))]
-        )
+        # List to hold the final video clips for concatenation later
+        final_clips = []
 
-        if not audio_files:
-            messagebox.showwarning("No Audio Files", "No audio files found in the Audio folder.")
-            return
+        # Process each video and match it with its corresponding audio
+        for video_file in video_files:
+            # Extract the video number (e.g., Video_1, Video_2, etc.)
+            base_name = os.path.splitext(os.path.basename(video_file))[0]
+            video_number = extract_number(base_name)
+            video_folder = os.path.join(self.audio_save_folder, f"Video_{video_number}")
 
-        combined_clips = []  # To store each final video for blending
-        processed_prompts = set()  # To track which prompt has been processed (only process unique video files once)
+            if not os.path.exists(video_folder):
+                messagebox.showwarning("Missing Audio Folder", f"No matching audio folder found for {video_file}.")
+                continue
 
-        try:
-            for video_file in video_files:
-                # Extract the number from the video file name (e.g., video_1)
-                base_name = os.path.splitext(os.path.basename(video_file))[0]
-                video_number = base_name.split('_')[1]  # Extract the number after 'video_'
-                video_prefix = f"sound_effect_{video_number}_"  # Matching with sound_effect_1_
-                print(f"Video: {video_file}, Extracted Prefix: {video_prefix}")
+            # Combine sound effects layers into a soundscape for this video
+            soundscape_path = combine_sound_effects_layers(video_folder)
+            if not soundscape_path:
+                messagebox.showwarning("No Audio Files", f"No audio files found or combined for video {video_file}.")
+                continue
 
-                # Filter audio files that match the current video number by prefix (e.g., sound_effect_1_)
-                matching_audio_files = [f for f in audio_files if video_prefix in os.path.basename(f)]
-                print(f"Matching audio files for video {video_file}: {matching_audio_files}")
+            # Load the video clip
+            video_clip = VideoFileClip(video_file).subclip(0, 6)  # Trim to 6 seconds
 
-                if not matching_audio_files:
-                    messagebox.showwarning("No Matching Audio Files", f"No matching audio files found for video {video_file}.")
-                    continue
+            # Load the combined audio (soundscape)
+            audio_clip = AudioFileClip(soundscape_path)
 
-                # Create subfolder for the prompt inside the video folder
-                prompt_folder = os.path.join(self.video_save_folder, base_name)
-                os.makedirs(prompt_folder, exist_ok=True)
+            # Set the combined audio to the video
+            final_video = video_clip.set_audio(audio_clip)
 
-                # The video will always be 6 seconds
-                video_duration = 6
+            # Save the combined video to the output folder
+            output_filename = f"{base_name}_combined.mp4"
+            output_path = os.path.join(self.video_save_folder, output_filename)
+            final_video.write_videofile(output_path, codec="libx264", audio_codec="aac", verbose=False, logger=None)
 
-                # List to store clips for comparison video
-                variant_clips = []
+            print(f"Generated combined video for {video_file} and saved to {output_path}")
 
-                # Process each matching audio file
-                for i, audio_file in enumerate(matching_audio_files):
-                    # Load the current audio file
-                    audio_clip = AudioFileClip(audio_file)
+            # Add the final video clip to the list for final combination later
+            final_clips.append(final_video)
 
-                    # Trim the audio to fit the video duration (6 seconds)
-                    audio_clip = audio_clip.subclip(0, video_duration)
+        # Combine all final clips into one video (if more than one)
+        if final_clips:
+            final_combined_video = concatenate_videoclips(final_clips, method="compose")
+            final_output_path = os.path.join(self.video_save_folder, "FINAL_VIDEO.mp4")
+            final_combined_video.write_videofile(final_output_path, codec="libx264", audio_codec="aac")
+            print(f"\nFinal combined video saved to: {final_output_path}")
+            messagebox.showinfo("Combine Successful", f"Final combined video saved to: {final_output_path}")
+        else:
+            messagebox.showwarning("No Videos Selected", "No videos were selected for the final compilation.")
 
-                    # Apply a slight fade-in and fade-out effect
-                    fade_duration = 0.3  # Fade in/out duration (in seconds)
-                    audio_clip = audio_clip.audio_fadein(fade_duration).audio_fadeout(fade_duration)
+        # Message to notify the user of completion
+        messagebox.showinfo("Combine Successful", "The videos and audio have been successfully combined.")
 
-                    # Load the video clip
-                    video_clip = VideoFileClip(video_file)
-
-                    # Set the audio to the video
-                    final_video = video_clip.set_audio(audio_clip)
-
-                    # Construct the output filename for each unique audio-video pair
-                    output_filename = f"{base_name}_combined_with_audio_{i+1}.mp4"
-                    save_path = os.path.join(prompt_folder, output_filename)
-
-                    # Write the combined video to file
-                    final_video.write_videofile(save_path, codec="libx264", audio_codec="aac")
-
-                    print(f"Generated video with audio {i+1} for {video_file}")
-
-                    # Add this clip to the comparison list if user chose to make comparison video
-                    if user_choice:
-                        variant_clips.append(final_video)
-
-                # Only add the highest-ranking (first) audio as the final prompt video
-                highest_ranking_clip = video_clip.set_audio(AudioFileClip(matching_audio_files[0]).subclip(0, video_duration))
-                final_prompt_path = os.path.join(prompt_folder, f"{base_name}_final.mp4")
-                highest_ranking_clip.write_videofile(final_prompt_path, codec="libx264", audio_codec="aac")
-                print(f"Saved final video for {base_name} as: {final_prompt_path}")
-
-                # Add highest-ranking clip to the combined_clips for final blending
-                combined_clips.append(highest_ranking_clip)
-
-                # If user chose to make comparison video, concatenate the variants into one video
-                if user_choice and variant_clips:
-                    comparison_video = concatenate_videoclips(variant_clips, method="compose")
-                    comparison_output_path = os.path.join(prompt_folder, f"{base_name}_final_compare.mp4")
-                    comparison_video.write_videofile(comparison_output_path, codec="libx264", audio_codec="aac")
-                    print(f"Saved comparison video for {base_name} as: {comparison_output_path}")
-
-            # After generating individual videos for each prompt, combine them into FINAL_VIDEO.mp4
-            if combined_clips:
-                final_combined_video = concatenate_videoclips(combined_clips, method="compose")
-                final_output_path = os.path.join(self.video_save_folder, "FINAL_VIDEO.mp4")
-                final_combined_video.write_videofile(final_output_path, codec="libx264", audio_codec="aac")
-                print(f"Final combined video saved to: {final_output_path}")
-                messagebox.showinfo("Combine Successful", f"Final combined video saved to: {final_output_path}")
-
-        except Exception as e:
-            print(f"Error during media combination: {e}")
-            messagebox.showerror("Combine Error", f"An error occurred while combining media: {e}")
 
     def select_audio_for_video(self, video_file, matching_audio_files):
         """
@@ -8140,9 +8396,9 @@ You do not need to worry about things like scents or non-visual aspects. You are
                     "specific_modes": [],
                     "open_source_mode": True,
                     "model_name": "audioldm2-full-large-1150k",
-                    "guidance_scale": 3.5,
-                    "ddim_steps": 300,
-                    "n_candidate_gen_per_text": 15,
+                    "guidance_scale": 8,
+                    "ddim_steps": 80,
+                    "n_candidate_gen_per_text": 8,
                     "seed": 1990
                 }
             }
@@ -8235,14 +8491,14 @@ You do not need to worry about things like scents or non-visual aspects. You are
         self.audio_specific_modes_vars = {}
         self.audio_open_source_mode_var = tk.BooleanVar(value=True)
         self.audio_model_name_var = tk.StringVar(value="audioldm2-full-large-1150k")
-        self.audio_guidance_scale_var = tk.DoubleVar(value=3.5)
-        self.audio_ddim_steps_var = tk.IntVar(value=300)
-        self.audio_n_candidate_var = tk.IntVar(value=15)
+        self.audio_guidance_scale_var = tk.DoubleVar(value=8)
+        self.audio_ddim_steps_var = tk.IntVar(value=120)
+        self.audio_n_candidate_var = tk.IntVar(value=8)
         self.audio_seed_var = tk.IntVar(value=1990)
         self.audio_device_var = tk.StringVar(value="cpu")  # Initialize audio_device_var with default 'cpu'
-        self.audio_inference_steps_var = tk.IntVar(value=300)  # Default inference steps
-        self.audio_length_var = tk.DoubleVar(value=10.0)  # Default audio length in seconds
-        self.audio_waveforms_var = tk.IntVar(value=3)  # Default number of waveforms per prompt
+        self.audio_inference_steps_var = tk.IntVar(value=120)  # Default inference steps
+        self.audio_length_var = tk.DoubleVar(value=6.0)  # Default audio length in seconds
+        self.audio_waveforms_var = tk.IntVar(value=1)  # Default number of waveforms per prompt
 
         # 1. Exclude Music & Musical Instruments Checkbox
         self.audio_exclude_music_checkbox = ttk.Checkbutton(
