@@ -25,7 +25,7 @@ def run_command(command, capture_output=False, cwd=None):
             )
             output = result.stdout.strip()
             if output:
-                print(f"Command output: {output}")
+                print(f"📄 Command output: {output}")
             return output
         else:
             subprocess.run(command, check=True, cwd=cwd)
@@ -33,9 +33,9 @@ def run_command(command, capture_output=False, cwd=None):
     except subprocess.CalledProcessError as e:
         print(f"❌ Command failed with error code {e.returncode}")
         if e.stdout:
-            print(f"Output: {e.stdout.strip()}")
+            print(f"📄 Output: {e.stdout.strip()}")
         if e.stderr:
-            print(f"Error Output: {e.stderr.strip()}")
+            print(f"📝 Error Output: {e.stderr.strip()}")
         return None
 
 def get_venv_executables(venv_dir):
@@ -109,7 +109,6 @@ def create_virtualenv(venv_dir, python_command=None):
     Create a virtual environment using the specified Python command.
     """
     print(f"\n🔧 Creating a virtual environment in '{venv_dir}'...")
-
     if python_command:
         command = [python_command, "-m", "venv", str(venv_dir)]
     else:
@@ -140,61 +139,74 @@ def upgrade_pip(venv_dir):
         print("❌ Failed to upgrade pip.")
         return False
 
-def install_and_verify_package(package_name, venv_dir, install_command=None, import_name=None):
+def install_and_verify_package(package_name, version, venv_dir, install_command=None, import_name=None):
     """
     Install a package using pip from the virtual environment and verify its installation.
     """
-    print(f"\nInstalling package '{package_name}'...")
+    print(f"\n📦 Installing package '{package_name}=={version}'...")
     python_executable, pip_executable = get_venv_executables(venv_dir)
     if not pip_executable.exists():
-        print(f"pip executable not found at {pip_executable}.")
+        print(f"⚠️ pip executable not found at {pip_executable}.")
         return False
 
     # Use custom install command if provided
     if install_command is None:
-        install_command = [str(pip_executable), "install", package_name]
+        install_command = [str(pip_executable), "install", f"{package_name}=={version}"]
     else:
         install_command = install_command
 
     # Install the package
     try:
         run_command(install_command, cwd=venv_dir)
-        print(f"Package '{package_name}' installed successfully.")
+        print(f"✅ Package '{package_name}=={version}' installed successfully.")
     except Exception as e:
-        print(f"Failed to install package '{package_name}'. Error: {e}")
+        print(f"❌ Failed to install package '{package_name}=={version}'. Error: {e}")
         return False
 
-    # Skip verification for 'wheel' as it does not need to be imported
-    if package_name.startswith("--upgrade wheel"):
-        print(f"Skipping import verification for '{package_name}'.")
+    # Skip verification for specific packages
+    skip_verification = [
+        "wheel",
+        "torch",
+        "torchvision",
+        "torchaudio",
+        "huggingface-hub",
+        "audioldm2",
+    ]
+    if package_name in skip_verification:
+        print(f"🔍 Skipping import verification for '{package_name}'.")
         return True
 
     # Verify installation by attempting to import the package
     try:
         # Use custom import name if provided
         if import_name is None:
-            package_import_name = package_name.split('==')[0].split('>=')[0].split('<=')[0].split('~=')[0]
-            if package_import_name == 'Pillow':
-                package_import_name = 'PIL'
+            package_import_name = package_name.replace('-', '_')
+            # Handle special cases
+            if package_import_name == 'python_dotenv':
+                package_import_name = 'dotenv'
+            elif package_import_name == 'pyyaml':
+                package_import_name = 'yaml'
             elif package_import_name == 'moviepy':
                 package_import_name = 'moviepy.editor'
+            elif package_import_name == 'Pillow':
+                package_import_name = 'PIL'
             elif package_import_name == 'tk':
                 package_import_name = 'tkinter'
             elif package_import_name.startswith('audioldm2'):
                 package_import_name = 'audioldm2'
-            elif package_import_name == 'pyyaml':
-                package_import_name = 'yaml'
+            elif package_import_name == 'pydub':
+                package_import_name = 'pydub'
             else:
-                package_import_name = package_import_name.replace('-', '_')
+                package_import_name = package_import_name
         else:
             package_import_name = import_name
 
         command = [str(python_executable), "-c", f"import {package_import_name}"]
         run_command(command, cwd=venv_dir)
-        print(f"Package '{package_name}' verified successfully.")
+        print(f"✅ Package '{package_name}' verified successfully.")
         return True
     except Exception as e:
-        print(f"Failed to verify package '{package_name}'. Error: {e}")
+        print(f"❌ Failed to verify package '{package_name}'. Error: {e}")
         return False
 
 def clone_cogvideo_repo(cogvideo_repo_path):
@@ -524,12 +536,14 @@ def main():
             print("\n❌ CUDA toolkit installation not detected. Exiting setup.")
             sys.exit(1)
 
-    # Step 5: Set up TemporalPromptEngineEnv virtual environment with current Python (e.g., 3.10)
+    # Step 5: Set up TemporalPromptEngineEnv virtual environment with current Python
     venv_dir = script_dir / "TemporalPromptEngineEnv"
     if not venv_dir.exists():
         if not create_virtualenv(venv_dir):
             print("\n❌ Failed to create virtual environment. Exiting setup.")
             sys.exit(1)
+    else:
+        print("✅ Virtual environment already exists.")
 
     # Step 6: Upgrade pip
     if not upgrade_pip(venv_dir):
@@ -541,54 +555,175 @@ def main():
 
     # Step 7: Install required packages for TemporalPromptEngineEnv
     packages_to_install = [
-        {"name": "--upgrade wheel"},  # Run this before playsound
-        {"name": "playsound"},
-        {"name": "python-dotenv>=1.0.1"},
-        {"name": "moviepy>=1.0.3", "import_name": "moviepy.editor"},
-        {"name": "pydub>=0.25.1"},
-        {"name": "Pillow>=9.0.0", "import_name": "PIL"},
-        {"name": "requests>=2.25.1"},
-        {"name": "pyperclip>=1.8.2"},
-        {"name": "scipy>=1.7.0"},
-        {"name": "tk", "import_name": "tkinter"},
-        {"name": "accelerate>=0.21.0"},
-        {"name": "torch==2.4.1+cu118", "install_command": [str(pip_executable), "install", "torch==2.4.1+cu118", "--index-url", "https://download.pytorch.org/whl/cu118"]},
-        {"name": "torchvision==0.19.1+cu118", "install_command": [str(pip_executable), "install", "torchvision==0.19.1+cu118", "--index-url", "https://download.pytorch.org/whl/cu118"]},
-        {"name": "torchaudio==2.4.1+cu118", "install_command": [str(pip_executable), "install", "torchaudio==2.4.1+cu118", "--index-url", "https://download.pytorch.org/whl/cu118"]},
-        {"name": "diffusers==0.21.1"},
-        {"name": "transformers==4.31.0"},
-        {"name": "audioldm2", "install_command": [str(pip_executable), "install", "git+https://github.com/haoheliu/AudioLDM2.git#egg=audioldm2"]},
+        {"name": "wheel", "version": "0.41.3"},
+        {"name": "playsound", "version": "1.3.0"},
+        {"name": "python-dotenv", "version": "1.0.1", "import_name": "dotenv"},
+        {"name": "moviepy", "version": "1.0.3", "import_name": "moviepy.editor"},
+        {"name": "pydub", "version": "0.25.1"},
+        {"name": "Pillow", "version": "10.4.0", "import_name": "PIL"},
+        {"name": "requests", "version": "2.32.3"},
+        {"name": "pyperclip", "version": "1.9.0"},
+        {"name": "scipy", "version": "1.14.1"},
+        {"name": "tk", "version": "0.1.0", "import_name": "tkinter"},
+        {"name": "accelerate", "version": "1.0.1"},
+        {"name": "torch", "version": "2.4.1+cu118", "install_command": [str(pip_executable), "install", "torch==2.4.1+cu118", "--index-url", "https://download.pytorch.org/whl/cu118"]},
+        {"name": "torchvision", "version": "0.19.1+cu118", "install_command": [str(pip_executable), "install", "torchvision==0.19.1+cu118", "--index-url", "https://download.pytorch.org/whl/cu118"]},
+        {"name": "torchaudio", "version": "2.4.1+cu118", "install_command": [str(pip_executable), "install", "torchaudio==2.4.1+cu118", "--index-url", "https://download.pytorch.org/whl/cu118"]},
+        {"name": "diffusers", "version": "0.21.1"},
+        {"name": "transformers", "version": "4.30.2"},
+        {"name": "audioldm2", "version": "0.1.0", "install_command": [str(pip_executable), "install", "git+https://github.com/haoheliu/AudioLDM2.git#egg=audioldm2"]},
+        {"name": "huggingface-hub", "version": "0.25.2"},
+        {"name": "aiofiles", "version": "23.2.1"},
+        {"name": "altair", "version": "5.4.1"},
+        {"name": "annotated-types", "version": "0.7.0"},
+        {"name": "anyio", "version": "4.6.2.post1"},
+        {"name": "attrs", "version": "24.2.0"},
+        {"name": "audioread", "version": "3.0.1"},
+        {"name": "babel", "version": "2.16.0"},
+        {"name": "bibtexparser", "version": "2.0.0b7"},
+        {"name": "certifi", "version": "2024.8.30"},
+        {"name": "cffi", "version": "1.17.1"},
+        {"name": "chardet", "version": "5.2.0"},
+        {"name": "charset-normalizer", "version": "3.4.0"},
+        {"name": "click", "version": "8.1.7"},
+        {"name": "clldutils", "version": "3.22.2"},
+        {"name": "colorama", "version": "0.4.6"},
+        {"name": "colorlog", "version": "6.8.2"},
+        {"name": "contourpy", "version": "1.3.0"},
+        {"name": "csvw", "version": "3.3.1"},
+        {"name": "cycler", "version": "0.12.1"},
+        {"name": "decorator", "version": "4.4.2"},
+        {"name": "dlinfo", "version": "1.2.1"},
+        {"name": "einops", "version": "0.8.0"},
+        {"name": "exceptiongroup", "version": "1.2.2"},
+        {"name": "fastapi", "version": "0.115.2"},
+        {"name": "ffmpy", "version": "0.4.0"},
+        {"name": "filelock", "version": "3.16.1"},
+        {"name": "fonttools", "version": "4.54.1"},
+        {"name": "fsspec", "version": "2024.9.0"},
+        {"name": "ftfy", "version": "6.3.0"},
+        {"name": "gradio", "version": "3.50.2"},
+        {"name": "gradio_client", "version": "0.6.1"},
+        {"name": "h11", "version": "0.14.0"},
+        {"name": "httpcore", "version": "1.0.6"},
+        {"name": "httpx", "version": "0.27.2"},
+        {"name": "idna", "version": "3.10"},
+        {"name": "imageio", "version": "2.36.0"},
+        {"name": "imageio-ffmpeg", "version": "0.5.1"},
+        {"name": "importlib_metadata", "version": "8.5.0"},
+        {"name": "importlib_resources", "version": "6.4.5"},
+        {"name": "isodate", "version": "0.6.1"},
+        {"name": "Jinja2", "version": "3.1.4"},
+        {"name": "joblib", "version": "1.4.2"},
+        {"name": "jsonschema", "version": "4.23.0"},
+        {"name": "jsonschema-specifications", "version": "2024.10.1"},
+        {"name": "julius", "version": "0.2.7"},
+        {"name": "kiwisolver", "version": "1.4.7"},
+        {"name": "language-tags", "version": "1.2.0"},
+        {"name": "librosa", "version": "0.9.1"},
+        {"name": "llvmlite", "version": "0.43.0"},
+        {"name": "local-attention", "version": "1.9.15"},
+        {"name": "lxml", "version": "5.3.0"},
+        {"name": "Markdown", "version": "3.7"},
+        {"name": "MarkupSafe", "version": "2.1.5"},
+        {"name": "matplotlib", "version": "3.9.2"},
+        {"name": "mpmath", "version": "1.3.0"},
+        {"name": "narwhals", "version": "1.9.3"},
+        {"name": "networkx", "version": "3.4.1"},
+        {"name": "numba", "version": "0.60.0"},
+        {"name": "numpy", "version": "1.23.5"},
+        {"name": "orjson", "version": "3.10.7"},
+        {"name": "packaging", "version": "24.1"},
+        {"name": "pandas", "version": "2.2.3"},
+        {"name": "phonemizer", "version": "3.3.0"},
+        {"name": "platformdirs", "version": "4.3.6"},
+        {"name": "pooch", "version": "1.8.2"},
+        {"name": "primePy", "version": "1.3"},
+        {"name": "proglog", "version": "0.1.10"},
+        {"name": "progressbar", "version": "2.5"},
+        {"name": "psutil", "version": "6.0.0"},
+        {"name": "pycparser", "version": "2.22"},
+        {"name": "pydantic", "version": "2.9.2"},
+        {"name": "pydantic_core", "version": "2.23.4"},
+        {"name": "pylatexenc", "version": "2.10"},
+        {"name": "pyparsing", "version": "3.2.0"},
+        {"name": "pystoi", "version": "0.4.1"},
+        {"name": "python-dateutil", "version": "2.9.0.post0"},
+        {"name": "python-multipart", "version": "0.0.12"},
+        {"name": "pytz", "version": "2024.2"},
+        {"name": "PyYAML", "version": "6.0.2"},
+        {"name": "rdflib", "version": "7.0.0"},
+        {"name": "referencing", "version": "0.35.1"},
+        {"name": "regex", "version": "2024.9.11"},
+        {"name": "resampy", "version": "0.4.3"},
+        {"name": "rfc3986", "version": "1.5.0"},
+        {"name": "rpds-py", "version": "0.20.0"},
+        {"name": "safetensors", "version": "0.4.5"},
+        {"name": "scikit-learn", "version": "1.5.2"},
+        {"name": "segments", "version": "2.2.1"},
+        {"name": "semantic-version", "version": "2.10.0"},
+        {"name": "six", "version": "1.16.0"},
+        {"name": "sniffio", "version": "1.3.1"},
+        {"name": "soundfile", "version": "0.12.1"},
+        {"name": "starlette", "version": "0.39.2"},
+        {"name": "sympy", "version": "1.13.3"},
+        {"name": "tabulate", "version": "0.9.0"},
+        {"name": "threadpoolctl", "version": "3.5.0"},
+        {"name": "timm", "version": "1.0.10"},
+        {"name": "tokenizers", "version": "0.13.3"},
+        {"name": "torch-audiomentations", "version": "0.11.1"},
+        {"name": "torch-pitch-shift", "version": "1.2.4"},
+        {"name": "torch-stoi", "version": "0.2.2"},
+        {"name": "torchcrepe", "version": "0.0.20"},
+        {"name": "torchdiffeq", "version": "0.2.4"},
+        {"name": "torchfcpe", "version": "0.0.4"},
+        {"name": "torchgen", "version": "0.0.1"},
+        {"name": "torchlibrosa", "version": "0.1.0"},
+        {"name": "torchmetrics", "version": "0.11.4"},
+        {"name": "torchsde", "version": "0.2.6"},
+        {"name": "torchvision", "version": "0.19.1+cu118", "install_command": [str(pip_executable), "install", "torchvision==0.19.1+cu118", "--index-url", "https://download.pytorch.org/whl/cu118"]},
+        {"name": "tqdm", "version": "4.66.5"},
+        {"name": "trampoline", "version": "0.1.2"},
+        {"name": "transformers", "version": "4.30.2"},
+        {"name": "typing_extensions", "version": "4.12.2"},
+        {"name": "tzdata", "version": "2024.2"},
+        {"name": "Unidecode", "version": "1.3.8"},
+        {"name": "uritemplate", "version": "4.1.1"},
+        {"name": "urllib3", "version": "2.2.3"},
+        {"name": "uvicorn", "version": "0.31.1"},
+        {"name": "wcwidth", "version": "0.2.13"},
+        {"name": "websockets", "version": "11.0.3"},
+        {"name": "zipp", "version": "3.20.2"},
     ]
-
-    for pkg in packages_to_install:
-        name = pkg["name"]
-        install_command = pkg.get("install_command")
-        import_name = pkg.get("import_name")
-        if not install_and_verify_package(name, venv_dir, install_command=install_command, import_name=import_name):
-            print(f"\n❌ Failed to install and verify package '{name}'. Exiting setup.")
-            sys.exit(1)
 
     # Step 8: Install Additional Torch-Related Packages
     additional_torch_packages = [
-        {"name": "torch-audiomentations==0.11.1"},
-        {"name": "torch-pitch-shift==1.2.4"},
-        {"name": "torch-stoi==0.2.2"},
-        {"name": "torchcrepe==0.0.20"},
-        {"name": "torchdiffeq==0.2.4"},
-        {"name": "torchfcpe==0.0.4"},
-        {"name": "torchgen==0.0.1"},
-        {"name": "torchlibrosa==0.1.0"},
-        {"name": "torchmetrics==0.11.4"},
-        {"name": "torchsde==0.2.6"},
+        {"name": "torch-audiomentations", "version": "0.11.1"},
+        {"name": "torch-pitch-shift", "version": "1.2.4"},
+        {"name": "torch-stoi", "version": "0.2.2"},
+        {"name": "torchcrepe", "version": "0.0.20"},
+        {"name": "torchdiffeq", "version": "0.2.4"},
+        {"name": "torchfcpe", "version": "0.0.4"},
+        {"name": "torchgen", "version": "0.0.1"},
+        {"name": "torchlibrosa", "version": "0.1.0"},
+        {"name": "torchmetrics", "version": "0.11.4"},
+        {"name": "torchsde", "version": "0.2.6"},
     ]
 
-    for pkg in additional_torch_packages:
+    # Combine all packages
+    all_packages = packages_to_install + additional_torch_packages
+
+    # Step 9: Install and verify each package
+    for pkg in all_packages:
         name = pkg["name"]
-        if not install_and_verify_package(name, venv_dir):
+        version = pkg.get("version")
+        install_command = pkg.get("install_command")
+        import_name = pkg.get("import_name")
+        if not install_and_verify_package(name, version, venv_dir, install_command=install_command, import_name=import_name):
             print(f"\n❌ Failed to install and verify package '{name}'. Exiting setup.")
             sys.exit(1)
 
-    # Step 9: Clone CogVideo repository and set up CogVx virtual environment using Python 3.12
+    # Step 10: Clone CogVideo repository and set up CogVx virtual environment using Python 3.12
     cogvideo_repo_path = script_dir / "CogVideo"
     cogvideo_gradio_demo_path = cogvideo_repo_path / "inference" / "gradio_composite_demo"
     cogvx_venv_dir = cogvideo_gradio_demo_path / "CogVx"
@@ -603,22 +738,22 @@ def main():
     # Set up CogVx virtual environment and install dependencies
     setup_cogvx(cogvideo_gradio_demo_path, cogvx_venv_dir)
 
-    # Step 10: Create .env file
+    # Step 11: Create .env file
     create_env_file(script_dir)
 
-    # Step 11: Create or validate JSON configuration files
+    # Step 12: Create or validate JSON configuration files
     create_default_json_files(script_dir)
 
-    # Step 12: Check for ffmpeg
+    # Step 13: Check for ffmpeg
     if not check_ffmpeg(cwd=script_dir):
         if not prompt_install_ffmpeg(script_dir):
             print("\n❌ ffmpeg installation not completed. Exiting setup.")
             sys.exit(1)
 
-    # Step 13: Prompt to launch the main script
+    # Step 14: Prompt to launch the main script
     prompt_launch_script(venv_dir, main_script_path)
 
-    # Step 14: Prompt to create desktop shortcut
+    # Step 15: Prompt to create desktop shortcut
     choice = input("\n🖥️ Would you like to create a desktop shortcut to launch the Temporal Prompt Engine? (y/n): ").strip().lower()
     if choice == 'y':
         create_desktop_shortcut(venv_dir, main_script_path)

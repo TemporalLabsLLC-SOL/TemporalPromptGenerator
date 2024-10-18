@@ -13,6 +13,5 @@
         "inference_steps": 120,
         "audio_length": 6.0,
         "waveforms_per_prompt": 1
-    },
-    "huggingface_api_token": ""
+    }
 }
