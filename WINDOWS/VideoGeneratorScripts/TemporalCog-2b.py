@@ -32,7 +32,7 @@ from diffusers import (
 from diffusers.utils import export_to_video, load_image, load_video
 
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, simpledialog
 
 from transformers import AutoTokenizer, pipeline
 
@@ -47,12 +47,12 @@ POSITIVE_MIN_TOKENS = 80   # Min tokens for positive prompts
 NEGATIVE_MIN_TOKENS = 30   # Min tokens for negative prompts
 
 # Video generation settings
-MODEL_PATH_5B = "THUDM/CogVideoX-2b"  # Pre-trained 5b model path
+MODEL_PATH_2B = "THUDM/CogVideoX-2b"  # Pre-trained 2b model path
 GENERATE_TYPE = "t2v"                   # Generation type: 't2v', 'i2v', 'v2v'
 LORA_PATH = None                        # Path to LoRA weights if used
 LORA_RANK = 128
-GUIDANCE_SCALES = [7.0]                 # Adjusted for 5b model
-INFERENCE_STEPS = [120]  # Adjusted for 5b model
+GUIDANCE_SCALES = [7.0]                 # Default guidance scales (will be overridden by user input)
+INFERENCE_STEPS = [10, 20, 40, 60, 80, 100]  # Default inference steps (will be overridden by user input)
 SEED = 1990
 DTYPE = torch.float16 if torch.cuda.is_available() else torch.float32
 
@@ -162,7 +162,7 @@ def add_details(text: str) -> str:
     - str: The prompt with additional details fleshed out.
     """
     # Example expansions (adjust to your needs for characters, lighting, etc.)
-    
+
     # 1. Adding character details (traits, costumes, personalities)
     if "character" in text or "protagonist" in text:
         text += " Characters with distinctive clothing and expressions, reflecting futuristic, occult themes. Confident, mysterious traits are visible."
@@ -300,6 +300,59 @@ def sanitize_filename(filename: str):
     keepcharacters = (" ", ".", "_", "-")
     return "".join(c for c in filename if c.isalnum() or c in keepcharacters).rstrip()
 
+def get_parameters():
+    """
+    Opens a popup dialog to get parameters like guidance scales and inference steps.
+    Allows multiple values separated by commas.
+
+    Returns:
+    - guidance_scales (list of float): List of guidance scales.
+    - inference_steps (list of int): List of inference steps.
+    """
+    # Use tkinter to create a dialog
+    import tkinter as tk
+    from tkinter import simpledialog, messagebox
+
+    root = tk.Tk()
+    root.withdraw()
+
+    # Ask for guidance scales
+    guidance_scales_str = simpledialog.askstring(
+        "Input Guidance Scales",
+        "Enter Guidance Scales (separated by commas):\nExample: 5.0, 7.5, 10.0",
+        parent=root
+    )
+    if guidance_scales_str is None:
+        messagebox.showwarning("Input Cancelled", "No guidance scales were provided. Exiting.")
+        return None, None
+
+    # Ask for inference steps
+    inference_steps_str = simpledialog.askstring(
+        "Input Inference Steps",
+        "Enter Inference Steps (separated by commas):\nExample: 10, 20, 30",
+        parent=root
+    )
+    if inference_steps_str is None:
+        messagebox.showwarning("Input Cancelled", "No inference steps were provided. Exiting.")
+        return None, None
+
+    root.destroy()
+
+    # Parse the input strings into lists of numbers
+    try:
+        guidance_scales = [float(s.strip()) for s in guidance_scales_str.split(",") if s.strip()]
+    except ValueError as e:
+        messagebox.showerror("Input Error", f"Invalid guidance scales input:\n{e}")
+        return None, None
+
+    try:
+        inference_steps = [int(s.strip()) for s in inference_steps_str.split(",") if s.strip()]
+    except ValueError as e:
+        messagebox.showerror("Input Error", f"Invalid inference steps input:\n{e}")
+        return None, None
+
+    return guidance_scales, inference_steps
+
 # --------------------- Video Generation Function ---------------------
 
 def generate_video(
@@ -329,58 +382,60 @@ def generate_video(
         # Set random seed for reproducibility
         generator = torch.Generator(device="cuda" if torch.cuda.is_available() else "cpu").manual_seed(seed)
 
-        # Generate the video frames based on the prompt
-        if generate_type == "i2v":
-            image = load_image(image=image_or_video_path)
-            if image is None:
-                raise ValueError(f"Failed to load image from path: {image_or_video_path}")
-            video_generate = pipe(
-                prompt=prompt,
-                image=image,
-                num_videos_per_prompt=1,
-                num_inference_steps=num_inference_steps,
-                num_frames=49,
-                use_dynamic_cfg=True,
-                guidance_scale=guidance_scale,
-                generator=generator,
-            ).frames[0]
-        elif generate_type == "t2v":
-            video_generate = pipe(
-                prompt=prompt,
-                num_videos_per_prompt=1,
-                num_inference_steps=num_inference_steps,
-                num_frames=49,
-                use_dynamic_cfg=True,
-                guidance_scale=guidance_scale,
-                generator=generator,
-            ).frames[0]
-        elif generate_type == "v2v":
-            video = load_video(image_or_video_path)
-            if video is None:
-                raise ValueError(f"Failed to load video from path: {image_or_video_path}")
-            video_generate = pipe(
-                prompt=prompt,
-                video=video,
-                num_videos_per_prompt=1,
-                num_inference_steps=num_inference_steps,
-                use_dynamic_cfg=True,
-                guidance_scale=guidance_scale,
-                generator=generator,
-            ).frames[0]
-        else:
-            raise ValueError(f"Invalid generate_type: {generate_type}. Choose from 't2v', 'i2v', 'v2v'.")
+        # Enable inference mode to reduce memory usage
+        with torch.inference_mode():
+            # Generate the video frames based on the prompt
+            if generate_type == "i2v":
+                image = load_image(image=image_or_video_path)
+                if image is None:
+                    raise ValueError(f"Failed to load image from path: {image_or_video_path}")
+                video_generate = pipe(
+                    prompt=prompt,
+                    image=image,
+                    num_videos_per_prompt=1,
+                    num_inference_steps=num_inference_steps,
+                    num_frames=49,
+                    use_dynamic_cfg=True,
+                    guidance_scale=guidance_scale,
+                    generator=generator,
+                ).frames[0]
+            elif generate_type == "t2v":
+                video_generate = pipe(
+                    prompt=prompt,
+                    num_videos_per_prompt=1,
+                    num_inference_steps=num_inference_steps,
+                    num_frames=49,
+                    use_dynamic_cfg=True,
+                    guidance_scale=guidance_scale,
+                    generator=generator,
+                ).frames[0]
+            elif generate_type == "v2v":
+                video = load_video(image_or_video_path)
+                if video is None:
+                    raise ValueError(f"Failed to load video from path: {image_or_video_path}")
+                video_generate = pipe(
+                    prompt=prompt,
+                    video=video,
+                    num_videos_per_prompt=1,
+                    num_inference_steps=num_inference_steps,
+                    use_dynamic_cfg=True,
+                    guidance_scale=guidance_scale,
+                    generator=generator,
+                ).frames[0]
+            else:
+                raise ValueError(f"Invalid generate_type: {generate_type}. Choose from 't2v', 'i2v', 'v2v'.")
 
-        # Export the generated frames to a video file. fps must be 8 for original video.
-        export_to_video(video_generate, output_path, fps=8)
-        print(f"Video saved to: {output_path}")
+            # Export the generated frames to a video file. fps must be 8 for original video.
+            export_to_video(video_generate, output_path, fps=8)
+            print(f"Video saved to: {output_path}")
 
-        # Calculate video duration based on num_frames and fps
-        num_frames = 49
-        fps = 8
-        duration_seconds = num_frames / fps
+            # Calculate video duration based on num_frames and fps
+            num_frames = 49
+            fps = 8
+            duration_seconds = num_frames / fps
 
-        # Create corresponding .srt file
-        create_srt_file(output_path, prompt, duration_seconds)
+            # Create corresponding .srt file
+            create_srt_file(output_path, prompt, duration_seconds)
 
     except Exception as e:
         print(f"Error generating video for prompt '{prompt}': {e}")
@@ -399,6 +454,14 @@ def main():
     prompt_file = select_prompt_file()
     if not prompt_file:
         return
+
+    # Get parameters from the user
+    guidance_scales, inference_steps = get_parameters()
+    if not guidance_scales or not inference_steps:
+        # User canceled or provided invalid input
+        messagebox.showwarning("No Parameters Provided", "No parameters were provided. Using default values.")
+        guidance_scales = GUIDANCE_SCALES
+        inference_steps = INFERENCE_STEPS
 
     # Determine the directory of the prompt file
     output_dir = os.path.dirname(prompt_file)
@@ -450,15 +513,20 @@ def main():
         messagebox.showinfo("No Prompts", "No valid prompts found in the selected file.")
         return
 
+    # Clear any residual memory before loading the model
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    gc.collect()
+
     # Load the pipeline once outside the loop to optimize memory usage
     try:
-        print(f"\nLoading model pipeline '{MODEL_PATH_5B}'...")
+        print(f"\nLoading model pipeline '{MODEL_PATH_2B}'...")
         if GENERATE_TYPE == "i2v":
-            pipe = CogVideoXImageToVideoPipeline.from_pretrained(MODEL_PATH_5B, torch_dtype=DTYPE)
+            pipe = CogVideoXImageToVideoPipeline.from_pretrained(MODEL_PATH_2B, torch_dtype=DTYPE)
         elif GENERATE_TYPE == "t2v":
-            pipe = CogVideoXPipeline.from_pretrained(MODEL_PATH_5B, torch_dtype=DTYPE)
+            pipe = CogVideoXPipeline.from_pretrained(MODEL_PATH_2B, torch_dtype=DTYPE)
         elif GENERATE_TYPE == "v2v":
-            pipe = CogVideoXVideoToVideoPipeline.from_pretrained(MODEL_PATH_5B, torch_dtype=DTYPE)
+            pipe = CogVideoXVideoToVideoPipeline.from_pretrained(MODEL_PATH_2B, torch_dtype=DTYPE)
         else:
             raise ValueError(f"Invalid GENERATE_TYPE: {GENERATE_TYPE}. Choose from 't2v', 'i2v', 'v2v'.")
 
@@ -482,9 +550,17 @@ def main():
         else:
             pipe.to("cpu")
 
+        # Enable memory optimizations
         pipe.enable_sequential_cpu_offload()
         pipe.vae.enable_slicing()
         pipe.vae.enable_tiling()
+        pipe.enable_attention_slicing("max")  # Enable attention slicing for lower memory usage
+
+        # Optional: Enable xformers for memory-efficient attention (if available)
+        try:
+            pipe.enable_xformers_memory_efficient_attention()
+        except Exception as e:
+            print(f"Could not enable xformers memory efficient attention: {e}")
 
     except Exception as e:
         print(f"Error loading the pipeline: {e}")
@@ -542,8 +618,8 @@ def main():
         print(f"Output Filename: video_{idx}_2b_[gs]gs_[steps]steps_{safe_summary}.mp4")
 
         # Iterate over each guidance scale and inference step to generate multiple videos per prompt
-        for gs in GUIDANCE_SCALES:
-            for steps in INFERENCE_STEPS:
+        for gs in guidance_scales:
+            for steps in inference_steps:
                 # Define output filename with the new naming convention
                 output_filename = f"video_{idx}_2b_{gs}gs_{steps}steps_{safe_summary}.mp4"
                 output_path = os.path.join(output_dir, output_filename)
@@ -562,6 +638,16 @@ def main():
                     guidance_scale=gs,
                     seed=SEED,  # Optional: You can set a fixed seed if needed
                 )
+
+                # Clear memory after each video generation
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                gc.collect()
+
+    # Clear memory after all videos are generated
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    gc.collect()
 
     print("\nAll videos have been generated successfully.")
     messagebox.showinfo("Generation Complete", "All videos have been generated successfully.")
