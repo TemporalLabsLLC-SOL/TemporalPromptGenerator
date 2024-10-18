@@ -125,13 +125,25 @@ Before installing the Temporal Prompt Engine, ensure that your system meets the 
 - **Ollama**: Download from [Ollama Setup](https://ollama.com/download/OllamaSetup.exe) and follow the on-screen instructions to install.
 
 ### Installation Steps for Temporal Prompt Engine
-
-1. **Download the Repository**:
+**Download the Repository**:
    - Visit the [TemporalPromptGenerator GitHub Repository](https://github.com/TemporalLabsLLC-SOL/TemporalPromptGenerator).
    - Click on the **"Code"** button and select **"Download ZIP"**.
    - Extract the downloaded ZIP file to your desired location (e.g., `C:\TemporalPromptEngine`).
 
-2. **Run the Setup Script**:
+
+**EASY-ONE-CLICK-INSTALLER**
+
+     Open the Extracted Archive and
+     
+     ```bash
+     SIMPLY CLICK EASY-ONE-CLICK-SETUP
+     ```
+   - Follow the on-screen prompts. The script will automatically set up the environment, install necessary packages, and configure settings.
+
+   The application will launch, guiding you through the initial setup. DURING THIS SETUP, either after you close the app OR denying to open the open during setup, you will have the option to add a work-around shortcut to your desktop. It currently does not have an icon. That will load the env and scripts reliably going forward.
+
+
+**Manually Run the Setup Script**:
 
    - Open Command Prompt and navigate to the extracted `TemporalPromptEngine` directory:
      ```bash
@@ -145,36 +157,10 @@ Before installing the Temporal Prompt Engine, ensure that your system meets the 
      ```bash
      py -3.10 SETUP.py
      ```
-     OR
-     ```bash
-     SIMPLY CLICK EASY-ONE-CLICK-SETUP
-     ```
-   - Follow the on-screen prompts. The script will automatically set up the environment, install necessary packages, and configure settings.
-
-   **IMPORTANT**: If the script prompts for a restart, **RESTART YOUR COMPUTER** to apply changes.
-
-3. **Activate the Virtual Environment**:
-
-   - The `SETUP.py` script creates a virtual environment named `TemporalPromptEngineEnv` within the project directory.
-   - Activate the virtual environment:
-     ```bash
-     TemporalPromptEngineEnv\Scripts\activate
-     ```
-     You should see `(TemporalPromptEngineEnv)` prefixed in your command prompt.
-
-4. **Launch the Temporal Prompt Engine**:
-
-   With the virtual environment activated, run the main script:
-   ```bash
-   py -3.10 TemporalPromptEngine.py
-   ```
-
-   The application will launch, guiding you through the initial setup. DURING THIS SETUP, either after you close the app OR denying to open the open during setup, you will have the option to add a work-around shortcut to your desktop. It currently does not have an icon. That will load the env and scripts reliably going forward.
-
 ---
 
 <a name="4-quick-start-guide"></a>
-## 4. Quick Start Guide
+##Quick Start Guide
 IF YOU ADDED THE SHORTCUT TO DESKTOP DURING SETUP
    ```bash
      Click the Temporal Prompt Engine Shortcut on your Windows Desktop
