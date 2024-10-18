@@ -160,6 +160,7 @@ Before installing the Temporal Prompt Engine, ensure that your system meets the 
 
 <a name="4-quick-start-guide"></a>
 ##Quick Start Guide
+
 IF YOU ADDED THE SHORTCUT TO DESKTOP DURING SETUP
    ```bash
      Click the Temporal Prompt Engine Shortcut on your Windows Desktop
@@ -257,6 +258,20 @@ You can generate videos locally using **CogVideo** directly through the Temporal
 1. **Select CogVideo Version**:
    - Click **Local Video Generation** from the Temporal Prompt Engine interface.
    - Enter the desired version of **CogVideo** (e.g., **CogVideoX** or another available version).
+  
+   - On Lower Vram (20gb-ish) you may benefit from running the script individually outside of the python app to do that follow the instructions below:
+   **Navigate to VideoGenerator**
+   ```bash
+   cd TemporalPromptEngine-main\WINDOWS\CogVideo\inference\gradio_composite_demo
+   ```
+   **Activate the CogXv Env**
+   ```bash
+   CogXv\Scripts\activate
+   ```
+   **Run 5b Video Generation Script**
+   ```bash
+   py -3.12.4 TemporalCog-5b.py
+   ```
 
 2. **Prompt List Selection**:
    - Once the version is entered, the engine will initialize.
@@ -264,7 +279,7 @@ You can generate videos locally using **CogVideo** directly through the Temporal
 
 3. **Automated Processing**:
    - The Temporal Prompt Engine manages the entire video generation process, allowing you to focus on creativity rather than configuration.
-   - Videos will be generated locally using your **NVIDIA GPU** for optimal performance.
+   - Videos will be generated locally using your **NVIDIA GPU** for optimal performance. You will have the opportunity to entered your desired Guidance Scale and Steps during this intial setup.
 
 ---
 
