@@ -133,8 +133,7 @@ Before installing the Temporal Prompt Engine, ensure that your system meets the 
 
 **EASY-ONE-CLICK-INSTALLER**
 
-     Open the Extracted Archive and
-     
+   Open the Extracted Archive and  
      ```bash
      SIMPLY CLICK EASY-ONE-CLICK-SETUP
      ```
@@ -185,7 +184,6 @@ IF YOU DID NOT ADD SHORTCUT TO DESKTOP DURING SETUP
 
    **Examples**:
    - **Ancient Perspectives**:
-     >
 
  "View the world through the eyes of an ancient astronomer, mapping the stars with rudimentary tools under a vast, unpolluted night sky."
    - **Crypto-Animal Footage**:
