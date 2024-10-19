@@ -1,0 +1,12 @@
+python-dotenv>=0.19.0
+moviepy>=1.0.3
+pydub>=0.25.1
+Pillow>=9.0.0
+requests>=2.25.1
+pyperclip>=1.8.2
+torch>=1.13.1
+diffusers>=0.21.1
+transformers>=4.31.0
+huggingface_hub>=0.15.1
+accelerate>=0.21.0
+scipy>=1.7.0

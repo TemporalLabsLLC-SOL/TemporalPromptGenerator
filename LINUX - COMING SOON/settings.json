@@ -1,0 +1,17 @@
+{
+    "audio_options": {
+        "exclude_music": false,
+        "holiday_mode": false,
+        "selected_holidays": "-SEASONAL HOLIDAYS - New Year",
+        "open_source_mode": true,
+        "model_name": "audioldm2-full-large-1150k",
+        "guidance_scale": 10.0,
+        "ddim_steps": 200,
+        "n_candidate": 5,
+        "seed": 12345,
+        "device": "gpu",
+        "inference_steps": 120,
+        "audio_length": 6.0,
+        "waveforms_per_prompt": 1
+    }
+}
