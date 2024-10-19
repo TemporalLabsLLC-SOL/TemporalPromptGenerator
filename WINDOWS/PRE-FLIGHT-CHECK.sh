@@ -295,29 +295,26 @@ perform_checks() {
     echo -e "${BLUE}All systems are ${GREEN}stable${BLUE}. You may proceed to access the Time Portal Setup.${NC}"
 }
 
-# Function to confirm and run the setup batch script
 confirm_and_run_setup() {
     echo ""
     read -p "🚀 Are you prepared to access your new Time Portal Access Tool? Shall I initiate the temporal setup now? (y/n): " choice
 
     case "$choice" in
         y|Y )
-            if [ -f "./CLICK-ME-TO-SETUP-&-INSTALL.bat" ]; then
-                print_info "🌟 Launching the Time Portal Access Tool Setup... 🔥"
-                cmd.exe /c "CLICK-ME-TO-SETUP-&-INSTALL.bat"
-                if [ $? -eq 0 ]; then
-                    print_status "Temporal setup script executed successfully."
-                    echo -e "${GREEN}✨ Your Time Portal Access Tool is now active!✨${NC}"
-                else
-                    print_error "Temporal setup script encountered anomalies. Please review the logs for further analysis."
-                fi
+            print_info "🌟 Launching the Time Portal Access Tool Setup with Python 3.10... 🔥"
+            # Directly execute the Python setup script
+            py -3.10 SETUP.py
+            
+            # Check if the script was executed successfully
+            if [ $? -eq 0 ]; then
+                print_status "Temporal setup script executed successfully."
+                echo -e "${GREEN}✨ Your Time Portal Access Tool is now active!✨${NC}"
             else
-                print_error "Temporal setup batch script 'CLICK-ME-TO-SETUP-&-INSTALL.bat' not found in the current directory."
-                exit 1
+                print_error "Temporal setup script encountered anomalies. Please review the logs for further analysis."
             fi
             ;;
         n|N )
-            print_info "🛑 Understood. You can initiate the setup later by running 'CLICK-ME-TO-SETUP-&-INSTALL.bat' when you're ready to access the Time Portal."
+            print_info "🛑 Understood. You can initiate the setup later by running 'py -3.10 SETUP.py' when you're ready to access the Time Portal."
             ;;
         * )
             print_warning "❓ I didn't quite catch that. Please enter 'y' or 'n'."
@@ -325,6 +322,8 @@ confirm_and_run_setup() {
             ;;
     esac
 }
+
+
 
 # Main script execution
 main() {
