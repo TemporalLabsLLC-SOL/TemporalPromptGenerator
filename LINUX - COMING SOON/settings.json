@@ -10,7 +10,7 @@
         "n_candidate": 5,
         "seed": 12345,
         "device": "gpu",
-        "inference_steps": 120,
+        "inference_steps": 40,
         "audio_length": 6.0,
         "waveforms_per_prompt": 1
     }

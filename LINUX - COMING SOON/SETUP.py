@@ -6,13 +6,42 @@ from pathlib import Path
 import json
 import platform
 import shutil
+import time
+from colorama import Fore, Style, init
+
+# Initialize colorama
+init(autoreset=True)
+
+def print_banner():
+    banner = f"""
+{Fore.CYAN}
+============================================
+     ✨ Temporal Lab: Time Portal Setup ✨     
+============================================
+"""
+    print(banner)
+
+def print_status(message):
+    print(f"{Fore.GREEN}✔️ {message}{Style.RESET_ALL}")
+
+def print_warning(message):
+    print(f"{Fore.YELLOW}⚠️ {message}{Style.RESET_ALL}")
+
+def print_error(message):
+    print(f"{Fore.RED}❌ {message}{Style.RESET_ALL}")
+
+def print_info(message):
+    print(f"{Fore.BLUE}ℹ️ {message}{Style.RESET_ALL}")
+
+def print_action(message):
+    print(f"{Fore.MAGENTA}🔧 {message}{Style.RESET_ALL}")
 
 def run_command(command, capture_output=False, cwd=None):
     """
     Run a system command with enhanced logging.
     """
     command_str = ' '.join(command) if isinstance(command, list) else command
-    print(f"\n💻 Running command: {command_str}")
+    print_action(f"Executing: {command_str}")
     try:
         if capture_output:
             result = subprocess.run(
@@ -25,17 +54,17 @@ def run_command(command, capture_output=False, cwd=None):
             )
             output = result.stdout.strip()
             if output:
-                print(f"📄 Command output: {output}")
+                print_info(f"Output: {output}")
             return output
         else:
             subprocess.run(command, check=True, cwd=cwd)
             return None
     except subprocess.CalledProcessError as e:
-        print(f"❌ Command failed with error code {e.returncode}")
+        print_error(f"Command failed with error code {e.returncode}")
         if e.stdout:
-            print(f"📄 Output: {e.stdout.strip()}")
+            print_error(f"Output: {e.stdout.strip()}")
         if e.stderr:
-            print(f"📝 Error Output: {e.stderr.strip()}")
+            print_error(f"Error Output: {e.stderr.strip()}")
         return None
 
 def get_venv_executables(venv_dir):
@@ -54,53 +83,54 @@ def check_pip(cwd=None):
     """
     Check if pip is installed.
     """
-    print("\n🔍 Checking for pip installation...")
+    print_info("Initiating Pip Verification...")
     try:
         output = run_command(["pip", "--version"], capture_output=True, cwd=cwd)
         if output:
-            print(f"✅ pip is installed: {output}")
+            print_status(f"Pip is ready: {output}")
             return True
     except:
         pass
-    print("⚠️ pip is not installed.")
+    print_warning("Pip is not detected.")
     return False
 
 def install_pip(script_dir):
     """
     Install pip using ensurepip.
     """
-    print("🔧 Attempting to install pip...")
+    print_action("Installing Pip through Temporal Enhancement...")
     result = run_command([sys.executable, "-m", "ensurepip", "--upgrade"], cwd=script_dir)
     if result is None:
-        print("✅ pip installed successfully.")
+        print_status("Pip has been successfully integrated.")
         return True
     else:
-        print("❌ Failed to install pip.")
+        print_error("Failed to integrate Pip into the Temporal Engine.")
         return False
 
 def check_ollama(cwd=None):
     """
     Check if Ollama is installed.
     """
-    print("\n🔍 Checking for Ollama installation...")
+    print_info("Verifying Ollama Connectivity...")
     try:
         output = run_command(["ollama", "--version"], capture_output=True, cwd=cwd)
         if output and "ollama version" in output.lower():
-            print(f"✅ Ollama is installed: {output}")
+            print_status(f"Ollama is operational: {output}")
             return True
     except:
         pass
-    print("⚠️ Ollama is not installed.")
+    print_warning("Ollama connection not established.")
     return False
 
 def prompt_install_ollama(download_url, script_dir):
     """
     Prompt the user to install Ollama.
     """
-    print("\nOllama is not installed. Please install it from the following link:")
-    print(download_url)
+    print_warning("\nOllama is essential for bridging our Time Portal.")
+    print_info("Please install Ollama from the following gateway:")
+    print(f"{download_url}")
     webbrowser.open(download_url)
-    input("📥 Press Enter after you have installed Ollama to continue...")
+    input("\n🕰️ Once Ollama is installed, press Enter to synchronize and continue...")
     # Recheck after installation
     return check_ollama(cwd=script_dir)
 
@@ -108,7 +138,7 @@ def create_virtualenv(venv_dir, python_command=None):
     """
     Create a virtual environment using the specified Python command.
     """
-    print(f"\n🔧 Creating a virtual environment in '{venv_dir}'...")
+    print_action(f"Constructing Virtual Chamber at '{venv_dir}'...")
     if python_command:
         command = [python_command, "-m", "venv", str(venv_dir)]
     else:
@@ -116,51 +146,51 @@ def create_virtualenv(venv_dir, python_command=None):
 
     result = run_command(command)
     if result is None:
-        print("✅ Virtual environment created successfully.")
+        print_status("Virtual Chamber established successfully.")
         return True
     else:
-        print("❌ Failed to create virtual environment.")
+        print_error("Failed to construct the Virtual Chamber.")
         return False
 
 def upgrade_pip(venv_dir):
     """
     Upgrade pip within the virtual environment.
     """
-    print("\n🔧 Upgrading pip in the virtual environment...")
+    print_action("Enhancing Pip within the Virtual Chamber...")
     python_executable, pip_executable = get_venv_executables(venv_dir)
     if not pip_executable.exists():
-        print(f"⚠️ pip executable not found at {pip_executable}.")
+        print_warning(f"Pip executable not found at {pip_executable}.")
         return False
     result = run_command([str(python_executable), "-m", "pip", "install", "--upgrade", "pip"], cwd=venv_dir)
     if result is None:
-        print("✅ pip upgraded successfully.")
+        print_status("Pip has been upgraded to the latest version.")
         return True
     else:
-        print("❌ Failed to upgrade pip.")
+        print_error("Pip upgrade encountered issues.")
         return False
 
 def install_and_verify_package(package_name, version, venv_dir, install_command=None, import_name=None):
     """
     Install a package using pip from the virtual environment and verify its installation.
     """
-    print(f"\n📦 Installing package '{package_name}=={version}'...")
+    print_action(f"Integrating '{package_name}=={version}' into the Temporal Engine...")
     python_executable, pip_executable = get_venv_executables(venv_dir)
     if not pip_executable.exists():
-        print(f"⚠️ pip executable not found at {pip_executable}.")
+        print_warning(f"Pip executable not found at {pip_executable}.")
         return False
 
     # Use custom install command if provided
     if install_command is None:
-        install_command = [str(pip_executable), "install", f"{package_name}=={version}"]
+        install_cmd = [str(pip_executable), "install", f"{package_name}=={version}"]
     else:
-        install_command = install_command
+        install_cmd = install_command
 
     # Install the package
     try:
-        run_command(install_command, cwd=venv_dir)
-        print(f"✅ Package '{package_name}=={version}' installed successfully.")
+        run_command(install_cmd, cwd=venv_dir)
+        print_status(f"'{package_name}=={version}' integrated successfully.")
     except Exception as e:
-        print(f"❌ Failed to install package '{package_name}=={version}'. Error: {e}")
+        print_error(f"Failed to integrate '{package_name}=={version}'. Error: {e}")
         return False
 
     # Skip verification for specific packages
@@ -173,7 +203,7 @@ def install_and_verify_package(package_name, version, venv_dir, install_command=
         "audioldm2",
     ]
     if package_name in skip_verification:
-        print(f"🔍 Skipping import verification for '{package_name}'.")
+        print_info(f"Verification skipped for '{package_name}'.")
         return True
 
     # Verify installation by attempting to import the package
@@ -182,31 +212,25 @@ def install_and_verify_package(package_name, version, venv_dir, install_command=
         if import_name is None:
             package_import_name = package_name.replace('-', '_')
             # Handle special cases
-            if package_import_name == 'python_dotenv':
-                package_import_name = 'dotenv'
-            elif package_import_name == 'pyyaml':
-                package_import_name = 'yaml'
-            elif package_import_name == 'moviepy':
-                package_import_name = 'moviepy.editor'
-            elif package_import_name == 'Pillow':
-                package_import_name = 'PIL'
-            elif package_import_name == 'tk':
-                package_import_name = 'tkinter'
-            elif package_import_name.startswith('audioldm2'):
-                package_import_name = 'audioldm2'
-            elif package_import_name == 'pydub':
-                package_import_name = 'pydub'
-            else:
-                package_import_name = package_import_name
+            special_cases = {
+                'python_dotenv': 'dotenv',
+                'pyyaml': 'yaml',
+                'moviepy': 'moviepy.editor',
+                'Pillow': 'PIL',
+                'tk': 'tkinter',
+                'audioldm2': 'audioldm2',
+                'pydub': 'pydub'
+            }
+            package_import_name = special_cases.get(package_import_name, package_import_name)
         else:
             package_import_name = import_name
 
         command = [str(python_executable), "-c", f"import {package_import_name}"]
         run_command(command, cwd=venv_dir)
-        print(f"✅ Package '{package_name}' verified successfully.")
+        print_status(f"'{package_name}' verified and operational.")
         return True
     except Exception as e:
-        print(f"❌ Failed to verify package '{package_name}'. Error: {e}")
+        print_error(f"Verification failed for '{package_name}'. Error: {e}")
         return False
 
 def clone_cogvideo_repo(cogvideo_repo_path):
@@ -215,31 +239,31 @@ def clone_cogvideo_repo(cogvideo_repo_path):
     If the repository already exists, it will be removed and re-cloned.
     """
     if cogvideo_repo_path.exists():
-        print("\n📁 CogVideo repository already exists. Removing it to ensure a clean clone...")
+        print_warning("\nCogVideo repository detected. Resetting to ensure a pristine environment...")
         shutil.rmtree(cogvideo_repo_path)
-    print("\n📦 Cloning CogVideo repository...")
+    print_info("\nInitiating CogVideo Repository Cloning...")
     run_command(["git", "clone", "https://github.com/THUDM/CogVideo", str(cogvideo_repo_path)])
+    print_status("CogVideo repository cloned successfully.")
 
 def copy_custom_scripts(custom_scripts_dir, gradio_demo_path):
     """
     Copy custom scripts from the user's directory to the gradio_composite_demo directory.
     """
-    print("\n📂 Copying custom scripts to CogVideo gradio_composite_demo directory...")
+    print_info("\nTransferring Custom Scripts to CogVideo Interface...")
     for script_name in ["TemporalCog-5b.py", "TemporalCog-2b.py", "PromptList2MP4Utility.py"]:
         source_file = custom_scripts_dir / script_name
         target_file = gradio_demo_path / script_name
         if source_file.exists():
             shutil.copy2(source_file, target_file)
-            print(f"✅ Copied {script_name} to {target_file}")
+            print_status(f"'{script_name}' successfully transferred.")
         else:
-            print(f"⚠️ Custom script {script_name} not found in {custom_scripts_dir}. Skipping.")
+            print_warning(f"Custom script '{script_name}' not found in '{custom_scripts_dir}'. Skipping.")
 
 def install_dependencies_for_cogvideo(cogvideo_gradio_demo_path, cogvx_venv_dir):
     """
     Install dependencies for CogVideo into the CogVx virtual environment.
     """
-    print(f"\n🔧 Installing dependencies for CogVideo in '{cogvx_venv_dir}'...")
-
+    print_action(f"Installing CogVideo Dependencies in '{cogvx_venv_dir}'...")
     python_executable, pip_executable = get_venv_executables(cogvx_venv_dir)
 
     # Install requirements
@@ -253,31 +277,31 @@ def install_dependencies_for_cogvideo(cogvideo_gradio_demo_path, cogvx_venv_dir)
     for command in install_commands:
         try:
             run_command(command, cwd=cogvideo_gradio_demo_path)
-            print(f"✅ Command succeeded: {' '.join(command)}")
+            print_status(f"Dependency Command Executed: {' '.join(command)}")
         except Exception as e:
-            print(f"❌ Failed to run command: {' '.join(command)}. Error: {e}")
+            print_error(f"Failed to execute command: {' '.join(command)}. Error: {e}")
             sys.exit(1)
 
-    print(f"✅ Installed dependencies for CogVx successfully.")
+    print_status("All CogVideo dependencies installed successfully.")
 
 def setup_cogvx(cogvideo_gradio_demo_path, cogvx_venv_dir):
     """
     Create and set up the virtual environment for CogVideo using Python 3.12 if not already present.
     """
     if not cogvx_venv_dir.exists():
-        print("\n🔍 CogVx virtual environment not found. Creating with Python 3.12...")
+        print_info("\nCogVx Virtual Environment not detected. Creating with Python 3.12...")
         # Use 'py -3.12' to create the virtual environment
         python_command = "py"
         python_args = ["-3.12", "-m", "venv", str(cogvx_venv_dir)]
         command = [python_command] + python_args
         result = run_command(command)
         if result is None:
-            print("✅ CogVx virtual environment created successfully.")
+            print_status("CogVx Virtual Environment established successfully.")
         else:
-            print("❌ Failed to create CogVx virtual environment with Python 3.12. Exiting setup.")
+            print_error("Failed to establish CogVx Virtual Environment with Python 3.12. Halting setup.")
             sys.exit(1)
     else:
-        print("✅ CogVx virtual environment already exists.")
+        print_status("CogVx Virtual Environment already operational.")
 
     # Upgrade pip within the CogVx environment
     upgrade_pip(cogvx_venv_dir)
@@ -291,16 +315,17 @@ def create_env_file(script_dir):
     """
     env_path = script_dir / '.env'
     if env_path.exists():
-        print("\nℹ️ .env file already exists. Skipping creation.")
+        print_info("\nConfiguration File '.env' already exists. Skipping creation.")
         return
 
-    print("\n📝 Creating a .env file...")
+    print_info("\nSetting Up Configuration Parameters...")
+    print_action("Creating '.env' configuration file.")
 
     # Ask the user for the COMFYUI_PROMPTS_FOLDER
-    comfyui_prompts_folder = input("Please enter the full path to your ComfyUI prompts folder: ").strip()
+    comfyui_prompts_folder = input("🌟 Please enter the full path to your ComfyUI prompts folder: ").strip()
 
     # Ask the user for the LAST_USED_DIRECTORY
-    last_used_directory = input("Please enter the full path to your last used directory: ").strip()
+    last_used_directory = input("🌟 Please enter the full path to your last used directory: ").strip()
 
     default_env = {
         "COMFYUI_PROMPTS_FOLDER": comfyui_prompts_folder,
@@ -311,7 +336,7 @@ def create_env_file(script_dir):
         for key, value in default_env.items():
             f.write(f"{key}={value}\n")
 
-    print("✅ .env file created successfully.")
+    print_status("Configuration File '.env' created successfully.")
 
 def create_default_json_files(script_dir):
     """
@@ -335,46 +360,46 @@ def create_default_json_files(script_dir):
     for file_name, default_content in json_files.items():
         file_path = script_dir / file_name
         if not file_path.exists() or file_path.stat().st_size == 0:
-            print(f"\n📝 Creating default '{file_name}'...")
+            print_action(f"Generating default '{file_name}' configuration...")
             with open(file_path, 'w') as f:
                 json.dump(default_content, f, indent=4)
-            print(f"✅ '{file_name}' created with default content.")
+            print_status(f"'{file_name}' has been initialized with default settings.")
         else:
             # Validate JSON structure
             try:
                 with open(file_path, 'r') as f:
                     json.load(f)
-                print(f"ℹ️ '{file_name}' exists and contains valid JSON.")
+                print_info(f"'{file_name}' is already configured and validated.")
             except json.JSONDecodeError:
-                print(f"\n⚠️ '{file_name}' is corrupted or contains invalid JSON. Recreating with default content...")
+                print_warning(f"'{file_name}' contains invalid data. Reinitializing with default settings...")
                 with open(file_path, 'w') as f:
                     json.dump(default_content, f, indent=4)
-                print(f"✅ '{file_name}' has been recreated with default content.")
+                print_status(f"'{file_name}' has been refreshed with default configurations.")
 
 def check_ffmpeg(cwd=None):
     """
     Check if ffmpeg is installed.
     """
-    print("\n🔍 Checking for ffmpeg installation...")
+    print_info("\nScanning for ffmpeg Installation...")
     try:
         result = run_command(["ffmpeg", "-version"], capture_output=True, cwd=cwd)
         if result and "ffmpeg version" in result.lower():
-            print("✅ ffmpeg is installed.")
+            print_status("ffmpeg is active and ready.")
             return True
     except:
         pass
-    print("⚠️ ffmpeg is not installed.")
+    print_warning("ffmpeg is not detected.")
     return False
 
 def prompt_install_ffmpeg(script_dir):
     """
     Prompt the user to install ffmpeg.
     """
-    print("\n⚠️ ffmpeg is required for video processing.")
-    print("📥 Please install ffmpeg from the official website:")
+    print_warning("\nffmpeg is crucial for our video processing capabilities.")
+    print_info("Please install ffmpeg from the official Temporal Gateway:")
     print("🌐 https://ffmpeg.org/download.html")
     webbrowser.open("https://ffmpeg.org/download.html")
-    input("📥 Press Enter after you have installed ffmpeg to continue...")
+    input("\n🕰️ Once ffmpeg is installed, press Enter to finalize the setup...")
     # Recheck after installation
     return check_ffmpeg(cwd=script_dir)
 
@@ -382,23 +407,23 @@ def prompt_launch_script(venv_dir, main_script_path):
     """
     Prompt the user to launch the main Python script.
     """
-    choice = input("\n🎉 Setup complete! Would you like to launch the Temporal Prompt Engine now? (y/n): ").strip().lower()
+    choice = input("\n🚀 Temporal Engine Setup Complete! Would you like to activate the Temporal Prompt Engine now? (y/n): ").strip().lower()
     if choice == 'y':
-        print("\n🚀 Launching the Temporal Prompt Engine...")
+        print_info("\nActivating Temporal Prompt Engine...")
         try:
             # Use the virtual environment's Python executable to run the main script
             python_executable, _ = get_venv_executables(venv_dir)
             if not python_executable.exists():
-                print(f"❌ Virtual environment's Python executable not found at {python_executable}.")
-                print("🔧 Please ensure the virtual environment is set up correctly.")
+                print_error(f"Virtual Environment's Python executable not found at {python_executable}.")
+                print_warning("Please verify the Virtual Chamber setup and try again.")
                 return
             subprocess.run([str(python_executable), str(main_script_path)], check=True)
-            print("\n✅ TemporalPromptEngine.py launched successfully.")
+            print_status("\nTemporalPromptEngine.py has been successfully launched into the Time Portal.")
         except subprocess.CalledProcessError as e:
-            print("\n❌ Failed to launch TemporalPromptEngine.py. Please check the setup and try running the script manually.")
-            print(f"⚠️ Error: {e}")
+            print_error("\nFailed to launch TemporalPromptEngine.py. Please review the setup and attempt to run the script manually.")
+            print_error(f"Error Details: {e}")
     else:
-        print("\n🛠️ Setup completed. You can run the Temporal Prompt Engine later using the virtual environment's Python.")
+        print_info("\nSetup concluded. You can activate the Temporal Prompt Engine anytime using the Virtual Chamber's Python environment.")
 
 def get_windows_desktop_path():
     """
@@ -414,32 +439,33 @@ def get_windows_desktop_path():
         if result == 0:
             return buf.value
         else:
-            print("⚠️ Unable to get desktop folder path. Using default path.")
+            print_warning("Unable to retrieve desktop path. Defaulting to user profile's Desktop.")
             return os.path.join(os.environ['USERPROFILE'], 'Desktop')
     except Exception as e:
-        print(f"⚠️ Error getting desktop folder path: {e}")
+        print_warning(f"Error obtaining desktop path: {e}")
         return os.path.join(os.environ['USERPROFILE'], 'Desktop')
 
 def create_desktop_shortcut(venv_dir, main_script_path):
     """
     Create a desktop shortcut to run the main script using the virtual environment.
     """
-    print("\n🖥️ Creating a desktop shortcut to launch the Temporal Prompt Engine...")
+    print_info("\nSetting Up Desktop Shortcut for Quick Access...")
     # Only proceed if on Windows
     if platform.system() != "Windows":
-        print("⚠️ Desktop shortcut creation is currently only supported on Windows.")
+        print_warning("Desktop shortcut creation is currently only supported on Windows.")
         return
 
     try:
         from win32com.client import Dispatch
     except ImportError:
         # Attempt to install pywin32
-        print("🔧 Installing pywin32 module required for shortcut creation...")
+        print_action("Installing 'pywin32' module required for shortcut creation...")
         try:
             subprocess.run([sys.executable, "-m", "pip", "install", "pywin32"], check=True)
             from win32com.client import Dispatch
+            print_status("'pywin32' module installed successfully.")
         except Exception as e:
-            print(f"❌ Failed to install pywin32. Shortcut creation aborted. Error: {e}")
+            print_error(f"Failed to install 'pywin32'. Shortcut creation aborted. Error: {e}")
             return
 
     desktop = get_windows_desktop_path()
@@ -457,13 +483,13 @@ def create_desktop_shortcut(venv_dir, main_script_path):
     shortcut.IconLocation = icon
     shortcut.save()
 
-    print(f"✅ Desktop shortcut created at {shortcut_path}")
+    print_status(f"Desktop shortcut created at {shortcut_path}")
 
 def check_cuda_toolkit(cwd=None):
     """
     Check if CUDA toolkit is installed.
     """
-    print("\n🔍 Checking for CUDA toolkit installation...")
+    print_info("\nAssessing CUDA Toolkit Integration...")
     try:
         cuda_version_output = run_command(["nvcc", "--version"], capture_output=True, cwd=cwd)
         if cuda_version_output:
@@ -472,22 +498,26 @@ def check_cuda_toolkit(cwd=None):
             match = re.search(r"release (\d+\.\d+),", cuda_version_output)
             if match:
                 cuda_version = match.group(1)
-                print(f"✅ Detected CUDA toolkit version: {cuda_version}")
+                print_status(f"CUDA Toolkit Version Detected: {cuda_version}")
                 return cuda_version
             else:
-                print("⚠️ Could not parse CUDA version from nvcc output.")
+                print_warning("Unable to decipher CUDA version from nvcc output.")
                 return None
         else:
-            print("⚠️ CUDA toolkit not found.")
+            print_warning("CUDA Toolkit not found.")
             return None
     except:
-        print("⚠️ nvcc not found. CUDA toolkit is not installed.")
+        print_warning("nvcc command not found. CUDA Toolkit appears to be missing.")
         return None
 
 def main():
-    print("============================================")
-    print("     ✨ Temporal Prompt Engine Setup ✨      ")
-    print("============================================\n")
+    print_banner()
+    time.sleep(1)  # Pause for effect
+
+    print_info("Welcome to the Temporal Lab Setup! 🚀")
+    print_info("We're about to embark on a journey to activate the Temporal Prompt Engine.")
+    print_info("Let's get started by connecting to the Time Portal...\n")
+    time.sleep(1)
 
     # Define the main script path relative to setup.py
     script_dir = Path(__file__).parent.resolve()
@@ -495,59 +525,65 @@ def main():
     main_script_path = script_dir / main_script
 
     if not main_script_path.exists():
-        print(f"\n❌ Main script '{main_script}' not found at {main_script_path}. Please ensure it exists.")
+        print_error(f"\nMain script '{main_script}' not found at {main_script_path}. Please ensure it exists.")
         sys.exit(1)
 
     # Step 1: Check for pip
     if not check_pip(cwd=script_dir):
         if not install_pip(script_dir):
-            print("\n❌ pip installation failed. Exiting setup.")
+            print_error("\nPip integration failed. Unable to proceed with the setup.")
             sys.exit(1)
+        else:
+            print_status("Pip is now available for use.")
 
     # Step 2: Check for Ollama
     if not check_ollama(cwd=script_dir):
         if not prompt_install_ollama("https://ollama.ai/download", script_dir):
-            print("\n❌ Ollama installation not completed. Exiting setup.")
+            print_error("\nOllama installation incomplete. Setup cannot continue.")
             sys.exit(1)
+        else:
+            print_status("Ollama is now connected to the Temporal Engine.")
 
     # Step 3: Check for NVIDIA GPU
     try:
         gpu_info = run_command(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"], capture_output=True, cwd=script_dir)
         if not gpu_info:
-            print("❌ No NVIDIA GPU detected. A CUDA-enabled NVIDIA GPU is required.")
+            print_error("No NVIDIA GPU detected. A CUDA-enabled NVIDIA GPU is essential for optimal performance.")
             sys.exit(1)
         else:
-            print(f"✅ NVIDIA GPU detected: {gpu_info.strip()}")
+            print_status(f"NVIDIA GPU detected: {gpu_info.strip()}")
     except:
-        print("❌ nvidia-smi not found. Please ensure that NVIDIA drivers are installed.")
+        print_error("nvidia-smi command not found. Please ensure NVIDIA drivers are installed.")
         sys.exit(1)
 
     # Step 4: Check for CUDA toolkit
     cuda_version = check_cuda_toolkit(cwd=script_dir)
     if not cuda_version:
-        print("\n❌ CUDA toolkit is required for this application.")
-        print("🌐 Please install the CUDA toolkit from the official NVIDIA website:")
+        print_error("\nCUDA Toolkit is a vital component for the Temporal Engine's operations.")
+        print_info("Please install the CUDA Toolkit from the official Temporal Gateway:")
         print("🌐 https://developer.nvidia.com/cuda-downloads")
         webbrowser.open("https://developer.nvidia.com/cuda-downloads")
-        input("📥 Press Enter after you have installed the CUDA toolkit to continue...")
+        input("\n🕰️ After installing the CUDA Toolkit, press Enter to continue...")
         # Recheck after installation
         cuda_version = check_cuda_toolkit(cwd=script_dir)
         if not cuda_version:
-            print("\n❌ CUDA toolkit installation not detected. Exiting setup.")
+            print_error("\nCUDA Toolkit installation not detected. Setup cannot proceed.")
             sys.exit(1)
+        else:
+            print_status("CUDA Toolkit has been successfully integrated.")
 
     # Step 5: Set up TemporalPromptEngineEnv virtual environment with current Python
     venv_dir = script_dir / "TemporalPromptEngineEnv"
     if not venv_dir.exists():
         if not create_virtualenv(venv_dir):
-            print("\n❌ Failed to create virtual environment. Exiting setup.")
+            print_error("\nFailed to establish the Virtual Chamber. Setup halted.")
             sys.exit(1)
     else:
-        print("✅ Virtual environment already exists.")
+        print_status("Virtual Chamber already exists and is ready.")
 
     # Step 6: Upgrade pip
     if not upgrade_pip(venv_dir):
-        print("\n❌ Failed to upgrade pip. Exiting setup.")
+        print_error("\nFailed to upgrade pip within the Virtual Chamber. Setup halted.")
         sys.exit(1)
 
     # Get the virtual environment executables
@@ -720,7 +756,7 @@ def main():
         install_command = pkg.get("install_command")
         import_name = pkg.get("import_name")
         if not install_and_verify_package(name, version, venv_dir, install_command=install_command, import_name=import_name):
-            print(f"\n❌ Failed to install and verify package '{name}'. Exiting setup.")
+            print_error(f"\nFailed to integrate and verify package '{name}'. Setup cannot continue.")
             sys.exit(1)
 
     # Step 10: Clone CogVideo repository and set up CogVx virtual environment using Python 3.12
@@ -747,23 +783,26 @@ def main():
     # Step 13: Check for ffmpeg
     if not check_ffmpeg(cwd=script_dir):
         if not prompt_install_ffmpeg(script_dir):
-            print("\n❌ ffmpeg installation not completed. Exiting setup.")
+            print_error("\nffmpeg installation incomplete. Setup cannot proceed.")
             sys.exit(1)
+        else:
+            print_status("ffmpeg has been successfully integrated.")
 
-    # Step 14: Prompt to launch the main script
-    prompt_launch_script(venv_dir, main_script_path)
-
-    # Step 15: Prompt to create desktop shortcut
-    choice = input("\n🖥️ Would you like to create a desktop shortcut to launch the Temporal Prompt Engine? (y/n): ").strip().lower()
+    # Step 14: Prompt to create desktop shortcut
+    choice = input("\n🖥️ Would you like to create a desktop shortcut for easy access to the Temporal Prompt Engine? (y/n): ").strip().lower()
     if choice == 'y':
         create_desktop_shortcut(venv_dir, main_script_path)
     else:
-        print("📝 Shortcut creation skipped.")
+        print_info("Desktop shortcut creation skipped. You can manually create one later if desired.")
 
-    print("\n============================================")
-    print("        ✨ Setup Completed Successfully ✨     ")
+    # Step 15: Prompt to launch the main script
+    prompt_launch_script(venv_dir, main_script_path)
+
+    print_status("\n============================================")
+    print(f"{Fore.CYAN}        ✨ Temporal Lab Setup Complete ✨        ")
     print("============================================")
-    input("🔒 Press Enter to exit...")
-
+    print_info("The Temporal Prompt Engine is now ready to explore the realms of time and virtual reality!")
+    input("🔒 Press Enter to close the Temporal Portal and exit setup...")
+    
 if __name__ == "__main__":
     main()

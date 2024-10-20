@@ -18,8 +18,10 @@ import webbrowser
 import re
 import random
 import platform
+import queue
 import socket
 import time
+import logging
 import scipy
 import torch
 from diffusers import AudioLDM2Pipeline
@@ -5903,7 +5905,7 @@ class MultimediaSuiteApp:
     def generate_video_prompts(self):
         """
         Generate video prompts optimized for CogVideoX Prompting Standards.
-        In 'Story Mode', first generate a story outline and then create detailed prompts for each scene.
+        In 'Story Mode', first generate a coherent story outline and then create detailed prompts for each scene.
         In 'Non-Story Mode', generate prompts individually without any overlap.
         Incorporates best prompting practices for enhanced prompt quality.
         """
@@ -5929,75 +5931,73 @@ class MultimediaSuiteApp:
 
         # Define system prompts for story and non-story modes
         sys_prompt_story = """
-You are part of a highly specialized team of bots that uses {idx} to create deeply descriptive video prompts optimized for CogVideoX. Your role is to transform the {input_concept} into richly detailed, accurate, and immersive video prompts while enhancing realism through awareness of physics, particle dynamics, and visual fidelity. You will ensure that no aspect of the prompt feels artificial or out of place.
- 
-        Your task is to transform simple scene descriptions into refined, granular prompts that enhance video generation quality focused on details and the overall picture to create a cohesive story.
-        Follow these rules:
-        - Output a single, highly descriptive prompt per request.
-        - Ensure each prompt is aware of the content of the prompt before it if it isn't the first to remain a cohesive story.
-        - Do not mention video durations or phrases like 'generate a video' or 'create a clip'. Focus on describing the visual aspects of the scene.
+You are part of a highly specialized team of bots that use {idx} to create deeply descriptive video prompts optimized for CogVideoX based on a cohesive story outline. Your role is to transform the {input_concept} into richly detailed, accurate, and immersive video prompts while enhancing realism through awareness of anatomy, physics, particle dynamics, visual fidelity, and technical aspects like lens effects. Ensure that every aspect of the prompt feels natural and integrated seamlessly into the story.
 
-- **Physics Awareness**: Integrate real-world physics into the scenes. For example:
-    - , account for **gravity**, **momentum**, and **impact**. 
-    - include subtle details like **debris scattering** when feet leave the ground and settle on impact.
-    - simulate appropriate **fluid dynamics**, **shattering particles**, and **light refraction** based on material properties.
-    -  detail how the **air pressure** causes **drag** and subtle **flame trails** at high velocities.
+**Follow these guidelines:**
+1. **Output Structure:**
+   - **Positive Prompt:** A concise, highly descriptive visual scene.
+   - **Negative Prompt:** A brief list of elements to exclude, focusing on avoiding artificial or unrealistic aspects.
 
-- **Particle Systems**: Leverage particles to enhance the richness of the environment. Include:
-    - **Dust motes** illuminated by light beams, **fog** dissipating with wind, or **snowflakes** fluttering down.
-    - **Explosions** and **sparks** should have realistic **light decay**, **motion blur**, and varied particle sizes, giving depth and vibrancy to action scenes.
-    - Ensure particles respect **wind direction**, **gravity**, and interact with surfaces they encounter (e.g., **settling dust** on a table after an impact).
-    - **Hands and Anatomy**: Ensure all character anatomy is **proportionate** and **realistic** with correctly aligned **joints** and **smooth movement**. In scenes with hand movements, fingers must flex naturally with **individual bone articulation** visible, and no awkward positioning.
-    - **Facial expressions**: Use nuanced descriptions for **micro-expressions**, including **eyebrow movement**, **eye dilation**, and **muscle tension**, ensuring faces do not appear emotionless or "robotic."
-    - **Lighting**: Ensure lighting follows the laws of **ray tracing** and **real-world shadows**, with objects casting proper, soft shadows based on their size and light proximity.
-    - Bouncing objects should behave with natural **energy conservation**, creating scenes where a character’s thrown ball bounces several times, with each bounce reducing in height realistically due to friction.
-    - Use **hovering objects** in sci-fi scenes to show subtle air ripples or **magnetic fields** interacting with nearby objects, creating visual interest.
-    - For magical or fantasy elements, particles such as **glowing embers** or **light trails** should swirl and dissipate according to complex air currents or mystical forces.
-- Start prompts with direct visual descriptions, e.g., “A dense jungle where the leaves sway gently under the force of a tropical storm, with rain droplets splashing and dispersing on the forest floor.”
-- Ensure camera angles or perspectives add depth, such as **wide shots** for landscapes and **close-ups** for intimate details like a character’s hand running through tall grass.
+2. **Content Requirements:**
+   - **Physics Awareness:** Integrate real-world physics (gravity, momentum, impact) with subtle details (debris scattering, fluid dynamics, light refraction).
+   - **Particle Systems:** Enhance the environment with realistic particles (dust motes, fog, snowflakes) and ensure their interactions respect natural laws.
+   - **Anatomy and Expressions:** Maintain proportionate and realistic character anatomy with natural movements and nuanced facial expressions.
+   - **Lighting and Camera Angles:** Use realistic lighting that follows ray tracing principles and choose camera angles that add depth (wide shots for landscapes, close-ups for details).
 
-**Positive Prompt**: {idx} with all elements in high detail, incorporating physics, particles, and realism.
-**Negative Prompt**: Exclude elements like poorly rendered anatomy, awkward object interactions, unnatural lighting, and unrealistic particle effects.
+3. **Format:**
+   - Start with a direct visual description relevant to the {input_concept}.
+   - Provide the prompt in the following format:
+     ```
+     positive: [Your positive prompt]
+     negative: [Your negative prompt]
+     ```
 
-        - Provide the prompt in the following format:
-          positive: [Your positive prompt]
-          negative: [Your negative prompt]
-"""
+4. **Examples for Reference (Do Not Use Specific Entities):**
+   - **Desired Positive Prompt:**
+     ```
+positive: High-definition 4K, dynamic natural lighting, subtle color grading. Smooth camera pan across a serene night scene with gentle transitions and balanced depth of field. Lush jungle environment. Character: species-specific features and attire reflecting their nature and story role, fully framed. Realistic anatomy, fluid movements, interacting naturally—e.g., brushing leaves, adjusting attire or natural behaviors. Moonlight filtering through canopy, rim lighting silhouette. Bioluminescent plants, fireflies, light mist. Ambient sounds of nocturnal wildlife, rustling leaves, water streams.
+
+     ```
+   - **Desired Negative Prompt:** (Always limit the results to only several terms to avoid in this generation)
+     ```
+     negative: low-quality, static framing, unnatural camera angles, overused lighting schemes, disformed anatomy, disfigured
+     ```
+     """
 
         sys_prompt_non_story = """
-You are part of an elite team of bots using {input_concept} to generate detailed and immersive video prompts optimized for CogVideoX. You focus on expanding the concept through realistic interactions, vivid textures, and awareness of particle systems and physics, ensuring nothing looks artificial.
+You are part of an elite team of bots using {input_concept} to generate detailed and independent immersive video prompts optimized for CogVideoX. Your focus is on expanding the concept through realistic interactions, vivid textures, and awareness of particle systems and physics, ensuring nothing looks artificial.
 
-You do not need to worry about things like scents or non-visual aspects. You are specifically saying what should be in the video.
-        Follow these rules:
-        - Output a single, highly descriptive prompt per request.
-        - Ensure each prompt is aware of the content of the prompt before it if it isn't the first to remain a cohesive story.
-        - Do not mention video durations or phrases like 'generate a video' or 'create a clip'. Focus on describing the visual aspects of the scene.
+**Follow these guidelines:**
+1. **Output Structure:**
+   - **Positive Prompt:** A concise, highly descriptive visual scene.
+   - **Negative Prompt:** A brief list of elements to exclude, focusing on avoiding artificial or unrealistic aspects.
 
-- **Physics Awareness**: Integrate real-world physics into the scenes. For example:
-    - , account for **gravity**, **momentum**, and **impact**. 
-    - include subtle details like **debris scattering** when feet leave the ground and settle on impact.
-    - simulate appropriate **fluid dynamics**, **shattering particles**, and **light refraction** based on material properties.
-    -  detail how the **air pressure** causes **drag** and subtle **flame trails** at high velocities.
+2. **Content Requirements:**
+   - **Physics Awareness:** Integrate real-world physics (gravity, momentum, impact) with subtle details (debris scattering, fluid dynamics, light refraction).
+   - **Particle Systems:** Enhance the environment with realistic particles (dust motes, fog, snowflakes) and ensure their interactions respect natural laws.
+   - **Anatomy and Expressions:** Maintain proportionate and realistic character anatomy with natural movements and nuanced facial expressions.
+   - **Lighting and Camera Angles:** Use realistic lighting that follows ray tracing principles and choose camera angles that add depth (wide shots for landscapes, close-ups for details).
 
-- **Particle Systems**: Leverage particles to enhance the richness of the environment. Include:
-    - **Dust motes** illuminated by light beams, **fog** dissipating with wind, or **snowflakes** fluttering down.
-    - **Explosions** and **sparks** should have realistic **light decay**, **motion blur**, and varied particle sizes, giving depth and vibrancy to action scenes.
-    - Ensure particles respect **wind direction**, **gravity**, and interact with surfaces they encounter (e.g., **settling dust** on a table after an impact).
-    - **Hands and Anatomy**: Ensure all character anatomy is **proportionate** and **realistic** with correctly aligned **joints** and **smooth movement**. In scenes with hand movements, fingers must flex naturally with **individual bone articulation** visible, and no awkward positioning.
-    - **Facial expressions**: Use nuanced descriptions for **micro-expressions**, including **eyebrow movement**, **eye dilation**, and **muscle tension**, ensuring faces do not appear emotionless or "robotic."
-    - **Lighting**: Ensure lighting follows the laws of **ray tracing** and **real-world shadows**, with objects casting proper, soft shadows based on their size and light proximity.
-    - Bouncing objects should behave with natural **energy conservation**, creating scenes where a character’s thrown ball bounces several times, with each bounce reducing in height realistically due to friction.
-    - Use **hovering objects** in sci-fi scenes to show subtle air ripples or **magnetic fields** interacting with nearby objects, creating visual interest.
-    - For magical or fantasy elements, particles such as **glowing embers** or **light trails** should swirl and dissipate according to complex air currents or mystical forces.
-- Start prompts with direct visual descriptions, e.g., “A dense jungle where the leaves sway gently under the force of a tropical storm, with rain droplets splashing and dispersing on the forest floor.”
-- Ensure camera angles or perspectives add depth, such as **wide shots** for landscapes and **close-ups** for intimate details like a character’s hand running through tall grass.
+3. **Format:**
+   - Start with a direct visual description relevant to the {input_concept}.
+   - Provide the prompt in the following format:
+     ```
+     positive: [Your positive prompt]
+     negative: [Your negative prompt]
+     ```
 
-**Positive Prompt**: {idx} with all elements in high detail, incorporating physics, particles, and realism.
-**Negative Prompt**: Exclude elements like poorly rendered anatomy, awkward object interactions, unnatural lighting, and unrealistic particle effects.
+4. **Examples for Reference (Do Not Use Specific Entities):**
+   - **Desired Positive Prompt:** 
+     ```
+positive: High-definition 4K, dynamic natural lighting, subtle color grading. Smooth camera pan across a serene night scene with gentle transitions and balanced depth of field. Lush jungle environment. Character: species-specific features and attire reflecting their nature and story role, fully framed. Realistic anatomy, fluid movements, interacting naturally—e.g., brushing leaves, adjusting attire or natural behaviors. Moonlight filtering through canopy, rim lighting silhouette. Bioluminescent plants, fireflies, light mist. Ambient sounds of nocturnal wildlife, rustling leaves, water streams.
 
-        - Provide the prompt in the following format:
-          positive: [Your positive prompt]
-          negative: [Your negative prompt]
+     ```
+   - **Desired Negative Prompt:** (Always limit the results to only several terms to avoid in this generation)
+     ```
+     negative: low-resolution, static framing, unnatural camera angles, overused lighting schemes, disformed anatomy, disfigured
+     ```
+
+**Ensure that each generated prompt adheres to this structure and maintains the desired level of detail and realism without referencing the specific examples provided.**
 """
 
         if self.video_story_mode_var.get():
@@ -7355,33 +7355,37 @@ You do not need to worry about things like scents or non-visual aspects. You are
             self.progress_window.update_idletasks()
 
 
-    def ask_for_prompt_list(self):
+    def ask_for_prompt_list(self, prompt_type='video'):
         """
-        Asks the user if they want to use the current session's video prompts or load a prompt list from a file.
-        Returns a tuple (prompts, prompt_file_path).
+        Opens a file dialog to select a prompt list based on the prompt type.
+
+        :param prompt_type: 'audio' or 'video' to specify the type of prompt list.
+        :return: Tuple containing the prompts as a string and the file path.
         """
-        response = messagebox.askyesno(
-            "Load Video Prompt List",
-            "Do you want to use the current session's video prompts?\nClick 'No' to load a prompt list from a file."
-        )
-        if response:
-            # Use current session's video prompts
-            prompts = self.video_prompts
-            prompt_file_path = self.video_prompt_save_path if hasattr(self, 'video_prompt_save_path') else None
-            return prompts, prompt_file_path
+        if prompt_type == 'audio':
+            initial_dir = os.path.join("C:\\", "Users", "Shadow", "Documents", "TemporalPromptEngineOutputs", "Mythical_creatures_as_two_year", "Audio")
+            title = "Select Audio Prompt List"
         else:
-            # Open file dialog to select a prompt list file
-            file_path = filedialog.askopenfilename(
-                title="Select Video Prompt List File",
-                filetypes=[("Text Files", "*.txt")]
-            )
-            if file_path:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    prompts = f.read()
-                return prompts, file_path
-            else:
-                # User cancelled the file dialog
-                return None, None
+            initial_dir = os.path.join("C:\\", "Users", "Shadow", "Documents", "TemporalPromptEngineOutputs", "Mythical_creatures_as_two_year", "Video")
+            title = "Select Video Prompt List"
+
+        prompt_file_path = filedialog.askopenfilename(
+            title=title,
+            initialdir=initial_dir,
+            filetypes=[("Text Files", "*.txt")]
+        )
+        if not prompt_file_path:
+            return None, None
+        try:
+            with open(prompt_file_path, 'r', encoding='utf-8') as file:
+                prompts = file.read()
+            print(f"Loaded prompts from: {prompt_file_path}")
+            return prompts, prompt_file_path
+        except Exception as e:
+            messagebox.showerror("File Error", f"Failed to load prompt list:\n{e}")
+            print(f"Failed to load prompt list from {prompt_file_path}: {e}")
+            return None, None
+
 
 
     def sanitize_filename(self, sound_text):
@@ -7408,15 +7412,18 @@ You do not need to worry about things like scents or non-visual aspects. You are
         return sanitized
 
     def generate_sound_effects(self):
-        print("generate_sound_effects called")
+        logging.info("generate_sound_effects called")
         
-        # Unpack the tuple returned by ask_for_prompt_list()
-        prompts, prompt_file_path = self.ask_for_prompt_list()
+        # Unpack the tuple returned by ask_for_prompt_list() with prompt_type='audio'
+        prompts, prompt_file_path = self.ask_for_prompt_list(prompt_type='audio')
         if not prompts:
             messagebox.showwarning("Prompt Error", "No prompts available for sound effect generation.")
             return
 
-        # Continue with the rest of the sound effect generation logic
+        # Set the audio_save_folder to the directory of prompt_file_path
+        audio_save_folder = os.path.dirname(prompt_file_path)
+        self.audio_save_folder = audio_save_folder
+
         duration = self.audio_length_var.get()
         if not duration:
             messagebox.showwarning("Duration Error", "Please provide a valid duration.")
@@ -7428,36 +7435,28 @@ You do not need to worry about things like scents or non-visual aspects. You are
             messagebox.showwarning("Duration Error", "Duration must be a number.")
             return
 
-        self.duration = duration  # Store duration in the class instance
-        print(f"Audio Duration: {self.duration} seconds")
-
-        # Use the base directory and save the sound effects in the "Audio" folder
-        audio_save_folder = self.audio_save_folder
+        self.duration = duration
+        logging.info(f"Audio Duration: {self.duration} seconds")
 
         if not audio_save_folder or not os.path.exists(audio_save_folder):
             messagebox.showerror("Invalid Audio Save Folder", "The audio save folder is invalid or does not exist.")
-            print("Invalid audio save folder path.")
+            logging.error("Invalid audio save folder path.")
             return
 
-        # Create the output directory if it doesn't exist
         os.makedirs(audio_save_folder, exist_ok=True)
-        print(f"Audio save folder: {audio_save_folder}")
+        logging.info(f"Audio save folder: {audio_save_folder}")
 
-        # Split the audio prompts into individual prompt sets and remove any unwanted prefixes
         prompt_sets = [re.sub(r'negative:\s*', '', p.strip()) for p in prompts.strip().split('--------------------') if p.strip()]
-        print(f"Number of audio prompt sets to process: {len(prompt_sets)}")
+        logging.info(f"Number of audio prompt sets to process: {len(prompt_sets)}")
 
-        # Retrieve inference steps and configuration number
-        inference_steps = self.audio_inference_steps_var.get()
         try:
-            inference_steps = int(inference_steps)
+            inference_steps = int(self.audio_inference_steps_var.get())
         except ValueError:
             messagebox.showwarning("Inference Steps Error", "Inference steps must be an integer.")
             return
 
-        seed = self.audio_seed_var.get()
         try:
-            seed = int(seed)
+            seed = int(self.audio_seed_var.get())
         except ValueError:
             messagebox.showwarning("Seed Error", "Seed must be an integer.")
             return
@@ -7466,43 +7465,36 @@ You do not need to worry about things like scents or non-visual aspects. You are
         steps_str = f"Steps{inference_steps}_"
         cfg_str = f"Cfg{inference_steps}_"  # Assuming cfg is related to inference_steps
 
-        # Organize sounds by prompt set
         prompt_sets_sounds = []
         for i, prompt_set in enumerate(prompt_sets, start=1):
-            # Split each prompt set's sounds by commas to get individual sounds
             sounds = [sound.strip() for sound in prompt_set.split(',') if sound.strip()]
             prompt_sets_sounds.append(sounds)
-            print(f"Prompt set {i}: {len(sounds)} sounds extracted.")
+            logging.info(f"Prompt set {i}: {len(sounds)} sounds extracted.")
 
-        # Calculate the total number of individual sounds
         total_sounds = sum(len(sounds) for sounds in prompt_sets_sounds)
-        print(f"Total number of individual sounds to generate: {total_sounds}")
+        logging.info(f"Total number of individual sounds to generate: {total_sounds}")
 
-        # Set the number of prompts for the progress bar
         number_of_prompts = total_sounds
+        logging.info(f"Generating {number_of_prompts} unique sound effects.")
 
-        print(f"Generating {number_of_prompts} unique sound effects.")
-
-        # Ensure AudioLDM2 and torchaudio are installed
         self.ensure_audioldm2_installed()
 
-        # Initialize the AudioLDM2 pipeline
         try:
-            repo_id = "cvssp/audioldm2-large"  # Adjust based on your needs
+            repo_id = "cvssp/audioldm2-large"
             pipe = AudioLDM2Pipeline.from_pretrained(repo_id, torch_dtype=torch.float16)
             device = "cuda" if self.detect_gpu() else "cpu"
             pipe = pipe.to(device)
-            print(f"AudioLDM2 pipeline loaded on {device}.")
+            logging.info(f"AudioLDM2 pipeline loaded on {device}.")
         except Exception as e:
             messagebox.showerror("Pipeline Error", f"Failed to load AudioLDM2 pipeline:\n{e}")
-            print(f"Failed to load AudioLDM2 pipeline: {e}")
+            logging.error(f"Failed to load AudioLDM2 pipeline: {e}")
             return
 
-        # Create a progress window and store references in the class instance
+        # Create a progress window
         self.progress_window = tk.Toplevel(self.root)
         self.progress_window.title("Generating Sound Effects")
         self.progress_window.geometry("400x100")
-        self.progress_window.grab_set()  # Make the progress window modal
+        self.progress_window.grab_set()
 
         progress_label = tk.Label(
             self.progress_window,
@@ -7513,9 +7505,8 @@ You do not need to worry about things like scents or non-visual aspects. You are
         )
         progress_label.pack(pady=10)
 
-        # Define a style for the ttk Progressbar
         style = ttk.Style()
-        style.theme_use('clam')  # You can use any theme that supports progress bars
+        style.theme_use('clam')
         style.configure("custom.Horizontal.TProgressbar", troughcolor='#0A2239', background='white')
 
         self.progress_bar = ttk.Progressbar(
@@ -7526,75 +7517,120 @@ You do not need to worry about things like scents or non-visual aspects. You are
             style="custom.Horizontal.TProgressbar"
         )
         self.progress_bar.pack(pady=10)
-        self.progress_bar['maximum'] = number_of_prompts  # Updated maximum
+        self.progress_bar['maximum'] = number_of_prompts
+
+        # Create a queue for thread communication
+        self.queue = queue.Queue()
 
         def run_all_generations():
-            print("run_all_generations started")
-            generated_audio_files_per_set = [[] for _ in prompt_sets_sounds]  # List of lists to track files per set
-            ratings_per_set = [[] for _ in prompt_sets_sounds]  # To store ratings for each sound
+            logging.info("run_all_generations started")
+            generated_audio_files_per_set = [[] for _ in prompt_sets_sounds]
+            ratings_per_set = [[] for _ in prompt_sets_sounds]
 
             for set_idx, sounds in enumerate(prompt_sets_sounds, start=1):
-                print(f"Processing Prompt Set {set_idx}")
+                logging.info(f"Processing Prompt Set {set_idx}")
 
-                # Create a separate folder for each prompt set
-                video_folder = os.path.join(audio_save_folder, f"Video_{set_idx}")
-                os.makedirs(video_folder, exist_ok=True)
-                print(f"Created/Using folder: {video_folder}")
+                audio_folder = os.path.join(audio_save_folder, f"Audio_{set_idx}")
+                os.makedirs(audio_folder, exist_ok=True)
+                logging.info(f"Created/Using folder: {audio_folder}")
 
                 for sound_idx, sound_text in enumerate(sounds, start=1):
                     if sound_text:
-                        print(f"Generating audio for set {set_idx}, sound {sound_idx}: {sound_text}")
+                        logging.info(f"Generating audio for set {set_idx}, sound {sound_idx}: {sound_text}")
                         attempt = 0
-                        max_attempts = 3  # Number of retry attempts
+                        max_attempts = 3
                         while attempt < max_attempts:
                             try:
-                                generator = torch.Generator(device=device).manual_seed(seed + set_idx * 1000 + sound_idx)  # Different seed per prompt
+                                generator = torch.Generator(device=device).manual_seed(seed + set_idx * 1000 + sound_idx)
                                 audio_samples = pipe(
                                     sound_text,
-                                    negative_prompt="Low quality.",  # You can customize this
+                                    negative_prompt="Low quality.",
                                     num_inference_steps=inference_steps,
                                     audio_length_in_s=duration,
-                                    num_waveforms_per_prompt=1,  # Generate only one waveform per prompt
+                                    num_waveforms_per_prompt=1,
                                     generator=generator
                                 ).audios
 
-                                audio = audio_samples[0]  # Since only one waveform is generated
+                                audio = audio_samples[0]
 
-                                # Sanitize the sound text for filename
                                 sanitized_sound = self.sanitize_filename(sound_text)
-                                print(f"Sanitized sound text: '{sanitized_sound}'")
+                                logging.info(f"Sanitized sound text: '{sanitized_sound}'")
 
                                 output_filename = os.path.join(
-                                    video_folder,
-                                    f"{steps_str}Video{set_idx}_SonicLayer{sound_idx}_{sanitized_sound}.wav"
+                                    audio_folder,
+                                    f"{steps_str}{cfg_str}Audio{set_idx}_SonicLayer{sound_idx}_{sanitized_sound}.wav"
                                 )
 
-                                # Save the audio using scipy
                                 scipy.io.wavfile.write(output_filename, rate=16000, data=audio)
-                                print(f"Saved sound effect to {output_filename}")
+                                logging.info(f"Saved sound effect to {output_filename}")
                                 generated_audio_files_per_set[set_idx - 1].append(output_filename)
 
-                                # Update progress bar
-                                self.progress_bar['value'] += 1
-                                self.progress_window.update_idletasks()
+                                # Update progress
+                                self.queue.put(("progress", 1))
 
-                                break  # Exit the retry loop on success
+                                break  # Success
 
                             except Exception as e:
                                 attempt += 1
-                                print(f"[AudioLDM2 Error] Attempt {attempt} failed for set {set_idx}, sound {sound_idx}: {e}")
+                                logging.error(f"[AudioLDM2 Error] Attempt {attempt} failed for set {set_idx}, sound {sound_idx}: {e}")
                                 if attempt < max_attempts:
-                                    print(f"Retrying set {set_idx}, sound {sound_idx} (Attempt {attempt + 1}/{max_attempts})...")
+                                    logging.info(f"Retrying set {set_idx}, sound {sound_idx} (Attempt {attempt + 1}/{max_attempts})...")
                                 else:
-                                    messagebox.showerror(
-                                        "AudioLDM2 Error",
-                                        f"Failed to generate sound effect for set {set_idx}, sound {sound_idx} after {max_attempts} attempts.\nError: {e}"
-                                    )
-                                    print(f"[AudioLDM2 Error] Giving up on set {set_idx}, sound {sound_idx} after {max_attempts} attempts.")
+                                    self.queue.put(("error", f"Failed to generate sound effect for set {set_idx}, sound {sound_idx} after {max_attempts} attempts.\nError: {e}"))
+                                    logging.error(f"[AudioLDM2 Error] Giving up on set {set_idx}, sound {sound_idx} after {max_attempts} attempts.")
+
+            # Signal completion
+            self.queue.put(("complete", "All sound effects have been generated successfully."))
+
+        def process_queue():
+            while not self.queue.empty():
+                msg_type, content = self.queue.get()
+                if msg_type == "progress":
+                    self.progress_bar['value'] += content
+                elif msg_type == "error":
+                    messagebox.showerror("Error", content)
+                elif msg_type == "complete":
+                    self.progress_window.destroy()
+                    messagebox.showinfo("Success", content)
+            self.progress_window.after(100, process_queue)
 
         # Start the thread for generation
         threading.Thread(target=run_all_generations, daemon=True).start()
-        print("Audio generation thread started.")
+        logging.info("Audio generation thread started.")
+
+        # Start processing the queue
+        self.progress_window.after(100, process_queue)
+
+        
+    def get_corresponding_audio_prompt(self, video_prompt_path):
+        """
+        Finds and loads the corresponding audio prompt list based on the video prompt path.
+
+        :param video_prompt_path: File path of the loaded video prompt list.
+        :return: Tuple containing the audio prompts as a string and the file path.
+        """
+        try:
+            base_dir = os.path.dirname(video_prompt_path)
+            # Assuming the structure replaces 'Video' with 'Audio' and uses the same filename
+            audio_dir = base_dir.replace("\\Video\\", "\\Audio\\")
+            audio_filename = os.path.basename(video_prompt_path)
+            audio_prompt_path = os.path.join(audio_dir, audio_filename)
+
+            if os.path.exists(audio_prompt_path):
+                with open(audio_prompt_path, 'r', encoding='utf-8') as file:
+                    prompts = file.read()
+                print(f"Automatically loaded corresponding audio prompts from: {audio_prompt_path}")
+                return prompts, audio_prompt_path
+            else:
+                messagebox.showwarning("Audio Prompt Not Found", f"Corresponding audio prompt list not found for {video_prompt_path}.")
+                return None, None
+        except Exception as e:
+            messagebox.showerror("Path Error", f"Error locating audio prompt list:\n{e}")
+            print(f"Error locating audio prompt list for {video_prompt_path}: {e}")
+            return None, None
+
+
+        
     def generate_dynamic_audio_prompts(self, prompts, num_variations=3):
         """
         Generate unique audio prompts by introducing slight variations in the sound descriptions
@@ -7699,7 +7735,7 @@ You do not need to worry about things like scents or non-visual aspects. You are
             self.audio_open_source_mode_var.set(audio_options.get("open_source_mode", True))
             self.audio_model_name_var.set(audio_options.get("model_name", "audioldm2-full-large-1150k"))
             self.audio_guidance_scale_var.set(audio_options.get("guidance_scale", 8))
-            self.audio_ddim_steps_var.set(audio_options.get("ddim_steps", 120))
+            self.audio_ddim_steps_var.set(audio_options.get("ddim_steps", 40))
             self.audio_n_candidate_var.set(audio_options.get("n_candidate_gen_per_text", 8))
             self.audio_seed_var.set(audio_options.get("seed", 1990))
 
@@ -8492,11 +8528,11 @@ You do not need to worry about things like scents or non-visual aspects. You are
         self.audio_open_source_mode_var = tk.BooleanVar(value=True)
         self.audio_model_name_var = tk.StringVar(value="audioldm2-full-large-1150k")
         self.audio_guidance_scale_var = tk.DoubleVar(value=8)
-        self.audio_ddim_steps_var = tk.IntVar(value=120)
+        self.audio_ddim_steps_var = tk.IntVar(value=40)
         self.audio_n_candidate_var = tk.IntVar(value=8)
         self.audio_seed_var = tk.IntVar(value=1990)
         self.audio_device_var = tk.StringVar(value="cpu")  # Initialize audio_device_var with default 'cpu'
-        self.audio_inference_steps_var = tk.IntVar(value=120)  # Default inference steps
+        self.audio_inference_steps_var = tk.IntVar(value=40)  # Default inference steps
         self.audio_length_var = tk.DoubleVar(value=6.0)  # Default audio length in seconds
         self.audio_waveforms_var = tk.IntVar(value=1)  # Default number of waveforms per prompt
 
@@ -8745,7 +8781,8 @@ You do not need to worry about things like scents or non-visual aspects. You are
         # ---------------------
         # Load Settings After Building GUI
         # ---------------------
-        self.load_audio_settings()        
+        self.load_audio_settings()    
+        
     def load_audio_settings(self):
         """
         Loads audio settings from the SETTINGS_FILE and sets the corresponding variables.

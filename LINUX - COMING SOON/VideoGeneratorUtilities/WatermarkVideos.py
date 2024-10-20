@@ -1,7 +1,7 @@
 import os
 import subprocess
 import re
-from tkinter import Tk, filedialog
+from tkinter import Tk, filedialog, messagebox
 import requests
 import shutil  # For copying files
 import tempfile  # For creating temporary files
@@ -160,22 +160,104 @@ def select_folder():
     folder_selected = filedialog.askdirectory()
     return folder_selected
 
+# Function to open a file selection dialog
+def select_logo_file():
+    root = Tk()
+    root.withdraw()  # Hide the main window
+    file_selected = filedialog.askopenfilename(
+        title="Select Logo Image",
+        filetypes=[("PNG Images", "*.png"), ("All Files", "*.*")]
+    )
+    return file_selected
+
+# Function to download the Temporal Labs LLC logo
+def download_logo(url, save_path):
+    try:
+        print(f"Downloading logo from {url}...")
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            with open(save_path, 'wb') as f:
+                shutil.copyfileobj(response.raw, f)
+            print(f"Logo downloaded and saved to {save_path}")
+            return True
+        else:
+            print(f"Failed to download logo. Status code: {response.status_code}")
+            return False
+    except Exception as e:
+        print(f"An error occurred while downloading the logo: {e}")
+        return False
+
+# Function to handle logo setup
+def setup_logo():
+    logo_name = "logo.png"
+    logo_path = os.path.join(script_dir, logo_name)
+    
+    if not os.path.exists(logo_path):
+        print(f"{logo_name} does not exist.")
+        user_choice = messagebox.askyesno(
+            "Logo Not Found",
+            "logo.png was not found in the script directory.\nWould you like to select a PNG file for the logo?"
+        )
+        if user_choice:
+            selected_file = select_logo_file()
+            if selected_file:
+                try:
+                    shutil.copy(selected_file, logo_path)
+                    print(f"Selected logo copied to {logo_path}")
+                except Exception as e:
+                    print(f"Failed to copy selected logo: {e}")
+                    return None
+            else:
+                print("No file selected. Downloading default logo.")
+                # URL to the Temporal Labs LLC logo
+                logo_url = "https://assets.zyrosite.com/cdn-cgi/image/format=auto,w=450,fit=crop,q=95/A1aoblXx2KSKGq4r/tlclogorawnameonly-Awvk565gvMfLKVr4.png"
+                if not download_logo(logo_url, logo_path):
+                    print("Failed to download the default logo. Exiting.")
+                    return None
+        else:
+            print("User chose not to select a logo. Downloading default logo.")
+            # URL to the Temporal Labs LLC logo
+            logo_url = "https://assets.zyrosite.com/cdn-cgi/image/format=auto,w=450,fit=crop,q=95/A1aoblXx2KSKGq4r/tlclogorawnameonly-Awvk565gvMfLKVr4.png"
+            if not download_logo(logo_url, logo_path):
+                print("Failed to download the default logo. Exiting.")
+                return None
+    else:
+        print(f"{logo_name} already exists at {logo_path}")
+    
+    return logo_path
+
+# Function to confirm usage of Temporal Prompt Engine Prompt Lists
+def confirm_usage():
+    while True:
+        user_input = input("Are you using Temporal Prompt Engine Prompt Lists? (y/n): ").strip().lower()
+        if user_input == 'y':
+            print("Confirmation received. Proceeding with watermarking process.")
+            return True
+        elif user_input == 'n':
+            print("You did not confirm the use of Temporal Prompt Engine Prompt Lists. Exiting.")
+            return False
+        else:
+            print("Invalid input. Please enter 'y' for yes or 'n' for no.")
+
 # Main script
 if __name__ == "__main__":
-    # Get the directory of the current script (where the logo.png is located)
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    logo_path = os.path.join(script_dir, "logo.png")  # Assuming 'logo.png' is in the same folder
+    # Confirm usage
+    if not confirm_usage():
+        exit(1)
+    
+    # Setup logo
+    logo_path = setup_logo()
+    
+    if not logo_path:
+        print("Logo setup failed. Exiting.")
+        exit(1)
+    
+    # Prompt the user to select the folder containing the videos
+    print("Please select the folder containing the videos to watermark.")
+    base_dir = select_folder()
 
-    # Check if logo.png exists
-    if not os.path.exists(logo_path):
-        print(f"Error: {logo_path} does not exist. Please make sure logo.png is in the same directory as the script.")
+    if base_dir:
+        # Call the function to watermark videos in the selected folder
+        watermark_videos_in_directory(base_dir, logo_path)
     else:
-        # Prompt the user to select the folder containing the videos
-        print("Please select the folder containing the videos to watermark.")
-        base_dir = select_folder()
-
-        if base_dir:
-            # Call the function to watermark videos in the selected folder
-            watermark_videos_in_directory(base_dir, logo_path)
-        else:
-            print("No folder selected. Exiting.")
+        print("No folder selected. Exiting.")
