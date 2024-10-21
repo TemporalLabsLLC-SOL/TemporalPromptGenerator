@@ -5931,74 +5931,58 @@ class MultimediaSuiteApp:
 
         # Define system prompts for story and non-story modes
         sys_prompt_story = """
-You are part of a highly specialized team of bots that use {idx} to create deeply descriptive video prompts optimized for CogVideoX based on a cohesive story outline. Your role is to transform the {input_concept} into richly detailed, accurate, and immersive video prompts while enhancing realism through awareness of anatomy, physics, particle dynamics, visual fidelity, and technical aspects like lens effects. Ensure that every aspect of the prompt feels natural and integrated seamlessly into the story.
+Intuitively and creatively turn {input_concept} into a deeply descriptive, cohesive story outline for a set of natural language video prompts. Each [idx] in the prompt list represents a prompt set within the overall story.
 
-**Follow these guidelines:**
-1. **Output Structure:**
-   - **Positive Prompt:** A concise, highly descriptive visual scene.
-   - **Negative Prompt:** A brief list of elements to exclude, focusing on avoiding artificial or unrealistic aspects.
+PROMPT RULES:
+- Avoid filler and bridging words; optimize token usage and maximize content detail.
+- Present prompts in paragraph form, aiming for about 200 characters.
+- Integrate real-world physics with subtle details (e.g., debris scattering, fluid dynamics, light refraction).
+- Enhance the environment with realistic particles respecting natural laws.
+- Provide specific details for anatomy and not generalized concepts for positive prompts.
+- Reinforce keywords in different parts of the prompt for output consistency.
+- Focus on the content that should be in the video. Example: "A deserted street," not "a street without people."
+- NO EXCEPTIONS. Use all 7 markers before the respective content in every positive prompt, ALWAYS INCLUDE parentheses:
+    (Camera Language)
+    (Framing Angle)
+    (Lighting)
+    (Subject Description)
+    (Subject Movement)
+    (Scene Description)
+    (Atmosphere)
 
-2. **Content Requirements:**
-   - **Physics Awareness:** Integrate real-world physics (gravity, momentum, impact) with subtle details (debris scattering, fluid dynamics, light refraction).
-   - **Particle Systems:** Enhance the environment with realistic particles (dust motes, fog, snowflakes) and ensure their interactions respect natural laws.
-   - **Anatomy and Expressions:** Maintain proportionate and realistic character anatomy with natural movements and nuanced facial expressions.
-   - **Lighting and Camera Angles:** Use realistic lighting that follows ray tracing principles and choose camera angles that add depth (wide shots for landscapes, close-ups for details).
-
-3. **Format:**
-   - Start with a direct visual description relevant to the {input_concept}.
-   - Provide the prompt in the following format:
+Finally, provide the prompt in the following format:
      ```
-     positive: [Your positive prompt]
-     negative: [Your negative prompt]
-     ```
-
-4. **Examples for Reference (Do Not Use Specific Entities):**
-   - **Desired Positive Prompt:**
-     ```
-positive: High-definition 4K, dynamic natural lighting, subtle color grading. Smooth camera pan across a serene night scene with gentle transitions and balanced depth of field. Lush jungle environment. Character: species-specific features and attire reflecting their nature and story role, fully framed. Realistic anatomy, fluid movements, interacting naturally—e.g., brushing leaves, adjusting attire or natural behaviors. Moonlight filtering through canopy, rim lighting silhouette. Bioluminescent plants, fireflies, light mist. Ambient sounds of nocturnal wildlife, rustling leaves, water streams.
-
-     ```
-   - **Desired Negative Prompt:** (Always limit the results to only several terms to avoid in this generation)
-     ```
-     negative: low-quality, static framing, unnatural camera angles, overused lighting schemes, disformed anatomy, disfigured
+     positive: [A fully considered positive prompt]
+     negative: [A base list of negative terms prompt set limited to 3 to 5 terms. Do not word this negatively, simply say things to avoid with exposition]
      ```
      """
 
         sys_prompt_non_story = """
-You are part of an elite team of bots using {input_concept} to generate detailed and independent immersive video prompts optimized for CogVideoX. Your focus is on expanding the concept through realistic interactions, vivid textures, and awareness of particle systems and physics, ensuring nothing looks artificial.
+Transform {input_concept} into a specifically detailed and immersive video prompt set.
 
-**Follow these guidelines:**
-1. **Output Structure:**
-   - **Positive Prompt:** A concise, highly descriptive visual scene.
-   - **Negative Prompt:** A brief list of elements to exclude, focusing on avoiding artificial or unrealistic aspects.
+PROMPT RULES:
+- Avoid filler and bridging words; optimize token usage and maximize content detail.
+- Present prompts in paragraph form, aiming for about 200 characters.
+- Integrate real-world physics with subtle details (e.g., debris scattering, fluid dynamics, light refraction).
+- Enhance the environment with realistic particles (dust motes, fog, snowflakes) respecting natural laws.
+- Reinforce keywords in different parts of the prompt for output consistency. Example: "The camera flies ultra-fast through the forest."
+- Provide specific details and not generalized concepts for each aspect of every positive prompt.
+- Focus on the content that should be in the video. Example: "A deserted street," not "a street without people."
+- Use all 7 markers before the respective content in every positive prompt, ALWAYS INCLUDE parentheses:
+    (Camera Language)
+    (Framing Angle)
+    (Lighting)
+    (Subject Description)
+    (Subject Movement)
+    (Scene Description)
+    (Atmosphere)
 
-2. **Content Requirements:**
-   - **Physics Awareness:** Integrate real-world physics (gravity, momentum, impact) with subtle details (debris scattering, fluid dynamics, light refraction).
-   - **Particle Systems:** Enhance the environment with realistic particles (dust motes, fog, snowflakes) and ensure their interactions respect natural laws.
-   - **Anatomy and Expressions:** Maintain proportionate and realistic character anatomy with natural movements and nuanced facial expressions.
-   - **Lighting and Camera Angles:** Use realistic lighting that follows ray tracing principles and choose camera angles that add depth (wide shots for landscapes, close-ups for details).
-
-3. **Format:**
-   - Start with a direct visual description relevant to the {input_concept}.
-   - Provide the prompt in the following format:
+Finally, provide the prompt in the following format:
      ```
-     positive: [Your positive prompt]
-     negative: [Your negative prompt]
+     positive: [A fully considered positive prompt]
+     negative: [A base list of negative terms prompt set limited to 3 to 5 terms. Do not word this negatively, simply say things to avoid with exposition]
      ```
-
-4. **Examples for Reference (Do Not Use Specific Entities):**
-   - **Desired Positive Prompt:** 
-     ```
-positive: High-definition 4K, dynamic natural lighting, subtle color grading. Smooth camera pan across a serene night scene with gentle transitions and balanced depth of field. Lush jungle environment. Character: species-specific features and attire reflecting their nature and story role, fully framed. Realistic anatomy, fluid movements, interacting naturally—e.g., brushing leaves, adjusting attire or natural behaviors. Moonlight filtering through canopy, rim lighting silhouette. Bioluminescent plants, fireflies, light mist. Ambient sounds of nocturnal wildlife, rustling leaves, water streams.
-
-     ```
-   - **Desired Negative Prompt:** (Always limit the results to only several terms to avoid in this generation)
-     ```
-     negative: low-resolution, static framing, unnatural camera angles, overused lighting schemes, disformed anatomy, disfigured
-     ```
-
-**Ensure that each generated prompt adheres to this structure and maintains the desired level of detail and realism without referencing the specific examples provided.**
-"""
+     """
 
         if self.video_story_mode_var.get():
             # Story Mode: Generate a story outline first
@@ -7744,190 +7728,309 @@ positive: High-definition 4K, dynamic natural lighting, subtle color grading. Sm
         """
         Combines video files with generated sound effects from respective Video_X folders.
         Dynamically layers sound effects and optimizes the audio mix.
-        Outputs individual combined video-audio files and optionally combines all audio variants into a comparison video.
-        Final videos for each prompt will be combined into FINAL_VIDEO.mp4.
+        Outputs individual combined video-audio files and combines all into FINAL_VIDEO.mp4.
         """
-
+        
         import os
+        import re
         from pydub import AudioSegment
         from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
-        import tkinter.filedialog as filedialog
-        import tkinter.messagebox as messagebox
+        import tkinter as tk
+        from tkinter import filedialog, messagebox
         import numpy as np
         from scipy.fft import rfft, rfftfreq
 
-        # Extract the number from filenames for sorting purposes
-        def extract_number(filename):
-            import re
-            match = re.search(r'_(\d+)', filename)
-            return int(match.group(1)) if match else 0
+        # Helper function for natural sorting without external libraries
+        def natural_sort_key(s):
+            return [int(text) if text.isdigit() else text.lower() for text in re.split('(\d+)', s)]
+        
+        # Helper function to extract number from filenames based on a given prefix
+        def extract_number(filename, prefix):
+            """
+            Extracts the first occurrence of a number in the filename following the specified prefix.
+            Example: extract_number('Video_10.mp4', 'Video') returns 10
+            If no match is found, returns a large number to sort unmatched files last.
+            """
+            pattern = rf'{prefix}_(\d+)'
+            match = re.search(pattern, filename, re.IGNORECASE)
+            if match:
+                return int(match.group(1))
+            else:
+                return float('inf')  # Assign a high number to sort unmatched files last
 
         # Function to combine all audio layers (WAV files) from a Video_X folder into a single soundscape
         def combine_sound_effects_layers(video_folder):
-            """
-            Combines multiple sound effect layers into a single, dynamically optimized 6-second soundscape.
-            Automatically analyzes sound types (e.g., rain, thunder, footsteps) and adjusts layers based on frequency range,
-            prominence, and perceived distance. Implements environmental mixing techniques.
-            """
-            
             SAMPLE_RATE = 16000
             DURATION_MS = 6000  # All sounds are trimmed/padded to 6 seconds
             
-            # Helper function to perform frequency analysis on sound and classify it
             def analyze_sound(audio_segment):
-                # Convert the audio segment to raw data for frequency analysis
                 samples = np.array(audio_segment.get_array_of_samples())
-                # Perform the real FFT to get the frequency spectrum
+                if len(samples) == 0:
+                    return "unknown"
                 freqs = rfftfreq(len(samples), 1 / SAMPLE_RATE)
                 fft_values = np.abs(rfft(samples))
-
-                # Calculate the mean frequency for analysis
                 dominant_frequency = freqs[np.argmax(fft_values)]
                 
-                # Simple heuristic to classify sound based on dominant frequency
-                if dominant_frequency < 200:  # Low-frequency sound, probably bass-heavy (e.g., thunder)
+                # Classification based on dominant frequency
+                if dominant_frequency < 200:
                     return "low"
-                elif 200 <= dominant_frequency < 1000:  # Mid-range frequencies (e.g., speech, footsteps)
+                elif 200 <= dominant_frequency < 1000:
                     return "mid"
-                else:  # High frequencies (e.g., rain, wind)
+                elif 1000 <= dominant_frequency < 3000:
+                    return "high_mid"
+                else:
                     return "high"
 
-            # Function to determine volume adjustment based on the sound's classification
-            def get_dynamic_volume(sound_name, sound_classification):
-                volume_adjustments = {
-                    'low': 6,  # Boost low-frequency sounds (e.g., thunder)
-                    'mid': 2,  # Keep mid-range sounds at a moderate level
-                    'high': -4  # Reduce high-frequency background sounds (e.g., rain)
+            def get_dynamic_volume_and_effects(sound_classification):
+                # Define volume adjustments and possible effects
+                adjustments = {
+                    'low': {'volume': -2, 'pan': (-5, 5)},
+                    'mid': {'volume': -3, 'pan': (0, 0)},
+                    'high_mid': {'volume': -4, 'pan': (3, -3)},
+                    'high': {'volume': -5, 'pan': (5, -5)},
+                    'unknown': {'volume': -3, 'pan': (0, 0)}
                 }
+                return adjustments.get(sound_classification, {'volume': -3, 'pan': (0, 0)})
 
-                # Adjust volume based on sound classification
-                if sound_classification in volume_adjustments:
-                    return volume_adjustments[sound_classification]
-                return 0  # Default no change if unknown
+            print(f"Processing folder: {video_folder}")
 
-            print(f"Checking folder: {video_folder}")
-            
-            # List all files in the folder
-            all_files = os.listdir(video_folder)
+            # List all .wav files in the folder
+            try:
+                all_files = os.listdir(video_folder)
+            except Exception as e:
+                print(f"Error accessing folder {video_folder}: {e}")
+                messagebox.showerror("Folder Access Error", f"Cannot access folder: {video_folder}\nError: {e}")
+                return None
             print(f"Files in folder: {all_files}")
 
-            # Filter for .wav files (case-insensitive)
-            sound_effect_files = sorted([f for f in all_files if f.lower().endswith('.wav')])
-
+            sound_effect_files = sorted([f for f in all_files if f.lower().endswith('.wav')], key=natural_sort_key)
             if not sound_effect_files:
                 print(f"No .wav files found in {video_folder}.")
+                messagebox.showwarning("No Audio Files", f"No .wav files found in {video_folder}. Skipping this folder.")
                 return None
 
             # Start with a 6-second silent audio segment
             combined_audio = AudioSegment.silent(duration=DURATION_MS)
 
-            # Dynamic frequency and volume adjustments per sound effect
+            # Process each sound file
             for sound_file in sound_effect_files:
                 sound_file_path = os.path.join(video_folder, sound_file)
                 print(f"Loading sound file: {sound_file_path}")
-                
-                # Load the sound file (trim to 6 seconds)
-                sound = AudioSegment.from_wav(sound_file_path)[:DURATION_MS]
-                
-                # Analyze the sound based on frequency to classify it (e.g., low, mid, high)
-                sound_classification = analyze_sound(sound)
-                print(f"Sound {sound_file} classified as {sound_classification} frequency.")
 
-                # Determine dynamic volume adjustment
-                dynamic_volume = get_dynamic_volume(sound_file, sound_classification)
-                print(f"Applying {dynamic_volume} dB adjustment to {sound_file}.")
-                
-                # Apply the volume adjustment
+                try:
+                    # Load and trim the sound file to 6 seconds
+                    sound = AudioSegment.from_wav(sound_file_path)[:DURATION_MS]
+                except Exception as e:
+                    print(f"Error loading {sound_file_path}: {e}")
+                    messagebox.showwarning("Audio Load Error", f"Failed to load audio file: {sound_file_path}\nError: {e}\nSkipping this file.")
+                    continue
+
+                # Analyze the sound to classify its frequency range
+                classification = analyze_sound(sound)
+                print(f"Sound {sound_file} classified as '{classification}' frequency.")
+
+                # Get volume and panning adjustments based on classification
+                adjustments = get_dynamic_volume_and_effects(classification)
+                dynamic_volume = adjustments['volume']
+                pan_left, pan_right = adjustments['pan']
+                print(f"Applying {dynamic_volume} dB adjustment and panning ({pan_left}, {pan_right}) to {sound_file}.")
+
+                # Apply volume adjustment
                 sound = sound + dynamic_volume
-                
+
+                # Apply panning if necessary
+                if pan_left != 0 or pan_right != 0:
+                    channels = sound.split_to_mono()
+                    if len(channels) == 2:
+                        left = channels[0] + pan_left
+                        right = channels[1] + pan_right
+                        sound = AudioSegment.from_mono_audiosegments(left, right)
+                    else:
+                        # If mono, duplicate and apply panning
+                        sound = AudioSegment.from_mono_audiosegments(sound + pan_left, sound + pan_right)
+
+                # Apply fade in/out for smoothness
+                sound = sound.fade_in(50).fade_out(50)
+
                 # Overlay the adjusted sound onto the combined audio
                 combined_audio = combined_audio.overlay(sound)
 
-            # Export the combined audio as a new file
+            # Apply master gain to prevent overall loudness
+            master_gain = -6  # Reduce overall volume by 6 dB
+            combined_audio = combined_audio + master_gain
+
+            # Export the combined soundscape
             combined_audio_path = os.path.join(video_folder, "combined_soundscape.wav")
-            combined_audio.export(combined_audio_path, format="wav")
-            print(f"Combined soundscape saved at {combined_audio_path}")
+            try:
+                combined_audio.export(combined_audio_path, format="wav")
+                print(f"Combined soundscape saved at {combined_audio_path}")
+            except Exception as e:
+                print(f"Error exporting combined soundscape: {e}")
+                messagebox.showerror("Audio Export Error", f"Failed to export combined soundscape:\n{combined_audio_path}\nError: {e}")
+                return None
 
             return combined_audio_path
 
+        # Custom dialog class for sorting method selection using radio buttons
+        class SortingDialog(tk.Toplevel):
+            def __init__(self, parent):
+                super().__init__(parent)
+                self.title("Select Sorting Method")
+                self.geometry("400x250")
+                self.resizable(False, False)
+                self.grab_set()  # Make the dialog modal
+                self.sorting_method = tk.StringVar(value="default")
+                self.result = None
+
+                # Branding: Add a title and description
+                title_label = tk.Label(self, text="Sorting Method Selection", font=("Helvetica", 16, "bold"), fg="#333")
+                title_label.pack(pady=(20, 10))
+
+                desc_label = tk.Label(self, text="Please choose how you want your videos to be sorted:", font=("Arial", 12), fg="#555")
+                desc_label.pack(pady=(0, 20))
+
+                # Radio buttons for sorting options
+                rb_steps = tk.Radiobutton(self, text="Steps", variable=self.sorting_method, value="steps", font=("Arial", 12))
+                rb_guidance = tk.Radiobutton(self, text="Guidance Scale", variable=self.sorting_method, value="guidance_scale", font=("Arial", 12))
+                rb_default = tk.Radiobutton(self, text="Default (Prompt Set Order)", variable=self.sorting_method, value="default", font=("Arial", 12))
+
+                rb_steps.pack(anchor='w', padx=40, pady=5)
+                rb_guidance.pack(anchor='w', padx=40, pady=5)
+                rb_default.pack(anchor='w', padx=40, pady=5)
+
+                # Frame for OK and Cancel buttons
+                button_frame = tk.Frame(self)
+                button_frame.pack(pady=20)
+
+                ok_button = tk.Button(button_frame, text="OK", width=10, command=self.on_ok, bg="#4CAF50", fg="white", font=("Arial", 10, "bold"))
+                cancel_button = tk.Button(button_frame, text="Cancel", width=10, command=self.on_cancel, bg="#f44336", fg="white", font=("Arial", 10, "bold"))
+
+                ok_button.pack(side='left', padx=10)
+                cancel_button.pack(side='right', padx=10)
+
+            def on_ok(self):
+                self.result = self.sorting_method.get()
+                self.destroy()
+
+            def on_cancel(self):
+                self.result = "default"
+                self.destroy()
+
+        # Function to get sorting method via dialog
+        def get_sorting_method():
+            dialog = SortingDialog(None)
+            dialog.wait_window()  # Wait until the dialog is closed
+            return dialog.result
+
         # Ensure video and audio folders are valid
-        if not self.video_save_folder or not os.path.exists(self.video_save_folder):
+        if not hasattr(self, 'video_save_folder') or not self.video_save_folder or not os.path.exists(self.video_save_folder):
             messagebox.showwarning("No Video Folder Selected", "Please select a valid Video folder.")
             self.video_save_folder = filedialog.askdirectory(title="Select Video Save Folder")
             if not self.video_save_folder:
+                messagebox.showerror("Operation Cancelled", "No Video folder selected. Operation cancelled.")
                 return  # Exit if no folder is selected
 
-        if not self.audio_save_folder or not os.path.exists(self.audio_save_folder):
+        if not hasattr(self, 'audio_save_folder') or not self.audio_save_folder or not os.path.exists(self.audio_save_folder):
             messagebox.showwarning("No Audio Folder Selected", "Please select a valid Audio folder.")
             self.audio_save_folder = filedialog.askdirectory(title="Select Audio Save Folder")
             if not self.audio_save_folder:
+                messagebox.showerror("Operation Cancelled", "No Audio folder selected. Operation cancelled.")
                 return  # Exit if no folder is selected
 
-        # Ask the user if they want to generate comparison videos for all audio variants
-        user_choice = messagebox.askyesno("Combine Variants", "Do you want to combine all audio variants into a single comparison video for each prompt?")
+        # Ask the user for sorting preference using radio buttons
+        sorting_method = get_sorting_method()
+        print(f"User selected sorting method: {sorting_method}")
 
-        # Retrieve video files from the video folder
-        video_files = sorted(
-            [os.path.join(self.video_save_folder, f) for f in os.listdir(self.video_save_folder) if f.endswith(('.mp4', '.avi', '.mov', '.mkv'))],
-            key=lambda x: extract_number(os.path.basename(x))
-        )
+        # Define sorting key
+        def sorting_key(filename):
+            if sorting_method == "steps":
+                return extract_number(filename, 'Step')
+            elif sorting_method == "guidance_scale":
+                return extract_number(filename, 'Scale')
+            else:
+                return extract_number(filename, 'Video')
+
+        # Retrieve and sort video files
+        video_files = [f for f in os.listdir(self.video_save_folder) if f.lower().endswith(('.mp4', '.avi', '.mov', '.mkv'))]
+        video_files = sorted(video_files, key=lambda x: sorting_key(x))
+        video_files = [os.path.join(self.video_save_folder, f) for f in video_files]
+
+        print(f"Sorted video files: {video_files}")  # Debugging print
 
         if not video_files:
             messagebox.showwarning("No Video Files", "No video files found in the Video folder.")
             return
 
-        # List to hold the final video clips for concatenation later
         final_clips = []
 
         # Process each video and match it with its corresponding audio
         for video_file in video_files:
             # Extract the video number (e.g., Video_1, Video_2, etc.)
             base_name = os.path.splitext(os.path.basename(video_file))[0]
-            video_number = extract_number(base_name)
+            video_number = extract_number(base_name, 'Video')
             video_folder = os.path.join(self.audio_save_folder, f"Video_{video_number}")
 
             if not os.path.exists(video_folder):
-                messagebox.showwarning("Missing Audio Folder", f"No matching audio folder found for {video_file}.")
+                messagebox.showwarning("Missing Audio Folder", f"No matching audio folder found for {video_file}. Skipping.")
                 continue
 
             # Combine sound effects layers into a soundscape for this video
             soundscape_path = combine_sound_effects_layers(video_folder)
             if not soundscape_path:
-                messagebox.showwarning("No Audio Files", f"No audio files found or combined for video {video_file}.")
                 continue
 
-            # Load the video clip
-            video_clip = VideoFileClip(video_file).subclip(0, 6)  # Trim to 6 seconds
+            try:
+                # Load the video clip and trim to 6 seconds
+                video_clip = VideoFileClip(video_file).subclip(0, 6)
+            except Exception as e:
+                print(f"Error loading video {video_file}: {e}")
+                messagebox.showwarning("Video Load Error", f"Failed to load video {video_file}.\nError: {e}\nSkipping.")
+                continue
 
-            # Load the combined audio (soundscape)
-            audio_clip = AudioFileClip(soundscape_path)
+            try:
+                # Load the combined audio (soundscape)
+                audio_clip = AudioFileClip(soundscape_path)
+            except Exception as e:
+                print(f"Error loading audio {soundscape_path}: {e}")
+                messagebox.showwarning("Audio Load Error", f"Failed to load audio for {video_file}.\nError: {e}\nSkipping.")
+                continue
 
-            # Set the combined audio to the video
-            final_video = video_clip.set_audio(audio_clip)
+            try:
+                # Set the combined audio to the video
+                final_video = video_clip.set_audio(audio_clip)
 
-            # Save the combined video to the output folder
-            output_filename = f"{base_name}_combined.mp4"
-            output_path = os.path.join(self.video_save_folder, output_filename)
-            final_video.write_videofile(output_path, codec="libx264", audio_codec="aac", verbose=False, logger=None)
+                # Save the combined video to the output folder
+                output_filename = f"{base_name}_combined.mp4"
+                output_path = os.path.join(self.video_save_folder, output_filename)
+                final_video.write_videofile(output_path, codec="libx264", audio_codec="aac", verbose=False, logger=None)
+                print(f"Generated combined video for {video_file} and saved to {output_path}")
 
-            print(f"Generated combined video for {video_file} and saved to {output_path}")
-
-            # Add the final video clip to the list for final combination later
-            final_clips.append(final_video)
+                # Add the final video clip to the list for final combination later
+                final_clips.append(final_video)
+            except Exception as e:
+                print(f"Error combining video and audio for {video_file}: {e}")
+                messagebox.showwarning("Combine Error", f"Failed to combine video and audio for {video_file}.\nError: {e}\nSkipping.")
+                continue
 
         # Combine all final clips into one video (if more than one)
         if final_clips:
-            final_combined_video = concatenate_videoclips(final_clips, method="compose")
-            final_output_path = os.path.join(self.video_save_folder, "FINAL_VIDEO.mp4")
-            final_combined_video.write_videofile(final_output_path, codec="libx264", audio_codec="aac")
-            print(f"\nFinal combined video saved to: {final_output_path}")
-            messagebox.showinfo("Combine Successful", f"Final combined video saved to: {final_output_path}")
+            try:
+                final_combined_video = concatenate_videoclips(final_clips, method="compose")
+                final_output_path = os.path.join(self.video_save_folder, "FINAL_VIDEO.mp4")
+                final_combined_video.write_videofile(final_output_path, codec="libx264", audio_codec="aac")
+                print(f"\nFinal combined video saved to: {final_output_path}")
+                messagebox.showinfo("Combine Successful", f"Final combined video saved to:\n{final_output_path}")
+            except Exception as e:
+                print(f"Error combining final videos: {e}")
+                messagebox.showerror("Final Combine Error", f"Failed to create FINAL_VIDEO.mp4.\nError: {e}")
         else:
             messagebox.showwarning("No Videos Selected", "No videos were selected for the final compilation.")
 
-        # Message to notify the user of completion
-        messagebox.showinfo("Combine Successful", "The videos and audio have been successfully combined.")
-
+        # Final message to notify the user of completion
+        if final_clips:
+            messagebox.showinfo("Combine Successful", "The videos and audio have been successfully combined.")
+        else:
+            messagebox.showinfo("Combine Completed", "The combine process has finished, but no videos were processed.")
 
     def select_audio_for_video(self, video_file, matching_audio_files):
         """
