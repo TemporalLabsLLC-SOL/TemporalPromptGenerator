@@ -165,7 +165,7 @@ Setting up the Temporal Prompt Engine is simple and hassle-free, allowing you to
 
    Open the Extracted Archive (or cloned repo) and click
      ```
-RUN-FIRST-PRE-FLIGHT-CHECK
+RUN-FIRST-PRE-FLIGHT-CHECK.bat
      ```
    - Follow the on-screen prompts. The script will automatically set up the python environment(s), install necessary packages, and configure settings.
 
