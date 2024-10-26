@@ -160,7 +160,7 @@ Setting up the Temporal Prompt Engine is simple and hassle-free, allowing you to
 **EASY-ONE-CLICK-INSTALLER**
 
    Open the Extracted Archive and  
-     ```bash
+     ```
      SIMPLY CLICK EASY-ONE-CLICK-SETUP
      ```
    - Follow the on-screen prompts. The script will automatically set up the python environment(s), install necessary packages, and configure settings.
