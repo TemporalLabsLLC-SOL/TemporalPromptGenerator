@@ -23,7 +23,7 @@
 <a name="1-introduction"></a>
 ## 1. Introduction
 
-Welcome to the **Temporal Prompt Engine**, your ultimate tool for crafting immersive video and audio experiences. This engine empowers you to generate high-quality prompts with unparalleled control over cinematic elements, all while being intuitive and accessible for users.
+Welcome to the **Temporal Prompt Engine**, your ultimate tool for crafting immersive video and audio experiences. This engine empowers you to generate high-quality prompts with unparalleled control over cinematic elements, all while being intuitive and accessible for users. I'm still currently experimenting with options a lot and will be honing the variety down a bit as I go.
 
 ### Unleash Your Creativity
 
@@ -54,12 +54,10 @@ This engine allows you to select standard film terms through user-friendly dropd
 
 Setting up the Temporal Prompt Engine is simple and hassle-free, allowing you to focus on creation rather than configuration. This section provides installation steps for **Windows** users.
 
-<a name="prerequisites"></a>
-### Prerequisites
+<a name="System Preparation"></a>
+### System Preparation
 
-[YouTube Setup Guide Part 1](https://youtu.be/8GQr-lePOWw?si=GuEbjGhk-tbelpZ7)
-
-Before installing the Temporal Prompt Engine please kindly ensure you system has the following installed:
+[YouTube Setup Guide Part 1](https://youtu.be/8GQr-lePOWw?si=GuEbjGhk-tbelpZ7):
 
 - **Operating System**: Windows 10 or later
 - **Python**: Version 3.10.9
@@ -68,7 +66,7 @@ Before installing the Temporal Prompt Engine please kindly ensure you system has
       - Download the **Python 3.10.9** installer for Windows.
     - **Install Python**:
       - **Run the Installer**:
-        - Double-click the downloaded `python-3.10.9-amd64.exe` file.
+        - Double-click the downloaded EXE installer file.
         - **Important**:
           - **If you already have Python installed**:
             - Be cautious when adding Python to PATH, as it may overwrite your existing Python version in the system PATH.
@@ -83,6 +81,34 @@ Before installing the Temporal Prompt Engine please kindly ensure you system has
         py -3.10 --version
         ```
       - You should see `Python 3.10.9`.
+	 
+##If you want the Video Generation capabilities to work you will also need a local Python 3.12.4 Installed as well. If this is in place the setup.py will handle everything.
+##If you only want to use the prompt engine and sound effects generator then you are fine with only 3.10.9 even if the setup.py complains a little.
+
+- **Operating System**: Windows 10 or later
+- **Python**: Version 3.12.4
+    - **Download Python Installer**:
+      - Visit the [Python Downloads](https://www.python.org/downloads/release/python-3124/) page.
+      - Download the **Python 3.12.4** installer for Windows.
+    - **Install Python**:
+      - **Run the Installer**:
+        - Double-click the downloaded EXE installer file.
+        - **Important**:
+          - **If you already have Python installed**:
+            - Be cautious when adding Python to PATH, as it may overwrite your existing Python version in the system PATH.
+            - To avoid conflicts, you can install Python 3.10.9 without adding it to the PATH. Instead, use the Python Launcher for Windows (`py`) to specify the version when running commands.
+          - **If you don't have Python installed**:
+            - Check the box **"Add Python to PATH"** at the bottom of the installer window.
+        - Click **"Install Now"**.
+    - **Verify Installation**:
+      - Open a new Command Prompt.
+      - Run:
+        ```bash
+        py -3.12 --version
+        ```
+      - You should see `Python 3.12.4`.
+	  - **Operating System**: Windows 10 or later
+	  - Py -3.12 is used by important video generation environment back-end processes.
       
 - **Git**: Installed and configured
     - **Install Git**:
@@ -124,7 +150,7 @@ Before installing the Temporal Prompt Engine please kindly ensure you system has
       
 - **Ollama**: Download from [Ollama Setup](https://ollama.com/download/OllamaSetup.exe) and follow the on-screen instructions to install.
 
-### Installation Steps for Temporal Prompt Engine
+## You are NOW READY to begin the automated setup process:
 **Download the Repository**:
    - Visit the [TemporalPromptGenerator GitHub Repository](https://github.com/TemporalLabsLLC-SOL/TemporalPromptGenerator).
    - Click on the **"Code"** button and select **"Download ZIP"**.
@@ -137,10 +163,11 @@ Before installing the Temporal Prompt Engine please kindly ensure you system has
      ```bash
      SIMPLY CLICK EASY-ONE-CLICK-SETUP
      ```
-   - Follow the on-screen prompts. The script will automatically set up the environment, install necessary packages, and configure settings.
+   - Follow the on-screen prompts. The script will automatically set up the python environment(s), install necessary packages, and configure settings.
 
    The application will launch, guiding you through the initial setup. DURING THIS SETUP, either after you close the app OR denying to open the open during setup, you will have the option to add a work-around shortcut to your desktop. It currently does not have an icon. That will load the env and scripts reliably going forward.
 
+OR
 
 **Manually Run the Setup Script**:
 
@@ -179,9 +206,15 @@ IF YOU DID NOT ADD SHORTCUT TO DESKTOP DURING SETUP
    py -3.10 TemporalPromptEngine.py
    ```
 
+
+1. **Enter API Key in the Application**:
+   - Paste your HuggingFace API key when prompted during the setup of the Temporal Prompt Engine. 
+   - You only will need to enter this one time within a setup engine environment. You can simply close this popup in subsequent uses.
+
+
 3. **Enter Your Scene Concept**:
 
-   Input your creative idea or scene description (up to 450 characters).
+   Input your creative idea or scene description (up to 400 characters).
 
    **Examples**:
    - **Ancient Perspectives**:
@@ -199,22 +232,6 @@ IF YOU DID NOT ADD SHORTCUT TO DESKTOP DURING SETUP
 
 6. **Save and Export**:
    All media and prompts are saved in your designated output directory.
-
----
-
-<a name="5-api-key-setup"></a>
-## 5. API Key Setup
-
-1. **Sign Up at HuggingFace**:
-   - Visit [HuggingFace Sign Up](https://huggingface.co/join) and create an account.
-
-2. **Generate API Key**:
-   - Navigate to **Access Tokens** in your HuggingFace settings.
-   - Click **"New Token"**, name it, and set the scope to **"Read"**.
-   - Copy the API key.
-
-3. **Enter API Key in the Application**:
-   - Paste your HuggingFace API key when prompted during the setup of the Temporal Prompt Engine.
 
 ---
 
@@ -241,15 +258,9 @@ Explore the full potential of the Temporal Prompt Engine with these unique confi
 
 ---
 
-<a name="8-harnessing-the-power-of-comfyui"></a>
-## 8. Harnessing the Power of ComfyUI
-
-The Temporal Prompt Engine integrates with [ComfyUI](https://github.com/comfyanonymous/ComfyUI) for AI-based video generation. Import your prompts, generate videos, and iterate on your scenes with ComfyUI's powerful capabilities.
-
----
 
 <a name="9-local-video-generation-using-cogvideo"></a>
-## 9. Local Video Generation Using CogVideo
+## 8. Local Video Generation Using CogVideo
 
 You can generate videos locally using **CogVideo** directly through the Temporal Prompt Engine. The engine now simplifies the entire CogVideo process for video generation.
 
@@ -260,22 +271,18 @@ You can generate videos locally using **CogVideo** directly through the Temporal
    - Enter the desired version of **CogVideo** (e.g., **CogVideoX** or another available version).
   
    - On Lower Vram (20gb-ish) you may benefit from running the script individually outside of the python app to do that follow the instructions below:
-   **Navigate to VideoGenerator**
+   **Navigate to VideoGeneratorUtilities Folder**
    ```bash
-   cd TemporalPromptEngine-main\WINDOWS\CogVideo\inference\gradio_composite_demo
-   ```
-   **Activate the CogXv Env**
-   ```bash
-   CogXv\Scripts\activate
+   Open VideoGeneratorUtilities folder within the cloned repo directory
    ```
    **Run 5b Video Generation Script**
    ```bash
-   py -3.12.4 TemporalCog-5b.py
+   One-Click-Utility-TemporalCog-5b
    ```
 
 2. **Prompt List Selection**:
    - Once the version is entered, the engine will initialize.
-   - Simply select the **video prompt list** to generate the videos.
+   - Simply select the **video prompt list** to generate the videos using the settings you provide.
 
 3. **Automated Processing**:
    - The Temporal Prompt Engine manages the entire video generation process, allowing you to focus on creativity rather than configuration.
