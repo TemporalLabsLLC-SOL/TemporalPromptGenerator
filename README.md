@@ -152,6 +152,7 @@ Setting up the Temporal Prompt Engine is simple and hassle-free, allowing you to
 
 ## You are NOW READY to begin the automated setup process:
 **Clone the Repo**
+
 `git clone https://github.com/TemporalLabsLLC-SOL/TemporalPromptEngine.git`
 
 **Manually Download the Repository**:
