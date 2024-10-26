@@ -151,7 +151,10 @@ Setting up the Temporal Prompt Engine is simple and hassle-free, allowing you to
 - **Ollama**: Download from [Ollama Setup](https://ollama.com/download/OllamaSetup.exe) and follow the on-screen instructions to install.
 
 ## You are NOW READY to begin the automated setup process:
-**Download the Repository**:
+**Clone the Repo**
+`git clone https://github.com/TemporalLabsLLC-SOL/TemporalPromptEngine.git`
+
+**Manually Download the Repository**:
    - Visit the [TemporalPromptGenerator GitHub Repository](https://github.com/TemporalLabsLLC-SOL/TemporalPromptGenerator).
    - Click on the **"Code"** button and select **"Download ZIP"**.
    - Extract the downloaded ZIP file to your desired location (e.g., `C:\TemporalPromptEngine`).
@@ -159,9 +162,9 @@ Setting up the Temporal Prompt Engine is simple and hassle-free, allowing you to
 
 **EASY-ONE-CLICK-INSTALLER**
 
-   Open the Extracted Archive and  
+   Open the Extracted Archive (or cloned repo) and click
      ```
-     SIMPLY CLICK EASY-ONE-CLICK-SETUP
+RUN-FIRST-PRE-FLIGHT-CHECK
      ```
    - Follow the on-screen prompts. The script will automatically set up the python environment(s), install necessary packages, and configure settings.
 
