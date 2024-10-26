@@ -1,8 +1,8 @@
 {
     "audio_options": {
         "exclude_music": false,
-        "holiday_mode": false,
-        "selected_holidays": "-SEASONAL HOLIDAYS - New Year",
+        "holiday_mode": true,
+        "selected_holidays": "SEASONAL HOLIDAYS - Halloween",
         "open_source_mode": true,
         "model_name": "audioldm2-full-large-1150k",
         "guidance_scale": 10.0,

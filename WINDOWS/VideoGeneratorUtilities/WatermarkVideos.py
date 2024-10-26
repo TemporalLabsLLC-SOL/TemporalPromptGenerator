@@ -102,11 +102,11 @@ def add_logo_overlay(video_path, output_path, logo_path):
         print(f"FFmpeg failed with return code {process.returncode} on logo overlay.")
     else:
         print(f"Watermarked video saved to {output_path}")
-
+        
 # Function to extract settings from the filename
 def extract_settings_from_filename(filename):
-    # Regex pattern to extract 'cfg' and 'steps'
-    pattern = r'video_\d+_(\d+b)_(\d+\.\d+gs)_(\d+steps)_.+\.mp4'
+    # Regex pattern to extract 'cfg' and 'steps' (case-insensitive, and allows spaces and other words)
+    pattern = r'video_\d+_(\d+[Bb])_(\d+\.\d+gs)_(\d+steps)_.*\.mp4'
     match = re.match(pattern, filename)
     
     if match:
