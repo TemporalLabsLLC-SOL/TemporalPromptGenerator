@@ -150,7 +150,10 @@ Setting up the Temporal Prompt Engine is simple and hassle-free, allowing you to
       
 - **Ollama**: Download from [Ollama Setup](https://ollama.com/download/OllamaSetup.exe) and follow the on-screen instructions to install.
 
-## You are NOW READY to begin the automated setup process:
+##[Setup Video Guide Part 2)[https://youtu.be/_8TXLNwA9ak?si=EO73EDqXafBLqA_O]
+
+
+## You are READY to begin the automated setup process:
 **Clone the Repo**
 
 `git clone https://github.com/TemporalLabsLLC-SOL/TemporalPromptEngine.git`
