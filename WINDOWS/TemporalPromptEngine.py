@@ -87,6 +87,7 @@ def detect_gpu():
         print("Torch is not installed, assuming no GPU.")
         return False
         
+        
 def parse_model_response(response):
     """
     Parses the model's response to extract the positive sounds and ensures the negative section is empty.
@@ -5924,65 +5925,72 @@ class MultimediaSuiteApp:
 
         self.output_folder = output_directory  # Save the directory for future reference
 
+        # Ensure Characters directory exists
+        characters_dir = os.path.join(self.output_folder, 'Characters')
+        os.makedirs(characters_dir, exist_ok=True)
+
         # Determine the number of prompts to generate
         num_prompts = self.video_prompt_number_var.get()
 
         generated_prompts = []
+        accumulated_story = []  # To store generated scene prompts for context
 
-        # Define system prompts for story and non-story modes
-        sys_prompt_story = """
-Intuitively and creatively turn {input_concept} into a deeply descriptive, cohesive story outline for a set of natural language video prompts. Each [idx] in the prompt list represents a prompt set within the overall story.
+        # Adjusted System Prompt for Story Mode
+        sys_prompt_story = f"""
+    Intuitively and creatively turn {{input_concept}} into a series of deeply descriptive, cohesive narrative paragraphs for a set of natural language video prompts. Each [idx] in the prompt list represents a prompt set within the overall story.
 
-PROMPT RULES:
-- Avoid filler and bridging words; optimize token usage and maximize content detail.
-- Present prompts in paragraph form, aiming for about 200 characters.
-- Integrate real-world physics with subtle details (e.g., debris scattering, fluid dynamics, light refraction).
-- Enhance the environment with realistic particles respecting natural laws.
-- Provide specific details for anatomy and not generalized concepts for positive prompts.
-- Reinforce keywords in different parts of the prompt for output consistency.
-- Focus on the content that should be in the video. Example: "A deserted street," not "a street without people."
-- NO EXCEPTIONS. Use all 7 markers before the respective content in every positive prompt, ALWAYS INCLUDE parentheses:
-    (Camera Language)
-    (Framing Angle)
-    (Lighting)
-    (Subject Description)
-    (Subject Movement)
-    (Scene Description)
-    (Atmosphere)
+    PROMPT RULES:
+    - Write in narrative paragraph form, starting with date and location.
+    - Include specific character names in bold (e.g., **John Smith**), with detailed descriptions of their appearance, attire, and actions.
+    - Maximize detail and space, aiming for up to 226 tokens per paragraph.
+    - Integrate real-world physics with subtle details (e.g., debris scattering, fluid dynamics, light refraction).
+    - Enhance the environment with realistic particles respecting natural laws.
+    - Provide specific details for anatomy and avoid generalized concepts.
+    - Reinforce keywords in different parts of the prompt for output consistency.
+    - Focus on the content that should be in the video.
+    - Ensure narrative continuity and coherency between scenes.
+    - Do not use bullets, lists, or any formatting other than narrative paragraphs.
+    - Do not mention video durations or phrases like 'generate a video' or 'create a clip'.
+    - At the end of each paragraph, include negative prompts in the following format:
+        Negative: [list of negative terms]
+    - Do not word the negative prompts negatively; simply list things to avoid.
 
-Finally, provide the prompt in the following format:
-     ```
-     positive: [A fully considered positive prompt]
-     negative: [A base list of negative terms prompt set limited to 3 to 5 terms. Do not word this negatively, simply say things to avoid with exposition]
-     ```
-     """
+    Ensure that the output includes all 7 markers (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) but weave them naturally into the narrative, without explicitly mentioning them or using parentheses.
 
-        sys_prompt_non_story = """
-Transform {input_concept} into a specifically detailed and immersive video prompt set.
+    Example:
 
-PROMPT RULES:
-- Avoid filler and bridging words; optimize token usage and maximize content detail.
-- Present prompts in paragraph form, aiming for about 200 characters.
-- Integrate real-world physics with subtle details (e.g., debris scattering, fluid dynamics, light refraction).
-- Enhance the environment with realistic particles (dust motes, fog, snowflakes) respecting natural laws.
-- Reinforce keywords in different parts of the prompt for output consistency. Example: "The camera flies ultra-fast through the forest."
-- Provide specific details and not generalized concepts for each aspect of every positive prompt.
-- Focus on the content that should be in the video. Example: "A deserted street," not "a street without people."
-- Use all 7 markers before the respective content in every positive prompt, ALWAYS INCLUDE parentheses:
-    (Camera Language)
-    (Framing Angle)
-    (Lighting)
-    (Subject Description)
-    (Subject Movement)
-    (Scene Description)
-    (Atmosphere)
+    Positive: In January 2025, Park City, Utah, utility worker **John Miller**, a tall man with rugged features and a determined gaze, wears a reflective orange jacket over thermal layers, a hard hat atop his short brown hair, and sturdy insulated boots crunching through the fresh snow. The PROFESSIONAL - ARRI - Alexa LF (2020) captures a tracking shot focusing on John's careful steps as he navigates snow-covered streets bustling with fellow workers and emergency vehicles. Low contrast, monochrome layering emphasizes the relentless snowfall, while soft lighting diffuses through the overcast sky. The distant hum of snowplows echoes, and the silhouette of the Park City Mountain Resort rises against the backdrop. John's breath forms visible clouds as he checks power lines, his gloved hands deftly handling tools. The atmosphere is one of resilience amid the storm, highlighting widespread power outages and the tireless efforts of utility workers.
 
-Finally, provide the prompt in the following format:
-     ```
-     positive: [A fully considered positive prompt]
-     negative: [A base list of negative terms prompt set limited to 3 to 5 terms. Do not word this negatively, simply say things to avoid with exposition]
-     ```
-     """
+    Negative: empty streets, marquee
+    """
+
+        # Adjusted System Prompt for Non-Story Mode
+        sys_prompt_non_story = f"""
+    Transform {{input_concept}} into specifically detailed and immersive narrative paragraphs for video prompts.
+
+    PROMPT RULES:
+    - Write in narrative paragraph form, starting with date and location.
+    - Include specific character names in bold (e.g., **John Smith**), with detailed descriptions of their appearance, attire, and actions.
+    - Maximize detail and space, aiming for up to 226 tokens per paragraph.
+    - Integrate real-world physics with subtle details (e.g., debris scattering, fluid dynamics, light refraction).
+    - Enhance the environment with realistic particles respecting natural laws.
+    - Provide specific details for anatomy and avoid generalized concepts.
+    - Reinforce keywords in different parts of the prompt for output consistency.
+    - Focus on the content that should be in the video.
+    - Do not use bullets, lists, or any formatting other than narrative paragraphs.
+    - Do not mention video durations or phrases like 'generate a video' or 'create a clip'.
+    - At the end of each paragraph, include negative prompts in the following format:
+        Negative: [list of negative terms]
+    - Do not word the negative prompts negatively; simply list things to avoid.
+
+    Ensure that the output includes all 7 markers (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) but weave them naturally into the narrative, without explicitly mentioning them or using parentheses.
+
+    Example:
+
+    Positive: In January 2025, Park City, Utah, utility worker **John Miller**, a tall man with rugged features and a determined gaze, wears a reflective orange jacket over thermal layers, a hard hat atop his short brown hair, and sturdy insulated boots crunching through the fresh snow. The PROFESSIONAL - ARRI - Alexa LF (2020) captures a tracking shot focusing on John's careful steps as he navigates snow-covered streets bustling with fellow workers and emergency vehicles. Low contrast, monochrome layering emphasizes the relentless snowfall, while soft lighting diffuses through the overcast sky. The distant hum of snowplows echoes, and the silhouette of the Park City Mountain Resort rises against the backdrop. John's breath forms visible clouds as he checks power lines, his gloved hands deftly handling tools. The atmosphere is one of resilience amid the storm, highlighting widespread power outages and the tireless efforts of utility workers.
+
+    Negative: empty streets, marquee
+    """
 
         if self.video_story_mode_var.get():
             # Story Mode: Generate a story outline first
@@ -5995,8 +6003,8 @@ Finally, provide the prompt in the following format:
                     # Step 1: Generate a story outline with system prompt
                     outline_prompt = (
                         f"{sys_prompt_story}\n"
-                        f"Based on the concept '{input_concept}', generate a professional level, thought-out, cohesive, cogVideoX friendly, detailed outline for a story divided into exactly {num_prompts} scenes. "
-                        f"Each scene should be a brief description of what happens, and should not include any positive or negative prompts. If {input_concept} mentions a time scale then you follow that accordingly. Otherwise you will infer based on the context and {input_concept}"
+                        f"Based on the concept '{input_concept}', generate a professionally ordered, detailed outline for a story divided into exactly {num_prompts} scenes. "
+                        f"Each scene should include key plot points, character developments, and set the stage for the next scene. Do not include any positive or negative prompts. "
                         f"Provide the outline as a numbered list, with each scene on a new line. Do not include any additional text before or after the outline.\n"
                     )
 
@@ -6023,16 +6031,6 @@ Finally, provide the prompt in the following format:
                 print("Proceeding without 'Story Mode' due to outline generation failure.")
 
         if self.video_story_mode_var.get():
-            # Story Mode: Check for years in scene descriptions
-            year_present = any(self.contains_year(scene) for scene in scene_descriptions)
-            print(f"Year present in scene descriptions: {year_present}")
-
-            if not year_present:
-                # If no year is present, include the selected decade
-                base_options_context = [f"Decade: {self.get_randomized_setting(self.video_decade_var, DECADES, self.video_randomize_decade_var)}"]
-            else:
-                base_options_context = []
-
             # Story Mode: Generate detailed prompts for each scene
             for prompt_index, scene_description in enumerate(scene_descriptions, start=1):
                 retry_count = 0
@@ -6090,13 +6088,6 @@ Finally, provide the prompt in the following format:
                             )
                         }
 
-                        # Debug: Print video_options to verify 'decade' is present
-                        print(f"Prompt {prompt_index} video_options: {video_options}")
-
-                        # Ensure 'decade' is present
-                        if "decade" not in video_options or not video_options["decade"]:
-                            raise KeyError("'decade' is missing or empty in video_options.")
-
                         # Build the base options context for this prompt
                         current_options_context = [
                             f"Theme: {video_options['theme']}",
@@ -6132,18 +6123,45 @@ Finally, provide the prompt in the following format:
                         if video_options["remix_mode"]:
                             current_options_context.append("Add creative variations in visual styles or thematic choices.")
 
+                        # Prepare a summary of previous scenes
+                        if prompt_index > 1:
+                            # Summarize previous prompts without exceeding token limit
+                            previous_scenes = "\n".join(
+                                [f"Scene {i}: {self.extract_scene_summary(desc)}" for i, desc in enumerate(generated_prompts[:prompt_index-1], start=1)]
+                            )
+                            previous_scenes_summary = f"The story so far:\n{previous_scenes}\n\n"
+                        else:
+                            previous_scenes_summary = ""
+
                         # Construct the detailed prompt with system prompt and user instructions
                         detailed_prompt = (
                             f"{sys_prompt_story}\n"
-                            f"Using CogVideoX Prompting Standards and best expert practices, create a detailed video prompt based on the following scene description. You are part of a team of bots that uses {input_concept} as inspiration to create detailed and highly descriptive video prompts optimized for CogVideoX. You are not just repeating the {input_concept} but rather you are elaborating on the concept. If it asks for alien species then each prompt will be about a unique and specific alien species, if it says scientifically accurate then it will use similiar terms. If the prompt is about cars then same thing, whatever the user prompts you about, you handle as they would hope to be handled by the user. YOU DO NOT JUST REPEAT BACK THE {input_concept} in ANY WAY. We do want to any subpar or low quality content. \n"
+                            f"{previous_scenes_summary}"
+                            f"Now, using the scene description below, create a detailed narrative paragraph for Scene {prompt_index}, ensuring continuity with previous scenes.\n\n"
                             f"Scene {prompt_index}: {scene_description}\n"
-                            f"The scene is part of a story based on the concept '{input_concept}' and is set in the {video_options['decade']}, shot on a {video_options['camera']}. It is important you mention the camera it is being shot on and define the decade of both the specific prompt and how it fits into the story.\n"
+                            f"The scene is part of a story set in the {video_options['decade']}, shot on a {video_options['camera']}. Mention the camera and decade naturally in the narrative. Include all 7 markers (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) integrated seamlessly into the narrative.\n\n"
+                            f"PROMPT RULES:\n"
+                            f"- Write in narrative paragraph form, starting with date and location.\n"
+                            f"- Include specific character names in bold (e.g., **John Smith**), with detailed descriptions of appearance, attire, and actions.\n"
+                            f"- Maximize detail and space, aiming for up to 226 tokens.\n"
+                            f"- Ensure narrative coherence with previous scenes.\n"
+                            f"- Do not use bullets, lists, or any formatting other than narrative paragraphs.\n"
+                            f"- Integrate real-world physics and subtle details.\n"
+                            f"- Enhance the environment with realistic particles respecting natural laws.\n"
+                            f"- Provide specific details and avoid generalized concepts.\n"
+                            f"- Reinforce keywords in different parts of the prompt.\n"
+                            f"- Focus on the content that should be in the video.\n"
+                            f"- Do not mention video durations or phrases like 'generate a video' or 'create a clip'.\n"
+                            f"- At the end of the paragraph, include negative prompts in the following format:\n"
+                            f"    Negative: [list of negative terms]\n"
+                            f"- Do not copy the example; use it as a guide for formatting and style.\n\n"
                             f"Ensure that the prompt includes the following elements:\n"
                             + "\n".join(current_options_context) + "\n"
-                            f"Do not mention video durations or phrases like 'generate a video' or 'create a clip'.\n"
-                            f"Provide the prompt in the format:\n"
-                            f"positive: [Your positive prompt]\n"
-                            f"negative: [Your negative prompt]\n"
+                            f"\n"
+                            f"Example:\n\n"
+                            f"Positive: In January 2025, Park City, Utah, utility worker **John Miller**, a tall man with rugged features and a determined gaze, wears a reflective orange jacket over thermal layers, a hard hat atop his short brown hair, and sturdy insulated boots crunching through the fresh snow. The PROFESSIONAL - ARRI - Alexa LF (2020) captures a tracking shot focusing on John's careful steps as he navigates snow-covered streets bustling with fellow workers and emergency vehicles. Low contrast, monochrome layering emphasizes the relentless snowfall, while soft lighting diffuses through the overcast sky. The distant hum of snowplows echoes, and the silhouette of the Park City Mountain Resort rises against the backdrop. John's breath forms visible clouds as he checks power lines, his gloved hands deftly handling tools. The atmosphere is one of resilience amid the storm, highlighting widespread power outages and the tireless efforts of utility workers.\n\n"
+                            f"Negative: empty streets, marquee\n\n"
+                            f"Now, please provide the prompt for Scene {prompt_index} as per the above guidelines and example.\n"
                         )
 
                         # Call the model to generate the detailed video prompt
@@ -6156,9 +6174,25 @@ Finally, provide the prompt in the following format:
                         cleaned_prompt = self.clean_prompt_text(raw_video_prompt)
                         formatted_prompt = self.remove_unwanted_headers(cleaned_prompt)
 
+                        # Extract character names from the prompt
+                        character_names = self.extract_character_names(formatted_prompt)
+
+                        # Manage character profiles
+                        for character in character_names:
+                            # Load existing profile or create a new one
+                            profile = self.load_character_profile(character, characters_dir)
+                            if not profile:
+                                description = self.extract_character_description(formatted_prompt, character)
+                                profile = self.create_character_profile(character, characters_dir, description)
+                                self.update_character_history(profile, "Character introduced.", characters_dir)
+                            else:
+                                # Update history with new prompt details
+                                self.update_character_history(profile, formatted_prompt, characters_dir)
+
                         # Validate the generated prompt
                         if self.validate_prompts(formatted_prompt, 1):
                             generated_prompts.append(formatted_prompt)
+                            accumulated_story.append(formatted_prompt)  # Store for context in next scenes
                             print(f"Prompt {prompt_index} generated successfully.")
                             break  # Move to the next prompt set
                         else:
@@ -6177,8 +6211,9 @@ Finally, provide the prompt in the following format:
                     print(f"Failed to generate a valid prompt after {max_retries} attempts for prompt {prompt_index}.")
                     messagebox.showerror("Prompt Generation Error", f"Failed to generate a valid prompt after {max_retries} attempts for prompt {prompt_index}.")
                     return  # Exit the function if unable to generate valid prompts
+
         else:
-            # Non-Story Mode: Always include the selected decade
+            # Non-Story Mode
             for prompt_index in range(1, num_prompts + 1):
                 retry_count = 0
                 max_retries = 12  # Set a maximum number of retries
@@ -6235,13 +6270,6 @@ Finally, provide the prompt in the following format:
                             "remix_mode": self.video_remix_mode_var.get(),
                         }
 
-                        # Debug: Print video_options to verify 'decade' is present
-                        print(f"Non-Story Prompt {prompt_index} video_options: {video_options}")
-
-                        # Ensure 'decade' is present
-                        if "decade" not in video_options or not video_options["decade"]:
-                            raise KeyError("'decade' is missing or empty in video_options.")
-
                         # Build the base options context for this prompt
                         current_options_context = [
                             f"Theme: {video_options['theme']}",
@@ -6281,19 +6309,33 @@ Finally, provide the prompt in the following format:
                         # Construct the detailed prompt with system prompt and user instructions
                         detailed_prompt = (
                             f"{sys_prompt_non_story}\n"
-                            f"Using CogVideoX Prompting Standards and best expert practices, create a detailed video prompt for the concept '{input_concept}'.\n"
-                            f"The scene should be unique, self-contained, and optimized for video generation. You are part of a team of bots that uses {input_concept} as inspiration to create detailed and highly descriptive video prompts optimized for CogVideoX. You are not just repeating the {input_concept} but rather you are elaborating on the concept. If it asks for alien species then each prompt will be about a unique and specific alien species, if it says scientifically accurate then it will use similiar terms. If the prompt is about cars then same thing, whatever the user prompts you about, you handle as they would hope to be handled by the user. YOU DO NOT JUST REPEAT BACK THE {input_concept} in ANY WAY. We do want to any subpar or low quality content. For each prompt I want cinematic details, framing details, texture descriptions according to focus of the scene, color descriptions, filters or additional terminology that compliment that idea overall and help mitigate any artificiality that may come up from a video model. Really build a cohesive scene even if by still managing token use it ends up being less cohesive english while still descriptive to an llm\n"
-                            f"Setting: {video_options['decade']}\n"
-                            f"Camera: {video_options['camera']}\n"
+                            f"Using CogVideoX Prompting Standards and best expert practices, create a detailed narrative paragraph for a video prompt based on the concept '{input_concept}'.\n"
+                            f"The scene should be unique, self-contained, and optimized for video generation.\n"
+                            f"The scene is set in the {video_options['decade']}, shot on a {video_options['camera']}. Mention the camera and decade naturally in the narrative. Include all 7 markers (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) integrated seamlessly into the narrative.\n\n"
+                            f"PROMPT RULES:\n"
+                            f"- Write in narrative paragraph form, starting with date and location.\n"
+                            f"- Include specific character names in bold (e.g., **John Smith**), with detailed descriptions of appearance, attire, and actions.\n"
+                            f"- Maximize detail and space, aiming for up to 226 tokens.\n"
+                            f"- Do not use bullets, lists, or any formatting other than narrative paragraphs.\n"
+                            f"- Integrate real-world physics and subtle details.\n"
+                            f"- Enhance the environment with realistic particles respecting natural laws.\n"
+                            f"- Provide specific details and avoid generalized concepts.\n"
+                            f"- Reinforce keywords in different parts of the prompt.\n"
+                            f"- Focus on the content that should be in the video.\n"
+                            f"- Do not mention video durations or phrases like 'generate a video' or 'create a clip'.\n"
+                            f"- At the end of the paragraph, include negative prompts in the following format:\n"
+                            f"    Negative: [list of negative terms]\n"
+                            f"- Do not copy the example; use it as a guide for formatting and style.\n\n"
                             f"Ensure that the prompt includes the following elements:\n"
                             + "\n".join(current_options_context) + "\n"
-                            f"Do not mention video durations or phrases like 'generate a video' or 'create a clip'.\n"
-                            f"Provide the prompt in the format:\n"
-                            f"positive: [Your positive prompt]\n"
-                            f"negative: [Your negative prompt]\n"
+                            f"\n"
+                            f"Example:\n\n"
+                            f"Positive: In January 2025, Park City, Utah, utility worker **John Miller**, a tall man with rugged features and a determined gaze, wears a reflective orange jacket over thermal layers, a hard hat atop his short brown hair, and sturdy insulated boots crunching through the fresh snow. The PROFESSIONAL - ARRI - Alexa LF (2020) captures a tracking shot focusing on John's careful steps as he navigates snow-covered streets bustling with fellow workers and emergency vehicles. Low contrast, monochrome layering emphasizes the relentless snowfall, while soft lighting diffuses through the overcast sky. The distant hum of snowplows echoes, and the silhouette of the Park City Mountain Resort rises against the backdrop. John's breath forms visible clouds as he checks power lines, his gloved hands deftly handling tools. The atmosphere is one of resilience amid the storm, highlighting widespread power outages and the tireless efforts of utility workers.\n\n"
+                            f"Negative: empty streets, marquee\n\n"
+                            f"Now, please provide the prompt as per the above guidelines and example.\n"
                         )
 
-                        # Call the model to generate a single video prompt
+                        # Call the model to generate the detailed video prompt
                         raw_video_prompt = self.generate_prompts_via_ollama(detailed_prompt, 'video', 1)
 
                         if not raw_video_prompt:
@@ -6303,9 +6345,25 @@ Finally, provide the prompt in the following format:
                         cleaned_prompt = self.clean_prompt_text(raw_video_prompt)
                         formatted_prompt = self.remove_unwanted_headers(cleaned_prompt)
 
+                        # Extract character names from the prompt
+                        character_names = self.extract_character_names(formatted_prompt)
+
+                        # Manage character profiles
+                        for character in character_names:
+                            # Load existing profile or create a new one
+                            profile = self.load_character_profile(character, characters_dir)
+                            if not profile:
+                                description = self.extract_character_description(formatted_prompt, character)
+                                profile = self.create_character_profile(character, characters_dir, description)
+                                self.update_character_history(profile, "Character introduced.", characters_dir)
+                            else:
+                                # Update history with new prompt details
+                                self.update_character_history(profile, formatted_prompt, characters_dir)
+
                         # Validate the generated prompt
                         if self.validate_prompts(formatted_prompt, 1):
                             generated_prompts.append(formatted_prompt)
+                            accumulated_story.append(formatted_prompt)  # Store for context in next scenes
                             print(f"Prompt {prompt_index} generated successfully.")
                             break  # Move to the next prompt set
                         else:
@@ -6356,6 +6414,41 @@ Finally, provide the prompt in the following format:
         except Exception as e:
             messagebox.showerror("Prompt Generation Error", f"Failed to save video prompts: {e}")
             print(f"Error saving video prompts: {e}")
+
+    def extract_character_names(self, prompt):
+        """
+        Extract character names from the prompt.
+        Assumes that character names are in bold, e.g., **John Smith**
+        """
+        return re.findall(r'\*\*(.*?)\*\*', prompt)
+
+    def extract_character_description(self, prompt, character_name):
+        """
+        Extract the description of the character from the prompt.
+        Assumes that the description follows the character name.
+        """
+        pattern = re.escape(f"**{character_name}**") + r",\s*(.*?)\."
+        match = re.search(pattern, prompt)
+        if match:
+            return match.group(1).strip()
+        return ""
+
+    def extract_scene_summary(self, prompt):
+        """
+        Extract a concise summary of a scene from the generated prompt.
+        This function should parse the narrative paragraph and extract key elements to summarize the scene.
+        Implement this based on the structure of your prompts.
+        """
+        # Example implementation: Extract the first sentence or key details
+        # This needs to be tailored to your prompt structure
+        try:
+            # Split the prompt into sentences
+            sentences = prompt.split('. ')
+            # Return the first sentence as a summary
+            return sentences[0] + '.'
+        except Exception as e:
+            print(f"Error extracting scene summary: {e}")
+            return ""
 
     def ensure_model_available(self, model_name):
         try:
@@ -7162,6 +7255,67 @@ Finally, provide the prompt in the following format:
             print(f"Expected {num_prompts} scenes in the outline, but got {len(scene_descriptions)}.")
             return None
         return scene_descriptions
+        
+    def sanitize_filename(self, name):
+        """
+        Sanitize the character name to create a valid filename.
+        """
+        return re.sub(r'[^a-zA-Z0-9_-]', '_', name)
+
+    def load_character_profile(self, character_name, characters_dir):
+        """
+        Load an existing character profile if it exists.
+        """
+        filename = self.sanitize_filename(character_name) + '.json'
+        filepath = os.path.join(characters_dir, filename)
+        if os.path.exists(filepath):
+            with open(filepath, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return None
+
+    def create_character_profile(self, character_name, characters_dir, description=''):
+        """
+        Create a new character profile.
+        """
+        profile = {
+            'name': character_name,
+            'description': description,
+            'history': []
+        }
+        filename = self.sanitize_filename(character_name) + '.json'
+        filepath = os.path.join(characters_dir, filename)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(profile, f, indent=4)
+        return profile
+
+    def update_character_history(self, character_profile, new_entry, characters_dir):
+        """
+        Update the character's history and save the profile.
+        """
+        character_profile['history'].append(new_entry)
+        filename = self.sanitize_filename(character_profile['name']) + '.json'
+        filepath = os.path.join(characters_dir, filename)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(character_profile, f, indent=4)
+
+    def extract_character_names(self, prompt):
+        """
+        Extract character names from the prompt.
+        Assumes that character names are in bold, e.g., **John Smith**
+        """
+        return re.findall(r'\*\*(.*?)\*\*', prompt)
+
+    def extract_character_description(self, prompt, character_name):
+        """
+        Extract the description of the character from the prompt.
+        Assumes that the description follows the character name.
+        """
+        pattern = re.escape(f"**{character_name}**") + r",\s*(.*?)(?:\.|$)"
+        match = re.search(pattern, prompt)
+        if match:
+            return match.group(1).strip()
+        return ""
+
 
             
     def parse_raw_response(self, raw_data):
