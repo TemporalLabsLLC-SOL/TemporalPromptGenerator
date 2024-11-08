@@ -5937,16 +5937,16 @@ class MultimediaSuiteApp:
 
         # Adjusted System Prompt for Story Mode
         sys_prompt_story = f"""
-    Intuitively and creatively turn {{input_concept}} into a series of deeply descriptive, cohesive narrative paragraphs for a set of natural language video prompts. Each [idx] in the prompt list represents a prompt set within the overall story.
+    Intuitively and creatively turn {input_concept} into a series of deeply descriptive, cohesive narrative paragraphs for a set of natural language video prompts. Each prompt set in the prompt list represents a prompt set within the overall story. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY
 
     PROMPT RULES:
-    - Write in narrative paragraph form, starting with date and location.
-    - Include specific character names in bold (e.g., **John Smith**), with detailed descriptions of their appearance, attire, and actions.
-    - Maximize detail and space, aiming for up to 226 tokens per paragraph.
+    - Write in narrative paragraph form, starting with date and location. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY
+    - Include specific character names in bold (e.g., **John Smith**), with detailed descriptions of their appearance, attire, and actions. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY
+    - Maximize detail and space, aiming for up to 226 tokens per paragraph. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY
     - Integrate real-world physics with subtle details (e.g., debris scattering, fluid dynamics, light refraction).
-    - Enhance the environment with realistic particles respecting natural laws.
-    - Provide specific details for anatomy and avoid generalized concepts.
-    - Reinforce keywords in different parts of the prompt for output consistency.
+    - Enhance the environment with realistic particles respecting natural laws. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY
+    - Provide specific details for anatomy and avoid generalized concepts. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY
+    - Reinforce keywords in different parts of the prompt for output consistency. 
     - Focus on the content that should be in the video.
     - Ensure narrative continuity and coherency between scenes.
     - Do not use bullets, lists, or any formatting other than narrative paragraphs.
@@ -5956,17 +5956,14 @@ class MultimediaSuiteApp:
     - Do not word the negative prompts negatively; simply list things to avoid.
 
     Ensure that the output includes all 7 markers (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) but weave them naturally into the narrative, without explicitly mentioning them or using parentheses.
+    
+    Each prompt should be a three sentence description maximizing the token space for conveying the most information to the model as efficiently as possible.
 
-    Example:
-
-    Positive: In January 2025, Park City, Utah, utility worker **John Miller**, a tall man with rugged features and a determined gaze, wears a reflective orange jacket over thermal layers, a hard hat atop his short brown hair, and sturdy insulated boots crunching through the fresh snow. The PROFESSIONAL - ARRI - Alexa LF (2020) captures a tracking shot focusing on John's careful steps as he navigates snow-covered streets bustling with fellow workers and emergency vehicles. Low contrast, monochrome layering emphasizes the relentless snowfall, while soft lighting diffuses through the overcast sky. The distant hum of snowplows echoes, and the silhouette of the Park City Mountain Resort rises against the backdrop. John's breath forms visible clouds as he checks power lines, his gloved hands deftly handling tools. The atmosphere is one of resilience amid the storm, highlighting widespread power outages and the tireless efforts of utility workers.
-
-    Negative: empty streets, marquee
     """
 
         # Adjusted System Prompt for Non-Story Mode
         sys_prompt_non_story = f"""
-    Transform {{input_concept}} into specifically detailed and immersive narrative paragraphs for video prompts.
+    Transform {input_concept} into specifically detailed and immersive narrative paragraphs for video prompts. Always make sure content does not get censored by Llama 3.2 or triggeer and safety guards for content. AVOID VIOLENCE, SEX AND OTHER CENSORED CONTENT AT ALL COSTS WHEN CREATING PROMPTS.
 
     PROMPT RULES:
     - Write in narrative paragraph form, starting with date and location.
@@ -5984,28 +5981,28 @@ class MultimediaSuiteApp:
     - Do not word the negative prompts negatively; simply list things to avoid.
 
     Ensure that the output includes all 7 markers (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) but weave them naturally into the narrative, without explicitly mentioning them or using parentheses.
+    
+    Each prompt should be a three sentence description maximizing the token space for conveying the most information to the model as efficiently as possible.
 
-    Example:
 
-    Positive: In January 2025, Park City, Utah, utility worker **John Miller**, a tall man with rugged features and a determined gaze, wears a reflective orange jacket over thermal layers, a hard hat atop his short brown hair, and sturdy insulated boots crunching through the fresh snow. The PROFESSIONAL - ARRI - Alexa LF (2020) captures a tracking shot focusing on John's careful steps as he navigates snow-covered streets bustling with fellow workers and emergency vehicles. Low contrast, monochrome layering emphasizes the relentless snowfall, while soft lighting diffuses through the overcast sky. The distant hum of snowplows echoes, and the silhouette of the Park City Mountain Resort rises against the backdrop. John's breath forms visible clouds as he checks power lines, his gloved hands deftly handling tools. The atmosphere is one of resilience amid the storm, highlighting widespread power outages and the tireless efforts of utility workers.
-
-    Negative: empty streets, marquee
     """
 
         if self.video_story_mode_var.get():
             # Story Mode: Generate a story outline first
             outline_generated = False
-            max_outline_retries = 12
+            max_outline_retries = 7
             outline_retry_count = 0
 
             while not outline_generated and outline_retry_count < max_outline_retries:
                 try:
                     # Step 1: Generate a story outline with system prompt
                     outline_prompt = (
-                        f"{sys_prompt_story}\n"
-                        f"Based on the concept '{input_concept}', generate a professionally ordered, detailed outline for a story divided into exactly {num_prompts} scenes. "
-                        f"Each scene should include key plot points, character developments, and set the stage for the next scene. Do not include any positive or negative prompts. "
-                        f"Provide the outline as a numbered list, with each scene on a new line. Do not include any additional text before or after the outline.\n"
+                        f"{sys_prompt_story} in {num_prompts} prompt seeds, WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY\n"
+                        f"Based on the concept '{input_concept}', generate a professionally ordered, detailed outline for a family-friendly story divided into exactly {num_prompts} prompt seeds, no more and no less than {num_prompts}."
+                        f"Provide the outline as a numbered list, with each scene on a new line. Do not include any additional text before or after the outline. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY.\n"
+                        f"Do not create a scene that might promote or glorify illegal activities. Do not promote or glorify illegal activities EVER. Each positive prompt should be a three sentence description maximizing the token space for conveying the most information to the model as efficiently as possible.\n"
+                        f"Ensure that the prompt includes the following elements and masterfully incorporates one of these three story arcs, The Coming-of-Age Arc (Bildungsroman), The Transformation Arc (Positive Change Arc), or the The Hero's Journey (Monomyth).\n"
+                        
                     )
 
                     # Call the model to generate the outline
@@ -6016,16 +6013,16 @@ class MultimediaSuiteApp:
 
                     if scene_descriptions and len(scene_descriptions) == num_prompts:
                         outline_generated = True
-                        print("Story outline generated successfully.")
+                        print("Temporal Story Outline Generation Complete.")
                     else:
                         outline_retry_count += 1
-                        print(f"Outline generation failed or unexpected number of scenes. Retrying... ({outline_retry_count}/{max_outline_retries})")
+                        print(f"Temporal Story Outline still generating. Please be patient while I continue putting everything together for you... ({outline_retry_count}/{max_outline_retries})")
                 except Exception as e:
                     outline_retry_count += 1
-                    print(f"Error generating outline: {e}. Retrying... ({outline_retry_count}/{max_outline_retries})")
+                    print(f"It looks like there has been an error your generating Temporal Story Outline: {e}. This is not common. Let me go ahead and retry that for you... ({outline_retry_count}/{max_outline_retries})")
 
             if not outline_generated:
-                messagebox.showerror("Outline Generation Error", "Failed to generate a valid story outline after multiple attempts.")
+                messagebox.showerror("Temporal Story Outline FAILED", "I am sorry! It looks like I've failed to generate your Temporal Story Outline after multiple attempts. Please go ahead and start it again. This is pretty rare.")
                 # Fallback: Proceed without story mode
                 self.video_story_mode_var.set(False)
                 print("Proceeding without 'Story Mode' due to outline generation failure.")
@@ -6034,7 +6031,7 @@ class MultimediaSuiteApp:
             # Story Mode: Generate detailed prompts for each scene
             for prompt_index, scene_description in enumerate(scene_descriptions, start=1):
                 retry_count = 0
-                max_retries = 12  # Set a maximum number of retries
+                max_retries = 42  # Set a maximum number of retries
 
                 while retry_count < max_retries:
                     try:
@@ -6135,33 +6132,23 @@ class MultimediaSuiteApp:
 
                         # Construct the detailed prompt with system prompt and user instructions
                         detailed_prompt = (
-                            f"{sys_prompt_story}\n"
-                            f"{previous_scenes_summary}"
-                            f"Now, using the scene description below, create a detailed narrative paragraph for Scene {prompt_index}, ensuring continuity with previous scenes.\n\n"
-                            f"Scene {prompt_index}: {scene_description}\n"
-                            f"The scene is part of a story set in the {video_options['decade']}, shot on a {video_options['camera']}. Mention the camera and decade naturally in the narrative. Include all 7 markers (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) integrated seamlessly into the narrative.\n\n"
-                            f"PROMPT RULES:\n"
-                            f"- Write in narrative paragraph form, starting with date and location.\n"
-                            f"- Include specific character names in bold (e.g., **John Smith**), with detailed descriptions of appearance, attire, and actions.\n"
-                            f"- Maximize detail and space, aiming for up to 226 tokens.\n"
-                            f"- Ensure narrative coherence with previous scenes.\n"
-                            f"- Do not use bullets, lists, or any formatting other than narrative paragraphs.\n"
-                            f"- Integrate real-world physics and subtle details.\n"
-                            f"- Enhance the environment with realistic particles respecting natural laws.\n"
-                            f"- Provide specific details and avoid generalized concepts.\n"
-                            f"- Reinforce keywords in different parts of the prompt.\n"
-                            f"- Focus on the content that should be in the video.\n"
-                            f"- Do not mention video durations or phrases like 'generate a video' or 'create a clip'.\n"
-                            f"- At the end of the paragraph, include negative prompts in the following format:\n"
-                            f"    Negative: [list of negative terms]\n"
-                            f"- Do not copy the example; use it as a guide for formatting and style.\n\n"
-                            f"Ensure that the prompt includes the following elements:\n"
-                            + "\n".join(current_options_context) + "\n"
                             f"\n"
-                            f"Example:\n\n"
-                            f"Positive: In January 2025, Park City, Utah, utility worker **John Miller**, a tall man with rugged features and a determined gaze, wears a reflective orange jacket over thermal layers, a hard hat atop his short brown hair, and sturdy insulated boots crunching through the fresh snow. The PROFESSIONAL - ARRI - Alexa LF (2020) captures a tracking shot focusing on John's careful steps as he navigates snow-covered streets bustling with fellow workers and emergency vehicles. Low contrast, monochrome layering emphasizes the relentless snowfall, while soft lighting diffuses through the overcast sky. The distant hum of snowplows echoes, and the silhouette of the Park City Mountain Resort rises against the backdrop. John's breath forms visible clouds as he checks power lines, his gloved hands deftly handling tools. The atmosphere is one of resilience amid the storm, highlighting widespread power outages and the tireless efforts of utility workers.\n\n"
-                            f"Negative: empty streets, marquee\n\n"
-                            f"Now, please provide the prompt for Scene {prompt_index} as per the above guidelines and example.\n"
+                            f"Here is the System Prompt Story for your Reference{sys_prompt_story}. Each prompt seed needs key plot points, character developments from the previous, and set the stage for the next scene visually. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY. Do not mention or guide anything outside of the visual aspects of the scene."
+                            f"\n"
+                            f"Using the prompt seed {prompt_index}: {scene_description}, create a pg-13 friendly, detailed narrative paragraph for prompt seed{prompt_index}, ensuring continuity with previous scenes as seen in the following summary {previous_scenes_summary}. Generate exactly one Positive prompt and one Negative prompt for this scene. Combined the two equal one prompt set.\n"
+                            f"Always start with this exact phraseing 'Positive: Set in {video_options['decade']}, shot on a {video_options['camera']}...' DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL.\n"
+                            f"Mention the camera and decade naturally in the narrative. ALWAYS INCLUDE (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) integrated seamlessly into the narrative. \n"
+                            f"- Include specific character names in bold (e.g., **John Smith**), with a detailed description of the character's appearance, attire, and actions focusing on the visual aspects.\n"
+                            f"- Do not use bullets, lists, or any formatting other than narrative paragraphs. Generate exactly one Positive and one Negative for this scene. There should never be more than one set per story generation. One set = One Positive Prompt + One Negative Prompt"
+                            f"- Integrate an expert awareness of real-world physics to influence the subtle environmental details.\n"
+                            f"- Provide specific details and avoid generalized concepts.\n"
+                            f"- All content must be within PG-13 guidelines and always family-friendly. Nothing explicit should be considered and should be replaced with cleaner phrasing. Each prompt should be a three sentence description maximizing the token space for conveying the most information to the model as efficiently as possible.\n"
+                            f"- Maximize detail and space, aiming for up to 220 tokens and always maximizing each prompt set. Do not just do short and easy ones.\n"
+                            f"Always start with this exact phraseing 'Positive: Set in {video_options['decade']}, shot on a {video_options['camera']}...' DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL.\n"
+                            f"Generate exactly one Positive Prompt and one Negative Prompt as a Prompt Set for {prompt_index} using FORMAT Example below:\n"
+                            f"Positive: [ALWAYS START WITH THE DECADE AND CAMERA LIKE 'Positive: Set in {video_options['decade']}, shot on a {video_options['camera']}...' DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL. This positive prompt should be 5 or 6 sentences in detail and never shorter than 3 long sentences. Optimize the prompt output to a token count of 220 for {prompt_index}: {scene_description}]"
+                            f"Negative: [List of 3 to 5 terms of what should not be generated or shown visually, 3 to 5 terms that better refine the content of the positive prompt. As an example, if it's a woman character in the main prompt then this negative would make sure there isn't facial hair and that anatomical features are realistic for example. Another example would be to help prompt away from blurry or deformed faces, appendages or other features. EVERYTHING HERE WILL NOT BE GENERATED SO DO NOT PUT POSITIVE GUIDANCE HERE. DO NOT PUT ANYTHING WE WANT IN THE VIDEO IN THIS NEGATIVE PROMPT. For example do not put 'preserve historical accuracy of clothing and accessories' you would be 'historically inaccurate clothing and accessories.']\n"
+
                         )
 
                         # Call the model to generate the detailed video prompt
@@ -6309,30 +6296,21 @@ class MultimediaSuiteApp:
                         # Construct the detailed prompt with system prompt and user instructions
                         detailed_prompt = (
                             f"{sys_prompt_non_story}\n"
-                            f"Using CogVideoX Prompting Standards and best expert practices, create a detailed narrative paragraph for a video prompt based on the concept '{input_concept}'.\n"
-                            f"The scene should be unique, self-contained, and optimized for video generation.\n"
-                            f"The scene is set in the {video_options['decade']}, shot on a {video_options['camera']}. Mention the camera and decade naturally in the narrative. Include all 7 markers (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) integrated seamlessly into the narrative.\n\n"
-                            f"PROMPT RULES:\n"
-                            f"- Write in narrative paragraph form, starting with date and location.\n"
-                            f"- Include specific character names in bold (e.g., **John Smith**), with detailed descriptions of appearance, attire, and actions.\n"
-                            f"- Maximize detail and space, aiming for up to 226 tokens.\n"
-                            f"- Do not use bullets, lists, or any formatting other than narrative paragraphs.\n"
-                            f"- Integrate real-world physics and subtle details.\n"
-                            f"- Enhance the environment with realistic particles respecting natural laws.\n"
+                            f"Using advanced COGVIDEOX VIDEO OUTPUT Prompt Standards and practices, create a detailed, pg-13 friendly, narrative paragraph for a COGVIDEOX VIDEO OUTPUT video prompt based on the concept '{input_concept}'.\n"
+                            f"The COGVIDEOX VIDEO OUTPUT scene should be unique, self-contained, and optimized for COGVIDEOX VIDEO OUTPUT.\n"
+                            f"Always start with this exact phraseing 'Positive: Set in {video_options['decade']}, shot on a {video_options['camera']}...' DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL.\n"
+                            f"Mention the camera and decade naturally in the narrative. ALWAYS INCLUDE (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) integrated seamlessly into the narrative. \n"
+                            f"- Include specific character names in bold (e.g., **John Smith**), with a detailed description of the character's appearance, attire, and actions focusing on the visual aspects.\n"
+                            f"- Do not use bullets, lists, or any formatting other than narrative paragraphs. Generate exactly one Positive and one Negative for this scene. There should never be more than one set per story generation. One set = One Positive Prompt + One Negative Prompt"
+                            f"- Integrate an expert awareness of real-world physics to influence the subtle environmental details.\n"
                             f"- Provide specific details and avoid generalized concepts.\n"
-                            f"- Reinforce keywords in different parts of the prompt.\n"
-                            f"- Focus on the content that should be in the video.\n"
-                            f"- Do not mention video durations or phrases like 'generate a video' or 'create a clip'.\n"
-                            f"- At the end of the paragraph, include negative prompts in the following format:\n"
-                            f"    Negative: [list of negative terms]\n"
-                            f"- Do not copy the example; use it as a guide for formatting and style.\n\n"
-                            f"Ensure that the prompt includes the following elements:\n"
-                            + "\n".join(current_options_context) + "\n"
-                            f"\n"
-                            f"Example:\n\n"
-                            f"Positive: In January 2025, Park City, Utah, utility worker **John Miller**, a tall man with rugged features and a determined gaze, wears a reflective orange jacket over thermal layers, a hard hat atop his short brown hair, and sturdy insulated boots crunching through the fresh snow. The PROFESSIONAL - ARRI - Alexa LF (2020) captures a tracking shot focusing on John's careful steps as he navigates snow-covered streets bustling with fellow workers and emergency vehicles. Low contrast, monochrome layering emphasizes the relentless snowfall, while soft lighting diffuses through the overcast sky. The distant hum of snowplows echoes, and the silhouette of the Park City Mountain Resort rises against the backdrop. John's breath forms visible clouds as he checks power lines, his gloved hands deftly handling tools. The atmosphere is one of resilience amid the storm, highlighting widespread power outages and the tireless efforts of utility workers.\n\n"
-                            f"Negative: empty streets, marquee\n\n"
-                            f"Now, please provide the prompt as per the above guidelines and example.\n"
+                            f"- All content must be within PG-13 guidelines and always family-friendly. Nothing explicit should be considered and should be replaced with cleaner phrasing. Each prompt should be a three sentence description maximizing the token space for conveying the most information to the model as efficiently as possible.\n"
+                            f"- Maximize detail and space, aiming for up to 220 tokens and always maximizing each prompt set. Do not just do short and easy ones.\n"
+                            f"Always start with this exact phraseing 'Positive: Set in {video_options['decade']}, shot on a {video_options['camera']}...' DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL.\n"
+                            f"Generate exactly one Positive Prompt and one Negative Prompt as a Prompt Set for {prompt_index} using FORMAT Example below:\n"
+                            f"Positive: [ALWAYS START WITH THE DECADE AND CAMERA LIKE 'Positive: Set in {video_options['decade']}, shot on a {video_options['camera']}...' DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL. This positive prompt should be 5 or 6 sentences in detail and never shorter than 3 long sentences. Optimize the prompt output to a token count of 220 for {prompt_index}: {scene_description}]"
+                            f"Negative: [List of 3 to 5 terms of what should not be generated or shown visually, 3 to 5 terms that better refine the content of the positive prompt. As an example, if it's a woman character in the main prompt then this negative would make sure there isn't facial hair and that anatomical features are realistic for example. Another example would be to help prompt away from blurry or deformed faces, appendages or other features. EVERYTHING HERE WILL NOT BE GENERATED SO DO NOT PUT POSITIVE GUIDANCE HERE. DO NOT PUT ANYTHING WE WANT IN THE VIDEO IN THIS NEGATIVE PROMPT. For example do not put 'preserve historical accuracy of clothing and accessories' you would be 'historically inaccurate clothing and accessories.']\n"
+
                         )
 
                         # Call the model to generate the detailed video prompt
@@ -6529,7 +6507,7 @@ class MultimediaSuiteApp:
 
                 # Build the prompt to send to the language model, instructing it to not include negative prompts
                 sound_prompt_template = (
-                    f"Based on [idx], list the specific sounds that would make up the soundscape for the scene. Include specific details like the camera model, sounds known to the region being represented, etc. Don't just list basic generic noises if possible to include specific guider. You should start ABSOLUTELY first with the camera itself and then move outwards as you build the sonic landscape prompt set. You are only describing things that make noise and can be heard. Not describing abstract ideas. Avoid terms like whine, hiss or other harmonic resonant type things unless EXPLICTLY called for in the prompt exactly. You are creating absolutely diagetic soundscapes. Do not describe scents, light, colors or non-sonic aspects of the scene here in any form."
+                    f"Based on this video prompt, list the specific sounds that would make up the soundscape for the scene with an acute awareness of what consumers want and expect to hear. Include specific details like the camera model, sounds known to the region being represented, etc. ABSOLUTELY first with the camera itself and then move outwards as you build the sonic landscape prompt set. You are only describing things that make noise and can be heard. Not describing abstract ideas. Avoid terms like whine, hiss or other harmonic resonant type things unless EXPLICTLY called for in the prompt exactly. You are creating absolutely diagetic soundscapes. Do not describe scents, light, colors or non-sonic aspects of the scene here in any form."
                     f"Focus solely on listing positive sounds without any negative descriptions, labels, separators, or explanations. "
                     f"Provide only the sounds separated by commas. The output should have two sections: 'positive:' followed by the list of sounds, and 'negative:' with no content or comments of any kind.\n\n"
                     f"Video Description:\n{positive_prompt}\n"
@@ -7144,7 +7122,7 @@ class MultimediaSuiteApp:
 
         Example format:
 
-        positive: Describe the positive aspects of the scene or shot in masterful visual detail including specific features.
+        positive: Describe the positive aspects of the scene or shot in masterful {prompt_type} detail including specific features.
         negative: Describe what to avoid in the scene or shot in detail to maintain consistent coherency.
         --------------------
 
@@ -8785,11 +8763,11 @@ class MultimediaSuiteApp:
         self.audio_open_source_mode_var = tk.BooleanVar(value=True)
         self.audio_model_name_var = tk.StringVar(value="audioldm2-full-large-1150k")
         self.audio_guidance_scale_var = tk.DoubleVar(value=8)
-        self.audio_ddim_steps_var = tk.IntVar(value=40)
+        self.audio_ddim_steps_var = tk.IntVar(value=15)
         self.audio_n_candidate_var = tk.IntVar(value=8)
         self.audio_seed_var = tk.IntVar(value=1990)
         self.audio_device_var = tk.StringVar(value="cpu")  # Initialize audio_device_var with default 'cpu'
-        self.audio_inference_steps_var = tk.IntVar(value=40)  # Default inference steps
+        self.audio_inference_steps_var = tk.IntVar(value=15)  # Default inference steps
         self.audio_length_var = tk.DoubleVar(value=6.0)  # Default audio length in seconds
         self.audio_waveforms_var = tk.IntVar(value=1)  # Default number of waveforms per prompt
 
@@ -9069,7 +9047,7 @@ class MultimediaSuiteApp:
             self.audio_open_source_mode_var.set(audio_options.get("open_source_mode", True))
             self.audio_model_name_var.set(audio_options.get("model_name", "audioldm2-full-large-1150k"))
             self.audio_guidance_scale_var.set(audio_options.get("guidance_scale", 10.0))
-            self.audio_ddim_steps_var.set(audio_options.get("ddim_steps", 100))
+            self.audio_ddim_steps_var.set(audio_options.get("ddim_steps", 15))
             self.audio_n_candidate_var.set(audio_options.get("n_candidate_gen_per_text", 5))
             self.audio_seed_var.set(audio_options.get("seed", 12345))
             self.audio_device_var.set(audio_options.get("device", "cpu"))  # Load device setting
