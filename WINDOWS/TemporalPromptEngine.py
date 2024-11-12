@@ -5085,12 +5085,74 @@ class MultimediaSuiteApp:
 
             while not outline_generated and outline_retry_count < max_outline_retries:
                 try:
+                    video_options = {
+                        "theme": self.get_randomized_setting(
+                            self.video_theme_var, THEMES, self.video_randomize_theme_var
+                        ),
+                        "art_style": self.get_randomized_setting(
+                            self.video_art_style_var, ART_STYLES, self.video_randomize_art_style_var
+                        ),
+                        "lighting": self.get_randomized_setting(
+                            self.video_lighting_var, LIGHTING_OPTIONS, self.video_randomize_lighting_var
+                        ),
+                        "framing": self.get_randomized_setting(
+                            self.video_framing_var, FRAMING_OPTIONS, self.video_randomize_framing_var
+                        ),
+                        "camera_movement": self.get_randomized_setting(
+                            self.video_camera_movement_var, CAMERA_MOVEMENTS, self.video_randomize_camera_movement_var
+                        ),
+                        "shot_composition": self.get_randomized_setting(
+                            self.video_shot_composition_var, SHOT_COMPOSITIONS, self.video_randomize_shot_composition_var
+                        ),
+                        "time_of_day": self.get_randomized_setting(
+                            self.video_time_of_day_var, TIME_OF_DAY_OPTIONS, self.video_randomize_time_of_day_var
+                        ),
+                        "camera": self.get_randomized_setting(
+                            self.video_camera_var, CAMERAS.get(self.video_decade_var.get(), []), self.video_randomize_camera_var
+                        ),
+                        "lens": self.get_randomized_setting(
+                            self.video_lens_var, LENSES, self.video_randomize_lens_var
+                        ),
+                        "resolution": self.get_randomized_setting(
+                            self.video_resolution_var, RESOLUTIONS.get(self.video_decade_var.get(), RESOLUTIONS[DECADES[0]]), self.video_randomize_resolution_var
+                        ),
+                        "wildlife_animal": self.get_randomized_setting(
+                            self.wildlife_animal_var, WILDLIFE_ANIMALS, self.video_randomize_wildlife_animal_var, self.wildlife_animal_entry_var
+                        ),
+                        "domesticated_animal": self.get_randomized_setting(
+                            self.domesticated_animal_var, DOMESTICATED_ANIMALS, self.video_randomize_domesticated_animal_var, self.domesticated_animal_entry_var
+                        ),
+                        "soundscape_mode": self.video_soundscape_mode_var.get(),
+                        "holiday_mode": self.video_holiday_mode_var.get(),
+                        "selected_holidays": self.video_holidays_var.get(),
+                        "specific_modes": [mode for mode, var in self.video_specific_modes_vars.items() if var.get()],
+                        "no_people_mode": self.video_no_people_mode_var.get(),
+                        "chaos_mode": self.video_chaos_mode_var.get(),
+                        "remix_mode": self.video_remix_mode_var.get(),
+                        "decade": self.get_randomized_setting(
+                            self.video_decade_var, DECADES, self.video_randomize_decade_var
+                        )
+                    }
+
+                    # Build the base options context for this prompt
+                    current_options_context = [
+                        f"Theme: {video_options['theme']}",
+                        f"Art Style: {video_options['art_style']}",
+                        f"Lighting: {video_options['lighting']}",
+                        f"Framing: {video_options['framing']}",
+                        f"Camera Movement: {video_options['camera_movement']}",
+                        f"Shot Composition: {video_options['shot_composition']}",
+                        f"Time of Day: {video_options['time_of_day']}",
+                        f"Camera: {video_options['camera']}, Lens: {video_options['lens']}",
+                        f"Resolution: {video_options['resolution']}"
+                    ]                                     
                     # Step 1: Generate a story outline with system prompt
                     outline_prompt = (
-                        f"{sys_prompt_story} in {num_prompts} prompt seeds, WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY\n"
+                        f"{sys_prompt_story} in {num_prompts} prompt seeds, WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY and leaned towards american consumers, unless otherwise specificed direct prompts towards american actors and settings.\n"
                         f"Based on the concept '{input_concept}', generate a professionally ordered, detailed outline for a family-friendly story divided into exactly {num_prompts} prompt seeds, no more and no less than {num_prompts}."
-                        f"Provide the outline as a numbered list, with each scene on a new line. Do not include any additional text before or after the outline. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY.\n"
-                        f"Do not create a scene that might promote or glorify illegal activities. Do not promote or glorify illegal activities EVER. Each positive prompt should be a three sentence description maximizing the token space for conveying the most information to the model as efficiently as possible.\n"
+                        f"Provide the outline as a numbered list, with each scene on a new line. Do not include any additional text before or after the outline. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY. The CogVideoX Model is chinese based and leans towards asian people generations, always inject key terms to direct it towards American audiences and generations by default unless otherwise specified within '{input_concept}'\n"
+                        f"Do not create a scene that might promote or glorify illegal activities. Do not promote or glorify illegal activities EVER. Each positive prompt should be a four sentence description maximizing the token space for conveying the most information to the model as efficiently as possible.\n"
+                        f"IF it is older silent film era then inject extra terms to guide it towards that, If it's 60s then guide it towards panavision and technicolor, etc. Don't reiterate the {input_concept} directly here.\n"
                         f"Ensure that the outline remains cohesive and masterfully decides on and incorporates one of these three story arcs, The Coming-of-Age Arc (Bildungsroman), The Transformation Arc (Positive Change Arc), or the The Hero's Journey (Monomyth).\n"
                         
                     )
@@ -5222,19 +5284,18 @@ class MultimediaSuiteApp:
 
                         # Construct the detailed prompt with system prompt and user instructions
                         detailed_prompt = (
-                            f"Take {prompt_index}:{scene_description} and create a specific, pg-13 friendly, description focusing on the visual scene for it including all specific details and aspects of the scene. Do not focus on exposition or the soundscape, DO NOT MENTION ANY SOUNDS IN THE SCENE. You are focusing on the visual aspects scene as if describing it to a blind person. Avoid abstract or emotional descriptions.\n"
-                            f"Always start with this exact phraseing 'Positive: Set in {video_options['decade']}, shot on a {video_options['camera']}...' DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL.\n"
-                            f"Mention the camera and decade naturally in the narrative. ALWAYS INCLUDE (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) integrated seamlessly into the narrative, traditional exposition is not required, only visual description of the 6 second visual scene is required in temporal order. \n"
+                            f"Take {prompt_index}:{scene_description} and create a specific, pg-13 friendly, description focusing on the visual scene for it including all specific details and aspects of the scene. Do not focus on exposition or the soundscape, DO NOT MENTION ANY SOUNDS IN THE SCENE. You are focusing on the visual aspects scene as if describing it to a blind person. Avoid abstract or emotional descriptions. It must be leaned towards american consumers, unless otherwise specificed direct prompts towards american actors and settings. Every prompt must be set in {video_options['decade']}\n"
+                            f"Always start with this exact phraseing 'Positive: Set in {video_options['decade']}, shot on a {video_options['camera']}...' DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL. AND SUMMARIZE IT BETTER TO FIT THE PROMPT ALWAYS.\n"
+                            f" ALWAYS INCLUDE (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) integrated seamlessly into the narrative, traditional exposition is not required, only visual description of the 6 second visual scene is required in temporal order. \n"
                             f"- Include specific character names in bold (e.g., **John Smith**), with a detailed description of the character's appearance, attire, and actions focusing on the visual aspects.\n"
                             f"- Do not use bullets, lists, or any formatting other than narrative paragraphs. Generate exactly one Positive and one Negative for this scene. There should never be more than one set per story generation. One set = One Positive Prompt + One Negative Prompt"
                             f"- Integrate an expert awareness of real-world physics to influence the subtle environmental details.\n"
-                            f"- Provide specific details and avoid generalized concepts, do not convey abstract ideas and only provide descriptions of the visual aspects of the scene starting with the main subject.\n"
+                            f"- Provide specific details and avoid generalized concepts, do not convey abstract ideas and only provide descriptions of the visual aspects of the scene starting with the main subject and ensuring all details are coherent with the {video_options['decade']} standards and expectations.\n"
                             f"- All content must be within PG-13 guidelines and always family-friendly. Nothing explicit should be considered and should be replaced with cleaner phrasing. Each prompt should be a three sentence description maximizing the token space for conveying the most information to the model as efficiently as possible.\n"
                             f"- Maximize visual description detail, aiming for up to 220 tokens and always maximizing each prompt set. Do not just do short and easy ones and avoid exposition like 'a testament to X's resourcefulness and ingenuity' or '.\n"
-                            f"Always start with this exact phraseing 'Positive: Set in {video_options['decade']}, shot on a {video_options['camera']}...' DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL.\n"
                             f"Generate exactly one Positive Prompt and one Negative Prompt as a Prompt Set for [idx] using FORMAT Example below:\n"
-                            f"Positive: [ALWAYS START WITH THE DECADE AND CAMERA LIKE 'Positive: Set in {video_options['decade']}, shot on a {video_options['camera']}...' DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL. This positive prompt should be 5 or 6 sentences in detail and never shorter than 3 long sentences. Optimize the prompt output to a maximum token count of 220 and a minimum of 160 tokens for"
-                            f"Negative: [A masterfully crafted negative prompt to compliment {prompt_index}:{scene_description}. ONLY PRESENT IN STRAIGHT-FORWARD LIST FORMAT LIKE 'Blurry background figures, misaligned or awkward features, deformed limbs, distracting backgrounds, cluttered scenes' without exposition or reasoning or explantion. Just provide an optimized list. YOU CAN NOT mention names, titles or any specific character information or give full english directions in any way. Do not express or write anything that should be. Make sure the list takes into account specifics to {prompt_index}:{scene_description}. Most women don't have facial hair for example, etc. DO NOT EVER PROVIDE IN BULLETED FORM.]\n"
+                            f"Positive: [ALWAYS START WITH THE DECADE AND CAMERA LIKE 'Positive: Set in ['decade'], shot on a ['camera']...' DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL. If the camera were 'PROFESSIONAL - Sony - Digital Betacam DVW-700WS (1993) - ' DO NOT PRESENT AS 'PROFESSIONAL - Sony - Digital Betacam DVW-700WS (1993) - ' ALWAYS PRESENT ANY CAMERA AS FOLLOWING 'Sony Digital Betacam DVW-700WS from 1993'. The actual camera, model and date may differ. IF it is older silent film era then inject extra terms to guide it towards that, If it's 60s then guide it towards panavision and technicolor, etc. Don't reiterate the {input_concept} directly here. This is for finalized content prompts. This positive prompt should be 5 or 6 sentences in detail and never shorter than 3 long sentences. Optimize the prompt output to a token count of 220 for {input_concept}]"
+                            f"Negative: [A masterfully crafted negative prompt to compliment {prompt_index}:{scene_description}. ONLY PRESENT IN STRAIGHT-FORWARD LIST FORMAT LIKE 'Blurry background figures, misaligned or awkward features, deformed limbs, distracting backgrounds, cluttered scenes' without exposition or reasoning or explantion. Just provide an optimized list with commas between each, never use dashes or dots or anything else besides commas. YOU CAN NOT mention names, titles or any specific character information or give full english directions in any way. Do not express or write anything that should be. Make sure the list takes into account specifics to {prompt_index}:{scene_description}. Most women don't have facial hair for example, etc. DO NOT EVER PROVIDE IN BULLETED FORM.]\n"
 
                         )
 
@@ -5383,7 +5444,7 @@ class MultimediaSuiteApp:
                         # Construct the detailed prompt with system prompt and user instructions
                         detailed_prompt = (
                             f"{sys_prompt_non_story}\n"
-                            f"Create a detailed, visuals focused, pg-13 friendly, video prompt formatted for a COGVIDEOX VIDEO OUTPUT based on the concept '{input_concept}'.\n"
+                            f"Create a detailed, visuals focused, pg-13 friendly, video prompt formatted for a COGVIDEOX VIDEO OUTPUT based on the concept '{input_concept} leaned towards american consumers, unless otherwise specificed direct prompts towards american actors and settings.'.\n"
                             f"The COGVIDEOX VIDEO OUTPUT scene should be unique, self-contained, and optimized for COGVIDEOX VIDEO OUTPUT.\n"
                             f"Mention the camera and decade naturally in the narrative. ALWAYS INCLUDE (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) integrated seamlessly into the narrative, traditional exposition is not required, only visual description of the 6 second visual scene is required in temporal order. \n"
                             f"- Include specific character names in bold (e.g., **John Smith**), with a detailed description of the character's appearance, attire, and actions focusing on the visual aspects.\n"
@@ -5394,8 +5455,8 @@ class MultimediaSuiteApp:
                             f"- Maximize visual description detail, aiming for up to 220 tokens and always maximizing each prompt set. Do not just do short and easy ones and avoid exposition like 'a testament to X's resourcefulness and ingenuity' or '.\n"
                             f"Always start with this exact phraseing 'Positive: Set in {video_options['decade']}, shot on a {video_options['camera']}...' DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL.\n"
                             f"Generate exactly one Positive Prompt and one Negative Prompt as a Prompt Set for {prompt_index} using FORMAT Example below:\n"
-                            f"Positive: [ALWAYS START WITH THE DECADE AND CAMERA LIKE 'Positive: Set in {video_options['decade']}, shot on a {video_options['camera']}...' DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL. This positive prompt should be 5 or 6 sentences in detail and never shorter than 3 long sentences. Optimize the prompt output to a token count of 220 for {prompt_index}:{scene_description}]"
-                            f"Negative: [A masterfully crafted negative prompt to compliment {prompt_index}:{scene_description}. ONLY PRESENT IN STRAIGHT-FORWARD LIST FORMAT LIKE 'Blurry background figures, misaligned or awkward features, deformed limbs, distracting backgrounds, cluttered scenes' without exposition or reasoning or explantion. Just provide an optimized list. YOU CAN NOT mention names, titles or any specific character information or give full english directions in any way. Do not express or write anything that should be. Make sure the list takes into account specifics to {prompt_index}:{scene_description}. Most women don't have facial hair for example, etc. DO NOT EVER PROVIDE IN BULLETED FORM.]\n"
+                            f"Positive: [ALWAYS START WITH THE DECADE AND CAMERA LIKE 'Positive: Set in {video_options['decade']}, shot on a {video_options['camera']}...' DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL. If the camera were 'PROFESSIONAL - Sony - Digital Betacam DVW-700WS (1993) - ' DO NOT PRESENT AS 'PROFESSIONAL - Sony - Digital Betacam DVW-700WS (1993) - ' ALWAYS PRESENT ANY CAMERA AS FOLLOWING 'Sony Digital Betacam DVW-700WS from 1993'. The actual camera, model and date may differ. IF it is older silent film era then inject extra terms to guide it towards that, If it's 60s then guide it towards panavision and technicolor, etc. Don't reiterate the {input_concept} directly here. This is for finalized content prompts. This positive prompt should be 5 or 6 sentences in detail and never shorter than 3 long sentences. Optimize the prompt output to a token count of 220 for {input_concept}]"
+                            f"Negative: [A masterfully crafted negative prompt to compliment {input_concept}. ONLY PRESENT IN STRAIGHT-FORWARD LIST FORMAT LIKE 'Blurry background figures, misaligned or awkward features, deformed limbs, distracting backgrounds, cluttered scenes' without exposition or reasoning or explantion. Just provide an optimized list. YOU CAN NOT mention names, titles or any specific character information or give full english directions in any way. Do not express or write anything that should be. Make sure the list takes into account specifics to {input_concept}. Most women don't have facial hair for example, etc. DO NOT EVER PROVIDE IN BULLETED FORM.]\n"
 
                         )
 
@@ -5593,10 +5654,10 @@ class MultimediaSuiteApp:
 
                 # Build the prompt to send to the language model, instructing it to not include negative prompts
                 sound_prompt_template = (
-                    f"Based on this video prompt, list the specific sounds that would make up the soundscape for the scene with an acute awareness of what consumers want and expect to hear. Include specific details like the camera model, sounds known to the region being represented, etc. ABSOLUTELY first with the camera itself and then move outwards as you build the sonic landscape prompt set. You are only describing things that make noise and can be heard. Not describing abstract ideas. Avoid terms like whine, hiss or other harmonic resonant type things unless EXPLICTLY called for in the prompt exactly. You are creating absolutely diagetic soundscapes. Do not describe scents, light, colors or non-sonic aspects of the scene here in any form."
+                    f"Based on {positive_prompt}, list specific sounds that would make up the soundscape for the scene. Never use full sentence structure or reference characters or names. Include specific details like the camera model, diagetic sounds known to the region being represented, etc. Seperate each sound with a comma and only a comma. ABSOLUTELY first with the camera itself and then move outwards as you build the sonic landscape prompt set. You are only describing things that make noise and can be heard in two or three words. You are not referencing characters or story moments or details. You are not describing abstract ideas or conveying any visual information. Never use terms like whine, hiss or other harmonic resonant type things unless EXPLICTLY called for in the prompt exactly. You are creating absolutely diagetic soundscapes and avoiding anything to indicate musical tones unless specifically asked. Do not describe scents, light, colors or non-sonic aspects of the scene here in any form. Do not give any character or story information here. You are crafting the perfect diagetic soundscape for {positive_prompt}"
                     f"Focus solely on listing positive sounds without any negative descriptions, labels, separators, or explanations. "
-                    f"Provide only the sounds separated by commas. The output should have two sections: 'positive:' followed by the list of sounds, and 'negative:' with no content or comments of any kind.\n\n"
-                    f"Video Description:\n{positive_prompt}\n"
+                    f"Provide only the sounds separated by commas. The output should have two sections: 'positive:' followed by the list of sounds, no repeats or similiar sounds of any kind, aim for 4 to 9, followed by 'negative:' with no content or comments of any kind Negative prompt should ALWAYS BE BLANK FOR SOUNDSCAPES.\n\n"
+
                 )
 
                 retry_attempt = 0
@@ -6732,7 +6793,7 @@ class MultimediaSuiteApp:
             for set_idx, sounds in enumerate(prompt_sets_sounds, start=1):
                 logging.info(f"Processing Prompt Set {set_idx}")
 
-                audio_folder = os.path.join(audio_save_folder, f"Audio_{set_idx}")
+                audio_folder = os.path.join(audio_save_folder, f"Video_{set_idx}")
                 os.makedirs(audio_folder, exist_ok=True)
                 logging.info(f"Created/Using folder: {audio_folder}")
 
