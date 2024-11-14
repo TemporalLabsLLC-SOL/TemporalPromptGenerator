@@ -71,11 +71,11 @@ check_python_version() {
 check_nvidia_cuda() {
     if command_exists nvidia-smi; then
         print_status "NVIDIA Temporal Processing Unit (TPU) detected and operational."
-        nvcc_version=$(nvcc --version 2>&1)
-        if [[ "$nvcc_version" == *"release 12."* ]]; then
-            print_status "CUDA Toolkit 12.x for temporal computations is installed correctly."
+        nvcc_version=$(nvcc --version 1>&1)
+        if [[ "$nvcc_version" == *"release 11.8"* ]]; then
+            print_status "CUDA Toolkit 11.8 for temporal computations is installed correctly."
         else
-            print_error "CUDA Toolkit 12.x is not detected or improperly installed."
+            print_error "CUDA Toolkit 11.8 is not detected or improperly installed."
             handle_failure "cuda"
         fi
     else
