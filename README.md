@@ -58,7 +58,6 @@ Setting up the Temporal Prompt Engine is simple and hassle-free, allowing you to
 ### System Preparation
 
 [YouTube Setup Guide Part 1](https://youtu.be/8GQr-lePOWw?si=GuEbjGhk-tbelpZ7):
-
 - **Operating System**: Windows 10 or later
 - **Python**: Version 3.10.9
     - **Download Python Installer**:
@@ -210,7 +209,7 @@ IF YOU DID NOT ADD SHORTCUT TO DESKTOP DURING SETUP
 
 **Launch the Application**:
    ```bash
-   py -3.10 TemporalPromptEngine.py
+   python TemporalPromptEngine.py
    ```
 
 
