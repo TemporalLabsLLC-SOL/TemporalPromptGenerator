@@ -75,8 +75,8 @@ def get_venv_executables(venv_dir):
         python_executable = venv_dir / "Scripts" / "python.exe"
         pip_executable = venv_dir / "Scripts" / "pip.exe"
     else:
-        python_executable = venv_dir / "bin" / "python"
-        pip_executable = venv_dir / "bin" / "pip"
+        python_executable = venv_dir / "bin" / "python3"
+        pip_executable = venv_dir / "bin" / "pip3"
     return python_executable, pip_executable
 
 def check_pip(cwd=None):
@@ -85,7 +85,7 @@ def check_pip(cwd=None):
     """
     print_info("Initiating Pip Verification...")
     try:
-        output = run_command(["pip", "--version"], capture_output=True, cwd=cwd)
+        output = run_command(["pip3", "--version"], capture_output=True, cwd=cwd)
         if output:
             print_status(f"Pip is ready: {output}")
             return True
@@ -96,16 +96,30 @@ def check_pip(cwd=None):
 
 def install_pip(script_dir):
     """
-    Install pip using ensurepip.
+    Install pip using ensurepip or system package manager.
     """
-    print_action("Installing Pip through Temporal Enhancement...")
-    result = run_command([sys.executable, "-m", "ensurepip", "--upgrade"], cwd=script_dir)
-    if result is None:
-        print_status("Pip has been successfully integrated.")
-        return True
-    else:
-        print_error("Failed to integrate Pip into the Temporal Engine.")
-        return False
+    print_action("Installing Pip...")
+    try:
+        # Try using ensurepip
+        result = run_command([sys.executable, "-m", "ensurepip", "--upgrade"], cwd=script_dir)
+        if result is None:
+            print_status("Pip has been successfully installed using ensurepip.")
+            return True
+    except:
+        pass
+    # If ensurepip fails, instruct the user to install pip via package manager
+    print_warning("Failed to install pip using ensurepip.")
+    if platform.system() == "Linux":
+        print_info("Attempting to install pip using system package manager...")
+        try:
+            run_command(["sudo", "apt", "update"], cwd=script_dir)
+            run_command(["sudo", "apt", "install", "-y", "python3-pip"], cwd=script_dir)
+            print_status("Pip has been successfully installed via apt.")
+            return True
+        except:
+            pass
+    print_error("Failed to install pip automatically. Please install pip manually and rerun the setup.")
+    return False
 
 def check_ollama(cwd=None):
     """
@@ -270,7 +284,7 @@ def install_dependencies_for_cogvideo(cogvideo_gradio_demo_path, cogvx_venv_dir)
     requirements_path = cogvideo_gradio_demo_path / "requirements.txt"
     install_commands = [
         [str(pip_executable), "install", "-r", str(requirements_path)],
-        [str(pip_executable), "install", "torch==2.3.1+cu121", "torchvision==0.18.1+cu121", "torchaudio==2.3.1+cu121", "--index-url", "https://download.pytorch.org/whl/cu121"],
+        [str(pip_executable), "install", "torch==1.13.1+cu117", "torchvision==0.14.1+cu117", "torchaudio==0.13.1+cu117", "--index-url", "https://download.pytorch.org/whl/cu117"],
         [str(pip_executable), "install", "moviepy==2.0.0.dev2"]
     ]
 
@@ -286,19 +300,25 @@ def install_dependencies_for_cogvideo(cogvideo_gradio_demo_path, cogvx_venv_dir)
 
 def setup_cogvx(cogvideo_gradio_demo_path, cogvx_venv_dir):
     """
-    Create and set up the virtual environment for CogVideo using Python 3.12 if not already present.
+    Create and set up the virtual environment for CogVideo using Python 3.9 if not already present.
     """
     if not cogvx_venv_dir.exists():
-        print_info("\nCogVx Virtual Environment not detected. Creating with Python 3.12...")
-        # Use 'py -3.12' to create the virtual environment
-        python_command = "py"
-        python_args = ["-3.12", "-m", "venv", str(cogvx_venv_dir)]
-        command = [python_command] + python_args
+        print_info("\nCogVx Virtual Environment not detected. Creating with Python 3.9...")
+        # Use 'python3.9' to create the virtual environment
+        python_command = "python3.9"
+        # Check if python3.9 exists
+        if shutil.which(python_command) is None:
+            print_error("Python 3.9 is not installed. Please install Python 3.9 to proceed.")
+            print_info("You can install Python 3.9 using the following commands:")
+            print("sudo apt update")
+            print("sudo apt install python3.9 python3.9-venv")
+            sys.exit(1)
+        command = [python_command, "-m", "venv", str(cogvx_venv_dir)]
         result = run_command(command)
         if result is None:
             print_status("CogVx Virtual Environment established successfully.")
         else:
-            print_error("Failed to establish CogVx Virtual Environment with Python 3.12. Halting setup.")
+            print_error("Failed to establish CogVx Virtual Environment with Python 3.9. Halting setup.")
             sys.exit(1)
     else:
         print_status("CogVx Virtual Environment already operational.")
@@ -396,92 +416,53 @@ def prompt_install_ffmpeg(script_dir):
     Prompt the user to install ffmpeg.
     """
     print_warning("\nffmpeg is crucial for our video processing capabilities.")
-    print_info("Please install ffmpeg from the official Temporal Gateway:")
-    print("🌐 https://ffmpeg.org/download.html")
-    webbrowser.open("https://ffmpeg.org/download.html")
-    input("\n🕰️ Once ffmpeg is installed, press Enter to finalize the setup...")
-    # Recheck after installation
-    return check_ffmpeg(cwd=script_dir)
-
-def prompt_launch_script(venv_dir, main_script_path):
-    """
-    Prompt the user to launch the main Python script.
-    """
-    choice = input("\n🚀 Temporal Engine Setup Complete! Would you like to activate the Temporal Prompt Engine now? (y/n): ").strip().lower()
-    if choice == 'y':
-        print_info("\nActivating Temporal Prompt Engine...")
-        try:
-            # Use the virtual environment's Python executable to run the main script
-            python_executable, _ = get_venv_executables(venv_dir)
-            if not python_executable.exists():
-                print_error(f"Virtual Environment's Python executable not found at {python_executable}.")
-                print_warning("Please verify the Virtual Chamber setup and try again.")
-                return
-            subprocess.run([str(python_executable), str(main_script_path)], check=True)
-            print_status("\nTemporalPromptEngine.py has been successfully launched into the Time Portal.")
-        except subprocess.CalledProcessError as e:
-            print_error("\nFailed to launch TemporalPromptEngine.py. Please review the setup and attempt to run the script manually.")
-            print_error(f"Error Details: {e}")
-    else:
-        print_info("\nSetup concluded. You can activate the Temporal Prompt Engine anytime using the Virtual Chamber's Python environment.")
-
-def get_windows_desktop_path():
-    """
-    Get the path to the Windows desktop folder.
-    """
+    print_info("Attempting to install ffmpeg via system package manager...")
     try:
-        from ctypes import windll, wintypes, byref, create_unicode_buffer
-        CSIDL_DESKTOPDIRECTORY = 0x0010
-        SHGFP_TYPE_CURRENT = 0
-
-        buf = create_unicode_buffer(wintypes.MAX_PATH)
-        result = windll.shell32.SHGetFolderPathW(None, CSIDL_DESKTOPDIRECTORY, None, SHGFP_TYPE_CURRENT, buf)
-        if result == 0:
-            return buf.value
-        else:
-            print_warning("Unable to retrieve desktop path. Defaulting to user profile's Desktop.")
-            return os.path.join(os.environ['USERPROFILE'], 'Desktop')
-    except Exception as e:
-        print_warning(f"Error obtaining desktop path: {e}")
-        return os.path.join(os.environ['USERPROFILE'], 'Desktop')
+        run_command(["sudo", "apt", "update"], cwd=script_dir)
+        run_command(["sudo", "apt", "install", "-y", "ffmpeg"], cwd=script_dir)
+        print_status("ffmpeg has been successfully installed via apt.")
+        return True
+    except:
+        print_warning("Automatic installation of ffmpeg failed.")
+    print_info("Please install ffmpeg manually using your system package manager.")
+    return False
 
 def create_desktop_shortcut(venv_dir, main_script_path):
     """
     Create a desktop shortcut to run the main script using the virtual environment.
     """
     print_info("\nSetting Up Desktop Shortcut for Quick Access...")
-    # Only proceed if on Windows
-    if platform.system() != "Windows":
-        print_warning("Desktop shortcut creation is currently only supported on Windows.")
+    # Only proceed if on Linux
+    if platform.system() != "Linux":
+        print_warning("Desktop shortcut creation is currently only supported on Linux.")
         return
 
-    try:
-        from win32com.client import Dispatch
-    except ImportError:
-        # Attempt to install pywin32
-        print_action("Installing 'pywin32' module required for shortcut creation...")
-        try:
-            subprocess.run([sys.executable, "-m", "pip", "install", "pywin32"], check=True)
-            from win32com.client import Dispatch
-            print_status("'pywin32' module installed successfully.")
-        except Exception as e:
-            print_error(f"Failed to install 'pywin32'. Shortcut creation aborted. Error: {e}")
-            return
+    desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+    if not os.path.exists(desktop):
+        print_warning("Desktop directory not found. Shortcut creation skipped.")
+        return
 
-    desktop = get_windows_desktop_path()
-    shortcut_path = os.path.join(desktop, 'Temporal Prompt Engine.lnk')
-    target = str(venv_dir / 'Scripts' / 'python.exe')
+    shortcut_path = os.path.join(desktop, 'Temporal Prompt Engine.desktop')
+    target = str(venv_dir / 'bin' / 'python3')
     working_directory = str(main_script_path.parent)
     arguments = f'"{main_script_path}"'
-    icon = str(main_script_path)
 
-    shell = Dispatch('WScript.Shell')
-    shortcut = shell.CreateShortCut(shortcut_path)
-    shortcut.Targetpath = target
-    shortcut.Arguments = arguments
-    shortcut.WorkingDirectory = working_directory
-    shortcut.IconLocation = icon
-    shortcut.save()
+    # Create the .desktop file content
+    desktop_entry = f"""[Desktop Entry]
+Type=Application
+Name=Temporal Prompt Engine
+Exec={target} {arguments}
+Path={working_directory}
+Icon=utilities-terminal
+Terminal=true
+"""
+
+    # Write the .desktop file
+    with open(shortcut_path, 'w') as f:
+        f.write(desktop_entry)
+
+    # Make the shortcut executable
+    os.chmod(shortcut_path, 0o755)
 
     print_status(f"Desktop shortcut created at {shortcut_path}")
 
@@ -602,155 +583,27 @@ def main():
         {"name": "scipy", "version": "1.14.1"},
         {"name": "tk", "version": "0.1.0", "import_name": "tkinter"},
         {"name": "accelerate", "version": "1.0.1"},
-        {"name": "torch", "version": "2.4.1+cu118", "install_command": [str(pip_executable), "install", "torch==2.4.1+cu118", "--index-url", "https://download.pytorch.org/whl/cu118"]},
-        {"name": "torchvision", "version": "0.19.1+cu118", "install_command": [str(pip_executable), "install", "torchvision==0.19.1+cu118", "--index-url", "https://download.pytorch.org/whl/cu118"]},
-        {"name": "torchaudio", "version": "2.4.1+cu118", "install_command": [str(pip_executable), "install", "torchaudio==2.4.1+cu118", "--index-url", "https://download.pytorch.org/whl/cu118"]},
+        {"name": "torch", "version": "2.0.1+cu117", "install_command": [str(pip_executable), "install", "torch==2.0.1+cu117", "--index-url", "https://download.pytorch.org/whl/cu117"]},
+        {"name": "torchvision", "version": "0.15.2+cu117", "install_command": [str(pip_executable), "install", "torchvision==0.15.2+cu117", "--index-url", "https://download.pytorch.org/whl/cu117"]},
+        {"name": "torchaudio", "version": "2.0.2+cu117", "install_command": [str(pip_executable), "install", "torchaudio==2.0.2+cu117", "--index-url", "https://download.pytorch.org/whl/cu117"]},
         {"name": "diffusers", "version": "0.21.1"},
         {"name": "transformers", "version": "4.30.2"},
         {"name": "audioldm2", "version": "0.1.0", "install_command": [str(pip_executable), "install", "git+https://github.com/haoheliu/AudioLDM2.git#egg=audioldm2"]},
         {"name": "huggingface-hub", "version": "0.25.2"},
-        {"name": "aiofiles", "version": "23.2.1"},
-        {"name": "altair", "version": "5.4.1"},
-        {"name": "annotated-types", "version": "0.7.0"},
-        {"name": "anyio", "version": "4.6.2.post1"},
-        {"name": "attrs", "version": "24.2.0"},
-        {"name": "audioread", "version": "3.0.1"},
-        {"name": "babel", "version": "2.16.0"},
-        {"name": "bibtexparser", "version": "2.0.0b7"},
-        {"name": "certifi", "version": "2024.8.30"},
-        {"name": "cffi", "version": "1.17.1"},
-        {"name": "chardet", "version": "5.2.0"},
-        {"name": "charset-normalizer", "version": "3.4.0"},
-        {"name": "click", "version": "8.1.7"},
-        {"name": "clldutils", "version": "3.22.2"},
-        {"name": "colorama", "version": "0.4.6"},
-        {"name": "colorlog", "version": "6.8.2"},
-        {"name": "contourpy", "version": "1.3.0"},
-        {"name": "csvw", "version": "3.3.1"},
-        {"name": "cycler", "version": "0.12.1"},
-        {"name": "decorator", "version": "4.4.2"},
-        {"name": "dlinfo", "version": "1.2.1"},
-        {"name": "einops", "version": "0.8.0"},
-        {"name": "exceptiongroup", "version": "1.2.2"},
-        {"name": "fastapi", "version": "0.115.2"},
-        {"name": "ffmpy", "version": "0.4.0"},
-        {"name": "filelock", "version": "3.16.1"},
-        {"name": "fonttools", "version": "4.54.1"},
-        {"name": "fsspec", "version": "2024.9.0"},
-        {"name": "ftfy", "version": "6.3.0"},
-        {"name": "gradio", "version": "3.50.2"},
-        {"name": "gradio_client", "version": "0.6.1"},
-        {"name": "h11", "version": "0.14.0"},
-        {"name": "httpcore", "version": "1.0.6"},
-        {"name": "httpx", "version": "0.27.2"},
-        {"name": "idna", "version": "3.10"},
-        {"name": "imageio", "version": "2.36.0"},
-        {"name": "imageio-ffmpeg", "version": "0.5.1"},
-        {"name": "importlib_metadata", "version": "8.5.0"},
-        {"name": "importlib_resources", "version": "6.4.5"},
-        {"name": "isodate", "version": "0.6.1"},
-        {"name": "Jinja2", "version": "3.1.4"},
-        {"name": "joblib", "version": "1.4.2"},
-        {"name": "jsonschema", "version": "4.23.0"},
-        {"name": "jsonschema-specifications", "version": "2024.10.1"},
-        {"name": "julius", "version": "0.2.7"},
-        {"name": "kiwisolver", "version": "1.4.7"},
-        {"name": "language-tags", "version": "1.2.0"},
-        {"name": "librosa", "version": "0.9.1"},
-        {"name": "llvmlite", "version": "0.43.0"},
-        {"name": "local-attention", "version": "1.9.15"},
-        {"name": "lxml", "version": "5.3.0"},
-        {"name": "Markdown", "version": "3.7"},
-        {"name": "MarkupSafe", "version": "2.1.5"},
-        {"name": "matplotlib", "version": "3.9.2"},
-        {"name": "mpmath", "version": "1.3.0"},
-        {"name": "narwhals", "version": "1.9.3"},
-        {"name": "networkx", "version": "3.4.1"},
-        {"name": "numba", "version": "0.60.0"},
+        {"name": "pyyaml", "version": "6.0.1", "import_name": "yaml"},
+        {"name": "openai", "version": "0.28.0"},
+        {"name": "playsound", "version": "1.3.0"},
+        {"name": "pynput", "version": "1.7.6"},
+        {"name": "numba", "version": "0.57.1"},
         {"name": "numpy", "version": "1.23.5"},
-        {"name": "orjson", "version": "3.10.7"},
-        {"name": "packaging", "version": "24.1"},
-        {"name": "pandas", "version": "2.2.3"},
-        {"name": "phonemizer", "version": "3.3.0"},
-        {"name": "platformdirs", "version": "4.3.6"},
-        {"name": "pooch", "version": "1.8.2"},
-        {"name": "primePy", "version": "1.3"},
-        {"name": "proglog", "version": "0.1.10"},
-        {"name": "progressbar", "version": "2.5"},
-        {"name": "psutil", "version": "6.0.0"},
-        {"name": "pycparser", "version": "2.22"},
-        {"name": "pydantic", "version": "2.9.2"},
-        {"name": "pydantic_core", "version": "2.23.4"},
-        {"name": "pylatexenc", "version": "2.10"},
-        {"name": "pyparsing", "version": "3.2.0"},
-        {"name": "pystoi", "version": "0.4.1"},
-        {"name": "python-dateutil", "version": "2.9.0.post0"},
-        {"name": "python-multipart", "version": "0.0.12"},
-        {"name": "pytz", "version": "2024.2"},
-        {"name": "PyYAML", "version": "6.0.2"},
-        {"name": "rdflib", "version": "7.0.0"},
-        {"name": "referencing", "version": "0.35.1"},
-        {"name": "regex", "version": "2024.9.11"},
-        {"name": "resampy", "version": "0.4.3"},
-        {"name": "rfc3986", "version": "1.5.0"},
-        {"name": "rpds-py", "version": "0.20.0"},
-        {"name": "safetensors", "version": "0.4.5"},
-        {"name": "scikit-learn", "version": "1.5.2"},
-        {"name": "segments", "version": "2.2.1"},
-        {"name": "semantic-version", "version": "2.10.0"},
-        {"name": "six", "version": "1.16.0"},
-        {"name": "sniffio", "version": "1.3.1"},
+        {"name": "matplotlib", "version": "3.9.2"},
+        {"name": "altair", "version": "5.4.1"},
         {"name": "soundfile", "version": "0.12.1"},
-        {"name": "starlette", "version": "0.39.2"},
-        {"name": "sympy", "version": "1.13.3"},
-        {"name": "tabulate", "version": "0.9.0"},
-        {"name": "threadpoolctl", "version": "3.5.0"},
-        {"name": "timm", "version": "1.0.10"},
-        {"name": "tokenizers", "version": "0.13.3"},
-        {"name": "torch-audiomentations", "version": "0.11.1"},
-        {"name": "torch-pitch-shift", "version": "1.2.4"},
-        {"name": "torch-stoi", "version": "0.2.2"},
-        {"name": "torchcrepe", "version": "0.0.20"},
-        {"name": "torchdiffeq", "version": "0.2.4"},
-        {"name": "torchfcpe", "version": "0.0.4"},
-        {"name": "torchgen", "version": "0.0.1"},
-        {"name": "torchlibrosa", "version": "0.1.0"},
-        {"name": "torchmetrics", "version": "0.11.4"},
-        {"name": "torchsde", "version": "0.2.6"},
-        {"name": "torchvision", "version": "0.19.1+cu118", "install_command": [str(pip_executable), "install", "torchvision==0.19.1+cu118", "--index-url", "https://download.pytorch.org/whl/cu118"]},
-        {"name": "tqdm", "version": "4.66.5"},
-        {"name": "trampoline", "version": "0.1.2"},
-        {"name": "transformers", "version": "4.30.2"},
-        {"name": "typing_extensions", "version": "4.12.2"},
-        {"name": "tzdata", "version": "2024.2"},
-        {"name": "Unidecode", "version": "1.3.8"},
-        {"name": "uritemplate", "version": "4.1.1"},
-        {"name": "urllib3", "version": "2.2.3"},
-        {"name": "uvicorn", "version": "0.31.1"},
-        {"name": "wcwidth", "version": "0.2.13"},
-        {"name": "websockets", "version": "11.0.3"},
-        {"name": "zipp", "version": "3.20.2"},
+        {"name": "python3.10-tk", "version": "3.10.15-1+focal1"},
     ]
 
-    # Step 8: Install Additional Torch-Related Packages
-    additional_torch_packages = [
-        {"name": "torch-audiomentations", "version": "0.11.1"},
-        {"name": "torch-pitch-shift", "version": "1.2.4"},
-        {"name": "torch-stoi", "version": "0.2.2"},
-        {"name": "torchcrepe", "version": "0.0.20"},
-        {"name": "torchdiffeq", "version": "0.2.4"},
-        {"name": "torchfcpe", "version": "0.0.4"},
-        {"name": "torchgen", "version": "0.0.1"},
-        {"name": "torchlibrosa", "version": "0.1.0"},
-        {"name": "torchmetrics", "version": "0.11.4"},
-        {"name": "torchsde", "version": "0.2.6"},
-    ]
-
-    # Combine all packages
-    all_packages = packages_to_install + additional_torch_packages
-
-    # Step 9: Install and verify each package
-    for pkg in all_packages:
+    # Install and verify each package
+    for pkg in packages_to_install:
         name = pkg["name"]
         version = pkg.get("version")
         install_command = pkg.get("install_command")
@@ -759,7 +612,7 @@ def main():
             print_error(f"\nFailed to integrate and verify package '{name}'. Setup cannot continue.")
             sys.exit(1)
 
-    # Step 10: Clone CogVideo repository and set up CogVx virtual environment using Python 3.12
+    # Step 8: Clone CogVideo repository and set up CogVx virtual environment using Python 3.9
     cogvideo_repo_path = script_dir / "CogVideo"
     cogvideo_gradio_demo_path = cogvideo_repo_path / "inference" / "gradio_composite_demo"
     cogvx_venv_dir = cogvideo_gradio_demo_path / "CogVx"
@@ -774,13 +627,13 @@ def main():
     # Set up CogVx virtual environment and install dependencies
     setup_cogvx(cogvideo_gradio_demo_path, cogvx_venv_dir)
 
-    # Step 11: Create .env file
+    # Step 9: Create .env file
     create_env_file(script_dir)
 
-    # Step 12: Create or validate JSON configuration files
+    # Step 10: Create or validate JSON configuration files
     create_default_json_files(script_dir)
 
-    # Step 13: Check for ffmpeg
+    # Step 11: Check for ffmpeg
     if not check_ffmpeg(cwd=script_dir):
         if not prompt_install_ffmpeg(script_dir):
             print_error("\nffmpeg installation incomplete. Setup cannot proceed.")
@@ -788,21 +641,37 @@ def main():
         else:
             print_status("ffmpeg has been successfully integrated.")
 
-    # Step 14: Prompt to create desktop shortcut
+    # Step 12: Prompt to create desktop shortcut
     choice = input("\n🖥️ Would you like to create a desktop shortcut for easy access to the Temporal Prompt Engine? (y/n): ").strip().lower()
     if choice == 'y':
         create_desktop_shortcut(venv_dir, main_script_path)
     else:
         print_info("Desktop shortcut creation skipped. You can manually create one later if desired.")
 
-    # Step 15: Prompt to launch the main script
-    prompt_launch_script(venv_dir, main_script_path)
+    # Step 13: Prompt to launch the main script
+    choice = input("\n🚀 Temporal Engine Setup Complete! Would you like to activate the Temporal Prompt Engine now? (y/n): ").strip().lower()
+    if choice == 'y':
+        print_info("\nActivating Temporal Prompt Engine...")
+        try:
+            # Use the virtual environment's Python executable to run the main script
+            python_executable, _ = get_venv_executables(venv_dir)
+            if not python_executable.exists():
+                print_error(f"Virtual Environment's Python executable not found at {python_executable}.")
+                print_warning("Please verify the Virtual Chamber setup and try again.")
+                return
+            subprocess.run([str(python_executable), str(main_script_path)], check=True)
+            print_status("\nTemporalPromptEngine.py has been successfully launched into the Time Portal.")
+        except subprocess.CalledProcessError as e:
+            print_error("\nFailed to launch TemporalPromptEngine.py. Please review the setup and attempt to run the script manually.")
+            print_error(f"Error Details: {e}")
+    else:
+        print_info("\nSetup concluded. You can activate the Temporal Prompt Engine anytime using the Virtual Chamber's Python environment.")
 
     print_status("\n============================================")
     print(f"{Fore.CYAN}        ✨ Temporal Lab Setup Complete ✨        ")
     print("============================================")
     print_info("The Temporal Prompt Engine is now ready to explore the realms of time and virtual reality!")
     input("🔒 Press Enter to close the Temporal Portal and exit setup...")
-    
+
 if __name__ == "__main__":
     main()
