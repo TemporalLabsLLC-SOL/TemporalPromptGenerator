@@ -211,27 +211,61 @@ def select_prompt_file():
         return None
     return file_path
 
-def parse_prompt_line(line: str):
+def parse_prompt_file(lines: list):
     """
-    Parses a single line from the prompt list file.
-    Expected format:
-    positive: [Your positive prompt]
-    negative: [Your negative prompt]
-    --------------------
+    Parses the prompt file lines into a list of prompt dictionaries.
 
-    Returns a dictionary with keys: 'positive' or 'negative', or 'delimiter' for delimiter lines.
+    Parameters:
+    - lines (list): List of lines from the prompt file.
+
+    Returns:
+    - list: A list of dictionaries with 'positive' and 'negative' prompts.
     """
-    if line.startswith("positive:"):
-        positive_prompt = line[len("positive:"):].strip()
-        return {"positive": positive_prompt}
-    elif line.startswith("negative:"):
-        negative_prompt = line[len("negative:"):].strip()
-        return {"negative": negative_prompt}
-    elif set(line.strip()) == set("-"):
-        return {"delimiter": True}
-    else:
-        # Unrecognized line
-        return {"unrecognized": True}
+    prompts = []
+    current_prompt = {}
+    current_section = None  # Can be 'positive', 'negative', or None
+
+    for idx, line in enumerate(lines, start=1):
+        stripped_line = line.strip()
+        
+        if not stripped_line:
+            continue  # Skip empty lines
+
+        if stripped_line.startswith("positive:"):
+            if "positive" in current_prompt:
+                print(f"Warning: New 'positive:' found before completing previous prompt at line {idx}. Skipping previous prompt.")
+                current_prompt = {}
+            current_prompt["positive"] = stripped_line[len("positive:"):].strip()
+            current_section = "positive"
+        elif stripped_line.startswith("negative:"):
+            if "positive" not in current_prompt:
+                print(f"Warning: 'negative:' section without a preceding 'positive:' at line {idx}. Skipping.")
+                current_section = None
+                continue
+            current_prompt["negative"] = stripped_line[len("negative:"):].strip()
+            current_section = "negative"
+        elif set(stripped_line) == set("-"):
+            if "positive" in current_prompt and "negative" in current_prompt:
+                prompts.append(current_prompt)
+            else:
+                if "positive" in current_prompt:
+                    print(f"Warning: 'negative:' section missing for prompt before line {idx}. Skipping.")
+            current_prompt = {}
+            current_section = None
+        else:
+            if current_section and current_section in current_prompt:
+                # Append the line to the current section
+                current_prompt[current_section] += " " + stripped_line
+            else:
+                print(f"Warning: Unrecognized line format at line {idx}: '{stripped_line}'. Skipping.")
+
+    # Handle the last prompt if file doesn't end with delimiter
+    if "positive" in current_prompt and "negative" in current_prompt:
+        prompts.append(current_prompt)
+    elif "positive" in current_prompt:
+        print(f"Warning: Last prompt missing 'negative:' section. Skipping.")
+
+    return prompts
 
 def sanitize_filename(filename: str):
     """
@@ -536,37 +570,8 @@ def main():
         with open(prompt_file, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
-        prompts = []
-        current_prompt = {}
-        for idx, line in enumerate(lines, start=1):
-            parsed = parse_prompt_line(line)
-            if "unrecognized" in parsed:
-                print(f"Warning: Unrecognized line format at line {idx}: '{line.strip()}'. Skipping.")
-                continue
-            if "delimiter" in parsed:
-                if "positive" in current_prompt and "negative" in current_prompt:
-                    prompts.append(current_prompt)
-                    current_prompt = {}
-                else:
-                    if "positive" in current_prompt:
-                        print(f"Warning: 'negative:' section missing for prompt at line {idx}. Skipping.")
-                    current_prompt = {}
-                continue
-            if "positive" in parsed:
-                if "positive" in current_prompt:
-                    print(f"Warning: New 'positive:' found before completing previous prompt at line {idx}. Skipping previous prompt.")
-                current_prompt["positive"] = parsed["positive"]
-            elif "negative" in parsed:
-                if "positive" not in current_prompt:
-                    print(f"Warning: 'negative:' section without a preceding 'positive:' at line {idx}. Skipping.")
-                    continue
-                current_prompt["negative"] = parsed["negative"]
-
-        # Handle last prompt if missing delimiter
-        if "positive" in current_prompt and "negative" in current_prompt:
-            prompts.append(current_prompt)
-        elif "positive" in current_prompt:
-            print(f"Warning: Last prompt missing 'negative:' section. Skipping.")
+        # Replace the existing line-by-line parsing with the new comprehensive parser
+        prompts = parse_prompt_file(lines)
 
     except Exception as e:
         print(f"Error reading prompt file: {e}")
