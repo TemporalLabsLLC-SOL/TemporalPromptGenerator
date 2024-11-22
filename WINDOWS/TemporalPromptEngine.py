@@ -37,7 +37,7 @@ load_dotenv()
 # Initialize global variables
 OUTPUT_DIRECTORY = os.path.join(os.getcwd(), "prompts_output")
 COMFYUI_PROMPTS_FOLDER = os.getenv("COMFYUI_PROMPTS_FOLDER")
-MAX_CHAR_LIMIT = 10000  # Maximum characters allowed for prompts
+MAX_CHAR_LIMIT = 100000  # Maximum characters allowed for prompts
 MAX_PROMPTS = 250  # Maximum number of prompt sets allowed
 DEFAULT_PROMPTS = 5  # Default number of prompt sets
 LAST_USED_DIRECTORY = os.getenv("LAST_USED_DIRECTORY") or os.getcwd()
@@ -687,7 +687,7 @@ def generate_prompts(input_concept, prompt_type, video_options, model_name=REQUI
         payload = {
             "model": model_name,
             "prompt": system_prompt,
-            "max_tokens": 10000
+            "max_tokens": 100000
         }
         headers = {'Content-Type': 'application/json'}
 
@@ -4400,7 +4400,7 @@ class MultimediaSuiteApp:
 
         self.char_count_label = tk.Label(
             self.input_frame,
-            text="0/50000 characters",
+            text="0/100000 characters",
             bg='#0A2239',
             fg='light blue',
             font=('Helvetica', 10, 'italic')
@@ -4609,10 +4609,10 @@ class MultimediaSuiteApp:
     def check_input_text(self, event=None):
         text = self.input_text.get("1.0", tk.END).strip()
         char_count = len(text)
-        self.char_count_label.config(text=f"{char_count}/50000 characters")
+        self.char_count_label.config(text=f"{char_count}/100000 characters")
 
         # Enable or disable buttons based on text length
-        if 1 <= char_count <= 50000:
+        if 1 <= char_count <= 100000:
             enable_button(self.generate_video_prompts_button)
         else:
             disable_button(self.generate_video_prompts_button)
@@ -5624,11 +5624,12 @@ class MultimediaSuiteApp:
 
                 # Build the prompt to send to the language model, instructing it to not include negative prompts
                 sound_prompt_template = (
-                    f"List individual and specific sounds without any exposition or sentence structuring, separated by a single comma, that would make up the whole diagetic soundscape for the following visual scene, VISUAL SCENE: '{positive_prompt}'. RULES TO FOLLOW: 1. It's important you ground the camera in the sound by representing the diagetic influence of the camera itself and then move outwards as you build the sonic landscape prompt set. You are only describing things that make noise and can be heard in two or three words. Avoid being too general like 'howl' and specify the type of howiling for instance. Always include additional specifying words to best represent the frequency range of 20hz to 20khz while optimizing the signal to noise ration for a commercial product. Every sound should include a specific microphone type after most appropriate to the sound being recorded and represented as on a HQ Dual System recording setup. Include specific details that best represent {positive_prompt} starting with the on-screen visualized audio zone and then wrap around into the diagetic off-screen acousmatic zone. Do not ever describe scents, light, colors or non-sonic aspects of the scene here in any form. You are not specifically naming characters, story moments, locations or details. Do not ever list harmonizing, whine, hiss or other harmonic resonant type, echoing, or anything that could be musical or overbearing static type noise. Do not ever describe abstract ideas or convey any visual information. Do not ever use full sentence structure or reference characters or names. Do not ever give any character or story information here. You are crafting the perfect diagetic soundscape for {positive_prompt}"
+                    f" You are crafting the perfect diagetic soundscape for '{positive_prompt}' List ONLY individual, specific and interesting sounds that would make up the whole diagetic soundscape for the following visual scene '{positive_prompt}' without any exposition or sentence structuring, separated by a single comma between each. It's important you ground the camera in the sound by representing the diagetic influence of the camera itself briefly and then move outwards as you build the sonic landscape prompt set. You are only describing things that make noise and can be heard in two or three words. Never give vague expressions like 'boom' 'pop' or 'animal noises' and rather always list the specific noise and what's making it as makes sense to '{positive_prompt}'. Always optimize the signal to noise ratio within the soundscape as a whole for a commercial product release. Every sound should include a specific microphone type after most appropriate to the sound being recorded and represented as on a HQ Dual System recording setup. Include specific details that best represent '{positive_prompt}' starting with the on-screen visualized audio zone and then wrap around into the diagetic off-screen acousmatic zone. Do not ever describe scents, light, colors or non-sonic aspects of the scene here in any form. You must be hyperaware, only include animal noises if it makes sense. Don't just add animal noises to any nature scene as life might not exist in that scene. You never specifically naming characters, story moments, locations or details. Do not ever list cosmic energy, swirl, musical harmonizing, whine, hiss or other harmonic resonant type, echoing, or anything that could be perceived as musical or as an overbearing static type noise. The only thing you want are the sounds of the real world within the scene. Do not ever represent any vocalizations or speech of any kind by humans. It is important that no aspects of '{positive_prompt}' are missing. If it mentions a crowd then you must include that detail and ALL other details. Do not ever describe abstract ideas or convey any visual information. Do not ever use full sentence structure or reference characters or names. Do not ever give any character or story information here. I don't want to hear why you did chose a noise. Commas are used to automatically separate sounds later so never, ever put a comma before confirming the mic type it was recorded on. 'positive: [SOUND] recorded on [MIC]'. Never use semicolons or anything other than a comma to separate sound prompts within a list"
                     f"Focus solely on listing positive sounds without any negative descriptions, labels, separators, or explanations. "
-                    f"Provide only the sounds separated by commas. The output should have two sections: 'positive:' followed by the list of sounds, no repeats or similiar sounds of any kind, aim for 4 to 9, followed by 'negative:' with no content or comments of any kind Negative prompt should ALWAYS BE BLANK FOR SOUNDSCAPES.\n\n"
+                    f"Provide only the sounds separated by commas. The output should have two sections and every single sound should follow this exact format every time: 'positive: [SOUND] recorded on [MIC]' with NO COMMA BETWEEN ANYTHING 'negative:' with no content or comments of any kind Negative prompt should ALWAYS BE BLANK FOR SOUNDSCAPES.\n"
 
                 )
+
                 retry_attempt = 0
                 max_retries = 3  # Maximum number of retries per audio prompt
                 success = False
@@ -6987,6 +6988,14 @@ class MultimediaSuiteApp:
         from tkinter import filedialog, messagebox
         import numpy as np
         from scipy.fft import rfft, rfftfreq
+        import cv2
+        import torch
+        import librosa
+        import sys
+        import warnings
+
+        # Suppress warnings
+        warnings.filterwarnings('ignore')
 
         # Helper function for natural sorting without external libraries
         def natural_sort_key(s):
@@ -7006,107 +7015,133 @@ class MultimediaSuiteApp:
             else:
                 return float('inf')  # Assign a high number to sort unmatched files last
 
-        # Function to combine all audio layers (WAV files) from a Video_X folder into a single soundscape
-        def combine_sound_effects_layers(video_folder):
-            SAMPLE_RATE = 16000
-            DURATION_MS = 6000  # All sounds are trimmed/padded to 6 seconds
-            
-            def analyze_sound(audio_segment):
-                samples = np.array(audio_segment.get_array_of_samples())
-                if len(samples) == 0:
-                    return "unknown"
-                freqs = rfftfreq(len(samples), 1 / SAMPLE_RATE)
-                fft_values = np.abs(rfft(samples))
-                dominant_frequency = freqs[np.argmax(fft_values)]
-                
-                # Classification based on dominant frequency
-                if dominant_frequency < 200:
-                    return "low"
-                elif 200 <= dominant_frequency < 1000:
-                    return "mid"
-                elif 1000 <= dominant_frequency < 3000:
-                    return "high_mid"
-                else:
-                    return "high"
-
-            def get_dynamic_volume_and_effects(sound_classification):
-                # Define volume adjustments and possible effects
-                adjustments = {
-                    'low': {'volume': -2, 'pan': (-5, 5)},
-                    'mid': {'volume': -3, 'pan': (0, 0)},
-                    'high_mid': {'volume': -4, 'pan': (3, -3)},
-                    'high': {'volume': -5, 'pan': (5, -5)},
-                    'unknown': {'volume': -3, 'pan': (0, 0)}
-                }
-                return adjustments.get(sound_classification, {'volume': -3, 'pan': (0, 0)})
-
-            print(f"Processing folder: {video_folder}")
-
-            # List all .wav files in the folder
+        # Function to check if a sound file is a valid sound effect
+        def is_sound_effect(file_path):
             try:
-                all_files = os.listdir(video_folder)
+                y, sr = librosa.load(file_path, sr=None)
+                if y.size == 0:
+                    return False
+                # Compute the spectral centroid
+                spectral_centroids = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
+                # Compute the zero-crossing rate
+                zcr = librosa.feature.zero_crossing_rate(y)
+                # Apply thresholds to determine if it's a sound effect
+                threshold_centroid = 3000  # Adjust based on your data
+                threshold_zcr = 0.1        # Adjust based on your data
+                if (spectral_centroids.mean() < threshold_centroid and zcr.mean() > threshold_zcr):
+                    return True
+                return False
             except Exception as e:
-                print(f"Error accessing folder {video_folder}: {e}")
-                messagebox.showerror("Folder Access Error", f"Cannot access folder: {video_folder}\nError: {e}")
-                return None
-            print(f"Files in folder: {all_files}")
+                print(f"Error analyzing sound effect {file_path}: {e}")
+                return False
 
-            sound_effect_files = sorted([f for f in all_files if f.lower().endswith('.wav')], key=natural_sort_key)
-            if not sound_effect_files:
-                print(f"No .wav files found in {video_folder}.")
-                messagebox.showwarning("No Audio Files", f"No .wav files found in {video_folder}. Skipping this folder.")
-                return None
+        # Function to load the YOLOv5 model
+        def load_yolo_model():
+            try:
+                # Check if model is already loaded
+                if 'model' in globals() or 'model' in locals():
+                    return model
+                print("Loading YOLOv5 model...")
+                model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
+                print("YOLOv5 model loaded successfully.")
+                return model
+            except Exception as e:
+                print(f"Error loading YOLOv5 model: {e}")
+                messagebox.showerror("Model Load Error", f"Failed to load YOLOv5 model.\nError: {e}")
+                sys.exit(1)  # Exit the script if the model cannot be loaded
 
-            # Start with a 6-second silent audio segment
+        # Function to extract frames from a video and detect events
+        def process_video_and_detect_events(video_file, model):
+            cap = cv2.VideoCapture(video_file)
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            frame_interval = int(fps * 0.5)  # Analyze every half second
+            event_timestamps = []
+            frame_count = 0
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            print(f"Processing video {video_file}, total frames: {total_frames}, fps: {fps}")
+
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                if frame_count % frame_interval == 0:
+                    # Convert frame to RGB
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    # Perform object detection
+                    results = model(frame_rgb, size=640)
+                    detections = results.xyxy[0]
+                    for *box, conf, cls in detections:
+                        class_name = results.names[int(cls)]
+                        # Detect specific events (add or remove class names as needed)
+                        if class_name in ['dog', 'cat', 'bird', 'firework']:
+                            timestamp = frame_count / fps
+                            event_timestamps.append((timestamp, class_name))
+                            print(f"Detected {class_name} at {timestamp:.2f} seconds")
+                frame_count += 1
+            cap.release()
+            return event_timestamps
+
+        # Function to select appropriate sound file based on detected event
+        def select_sound_file(event):
+            sound_effects = {
+                'dog': 'dog_bark.wav',
+                'cat': 'cat_meow.wav',
+                'bird': 'bird_chirp.wav',
+                'firework': 'firework_sound.wav',
+            }
+            return os.path.join('sound_effects_directory', sound_effects.get(event, 'default_sound.wav'))
+
+        # Function to get dynamic volume based on event
+        def get_dynamic_volume(event):
+            volume_levels = {
+                'dog': -5,
+                'cat': -6,
+                'bird': -8,
+                'firework': -3,
+            }
+            return volume_levels.get(event, -4)
+
+        # Function to get pan value based on event
+        def get_pan_value(event):
+            pan_values = {
+                'dog': -0.5,        # Pan slightly to the left
+                'cat': 0.5,         # Pan slightly to the right
+                'bird': 0.0,        # Center
+                'firework': 0.0,    # Center
+            }
+            return pan_values.get(event, 0.0)
+
+        # Function to combine all audio layers (WAV files) from a Video_X folder into a single soundscape
+        def combine_sound_effects_layers(video_folder, event_timestamps, video_duration_ms):
+            DURATION_MS = video_duration_ms  # Duration of the video in milliseconds
             combined_audio = AudioSegment.silent(duration=DURATION_MS)
-
-            # Process each sound file
-            for sound_file in sound_effect_files:
-                sound_file_path = os.path.join(video_folder, sound_file)
-                print(f"Loading sound file: {sound_file_path}")
-
-                try:
-                    # Load and trim the sound file to 6 seconds
-                    sound = AudioSegment.from_wav(sound_file_path)[:DURATION_MS]
-                except Exception as e:
-                    print(f"Error loading {sound_file_path}: {e}")
-                    messagebox.showwarning("Audio Load Error", f"Failed to load audio file: {sound_file_path}\nError: {e}\nSkipping this file.")
+            for timestamp, event in event_timestamps:
+                sound_file_path = select_sound_file(event)
+                if not os.path.exists(sound_file_path):
+                    print(f"Sound effect file not found: {sound_file_path}")
                     continue
-
-                # Analyze the sound to classify its frequency range
-                classification = analyze_sound(sound)
-                print(f"Sound {sound_file} classified as '{classification}' frequency.")
-
-                # Get volume and panning adjustments based on classification
-                adjustments = get_dynamic_volume_and_effects(classification)
-                dynamic_volume = adjustments['volume']
-                pan_left, pan_right = adjustments['pan']
-                print(f"Applying {dynamic_volume} dB adjustment and panning ({pan_left}, {pan_right}) to {sound_file}.")
-
-                # Apply volume adjustment
+                if not is_sound_effect(sound_file_path):
+                    print(f"Skipping {sound_file_path} as it doesn't meet the sound effect criteria.")
+                    continue
+                try:
+                    sound = AudioSegment.from_file(sound_file_path)
+                except Exception as e:
+                    print(f"Error loading sound effect {sound_file_path}: {e}")
+                    continue
+                # Apply dynamic volume
+                dynamic_volume = get_dynamic_volume(event)
                 sound = sound + dynamic_volume
-
-                # Apply panning if necessary
-                if pan_left != 0 or pan_right != 0:
-                    channels = sound.split_to_mono()
-                    if len(channels) == 2:
-                        left = channels[0] + pan_left
-                        right = channels[1] + pan_right
-                        sound = AudioSegment.from_mono_audiosegments(left, right)
-                    else:
-                        # If mono, duplicate and apply panning
-                        sound = AudioSegment.from_mono_audiosegments(sound + pan_left, sound + pan_right)
-
+                # Apply panning
+                pan_value = get_pan_value(event)
+                sound = sound.pan(pan_value)
                 # Apply fade in/out for smoothness
                 sound = sound.fade_in(50).fade_out(50)
-
-                # Overlay the adjusted sound onto the combined audio
-                combined_audio = combined_audio.overlay(sound)
-
+                # Overlay the sound at the correct position
+                position_ms = int(timestamp * 1000)
+                combined_audio = combined_audio.overlay(sound, position=position_ms)
             # Apply master gain to prevent overall loudness
             master_gain = -6  # Reduce overall volume by 6 dB
             combined_audio = combined_audio + master_gain
-
             # Export the combined soundscape
             combined_audio_path = os.path.join(video_folder, "combined_soundscape.wav")
             try:
@@ -7116,7 +7151,6 @@ class MultimediaSuiteApp:
                 print(f"Error exporting combined soundscape: {e}")
                 messagebox.showerror("Audio Export Error", f"Failed to export combined soundscape:\n{combined_audio_path}\nError: {e}")
                 return None
-
             return combined_audio_path
 
         # Custom dialog class for sorting method selection using radio buttons
@@ -7211,6 +7245,9 @@ class MultimediaSuiteApp:
 
         final_clips = []
 
+        # Load the YOLOv5 model
+        model = load_yolo_model()
+
         # Process each video and match it with its corresponding audio
         for video_file in video_files:
             # Extract the video number (e.g., Video_1, Video_2, etc.)
@@ -7222,17 +7259,29 @@ class MultimediaSuiteApp:
                 messagebox.showwarning("Missing Audio Folder", f"No matching audio folder found for {video_file}. Skipping.")
                 continue
 
+            try:
+                # Load the video clip
+                video_clip = VideoFileClip(video_file)
+                video_duration_ms = int(video_clip.duration * 1000)
+            except Exception as e:
+                print(f"Error loading video {video_file}: {e}")
+                messagebox.showwarning("Video Load Error", f"Failed to load video {video_file}.\nError: {e}\nSkipping.")
+                continue
+
+            # Process video and detect events
+            event_timestamps = process_video_and_detect_events(video_file, model)
+
             # Combine sound effects layers into a soundscape for this video
-            soundscape_path = combine_sound_effects_layers(video_folder)
+            soundscape_path = combine_sound_effects_layers(video_folder, event_timestamps, video_duration_ms)
             if not soundscape_path:
                 continue
 
             try:
-                # Load the video clip and trim to 6 seconds
-                video_clip = VideoFileClip(video_file).subclip(0, 6)
+                # Reload the video clip to avoid conflicts
+                video_clip = VideoFileClip(video_file)
             except Exception as e:
-                print(f"Error loading video {video_file}: {e}")
-                messagebox.showwarning("Video Load Error", f"Failed to load video {video_file}.\nError: {e}\nSkipping.")
+                print(f"Error reloading video {video_file}: {e}")
+                messagebox.showwarning("Video Load Error", f"Failed to reload video {video_file}.\nError: {e}\nSkipping.")
                 continue
 
             try:
