@@ -37,7 +37,7 @@ load_dotenv()
 # Initialize global variables
 OUTPUT_DIRECTORY = os.path.join(os.getcwd(), "prompts_output")
 COMFYUI_PROMPTS_FOLDER = os.getenv("COMFYUI_PROMPTS_FOLDER")
-MAX_CHAR_LIMIT = 100000  # Maximum characters allowed for prompts
+MAX_CHAR_LIMIT = 10000  # Maximum characters allowed for prompts
 MAX_PROMPTS = 250  # Maximum number of prompt sets allowed
 DEFAULT_PROMPTS = 5  # Default number of prompt sets
 LAST_USED_DIRECTORY = os.getenv("LAST_USED_DIRECTORY") or os.getcwd()
@@ -687,7 +687,7 @@ def generate_prompts(input_concept, prompt_type, video_options, model_name=REQUI
         payload = {
             "model": model_name,
             "prompt": system_prompt,
-            "max_tokens": 100000
+            "max_tokens": 10000
         }
         headers = {'Content-Type': 'application/json'}
 
@@ -4400,7 +4400,7 @@ class MultimediaSuiteApp:
 
         self.char_count_label = tk.Label(
             self.input_frame,
-            text="0/100000 characters",
+            text="0/50000 characters",
             bg='#0A2239',
             fg='light blue',
             font=('Helvetica', 10, 'italic')
@@ -4609,10 +4609,10 @@ class MultimediaSuiteApp:
     def check_input_text(self, event=None):
         text = self.input_text.get("1.0", tk.END).strip()
         char_count = len(text)
-        self.char_count_label.config(text=f"{char_count}/100000 characters")
+        self.char_count_label.config(text=f"{char_count}/50000 characters")
 
         # Enable or disable buttons based on text length
-        if 1 <= char_count <= 100000:
+        if 1 <= char_count <= 50000:
             enable_button(self.generate_video_prompts_button)
         else:
             disable_button(self.generate_video_prompts_button)
@@ -5624,9 +5624,9 @@ class MultimediaSuiteApp:
 
                 # Build the prompt to send to the language model, instructing it to not include negative prompts
                 sound_prompt_template = (
-                    f" You are crafting the perfect diagetic soundscape for '{positive_prompt}' List ONLY individual, specific and interesting sounds that would make up the whole diagetic soundscape for the following visual scene '{positive_prompt}' without any exposition or sentence structuring, separated by a single comma between each. It's important you ground the camera in the sound by representing the diagetic influence of the camera itself briefly and then move outwards as you build the sonic landscape prompt set. You are only describing things that make noise and can be heard in two or three words. Never give vague expressions like 'boom' 'pop' or 'animal noises' and rather always list the specific noise and what's making it as makes sense to '{positive_prompt}'. Always optimize the signal to noise ratio within the soundscape as a whole for a commercial product release. Every sound should include a specific microphone type after most appropriate to the sound being recorded and represented as on a HQ Dual System recording setup. Include specific details that best represent '{positive_prompt}' starting with the on-screen visualized audio zone and then wrap around into the diagetic off-screen acousmatic zone. Do not ever describe scents, light, colors or non-sonic aspects of the scene here in any form. You must be hyperaware, only include animal noises if it makes sense. Don't just add animal noises to any nature scene as life might not exist in that scene. You never specifically naming characters, story moments, locations or details. Do not ever list cosmic energy, swirl, musical harmonizing, whine, hiss or other harmonic resonant type, echoing, or anything that could be perceived as musical or as an overbearing static type noise. The only thing you want are the sounds of the real world within the scene. Do not ever represent any vocalizations or speech of any kind by humans. It is important that no aspects of '{positive_prompt}' are missing. If it mentions a crowd then you must include that detail and ALL other details. Do not ever describe abstract ideas or convey any visual information. Do not ever use full sentence structure or reference characters or names. Do not ever give any character or story information here. I don't want to hear why you did chose a noise. Commas are used to automatically separate sounds later so never, ever put a comma before confirming the mic type it was recorded on. 'positive: [SOUND] recorded on [MIC]'. Never use semicolons or anything other than a comma to separate sound prompts within a list"
+                    f"Based on {positive_prompt}, list specific sounds that would make up the soundscape for the scene. Never use full sentence structure or reference characters or names. Include specific details like the camera model, diagetic sounds known to the region being represented, etc. Seperate each sound with a comma and only a comma. ABSOLUTELY first with the camera itself and then move outwards as you build the sonic landscape prompt set. You are only describing things that make noise and can be heard in two or three words. You are not referencing characters or story moments or details. You are not describing abstract ideas or conveying any visual information. Never use terms like whine, hiss or other harmonic resonant type things unless EXPLICTLY called for in the prompt exactly. You are creating absolutely diagetic soundscapes and avoiding anything to indicate musical tones unless specifically asked. Do not describe scents, light, colors or non-sonic aspects of the scene here in any form. Do not give any character or story information here. You are crafting the perfect diagetic soundscape for {positive_prompt}"
                     f"Focus solely on listing positive sounds without any negative descriptions, labels, separators, or explanations. "
-                    f"Provide only the sounds separated by commas. The output should have two sections and every single sound should follow this exact format every time: 'positive: [SOUND] recorded on [MIC]' with NO COMMA BETWEEN ANYTHING 'negative:' with no content or comments of any kind Negative prompt should ALWAYS BE BLANK FOR SOUNDSCAPES.\n"
+                    f"Provide only the sounds separated by commas. The output should have two sections: 'positive:' followed by the list of sounds, no repeats or similiar sounds of any kind, aim for 4 to 9, followed by 'negative:' with no content or comments of any kind Negative prompt should ALWAYS BE BLANK FOR SOUNDSCAPES.\n\n"
 
                 )
 
@@ -6976,7 +6976,7 @@ class MultimediaSuiteApp:
     def combine_media(self):
         """
         Combines video files with generated sound effects from respective Video_X folders.
-        Dynamically layers sound effects and optimizes the audio mix.
+        Dynamically layers sound effects based on the original video prompts and optimizes the audio mix.
         Outputs individual combined video-audio files and combines all into FINAL_VIDEO.mp4.
         """
         
@@ -6987,15 +6987,7 @@ class MultimediaSuiteApp:
         import tkinter as tk
         from tkinter import filedialog, messagebox
         import numpy as np
-        from scipy.fft import rfft, rfftfreq
-        import cv2
-        import torch
-        import librosa
-        import sys
-        import warnings
-
-        # Suppress warnings
-        warnings.filterwarnings('ignore')
+        from scipy.signal import welch
 
         # Helper function for natural sorting without external libraries
         def natural_sort_key(s):
@@ -7005,7 +6997,7 @@ class MultimediaSuiteApp:
         def extract_number(filename, prefix):
             """
             Extracts the first occurrence of a number in the filename following the specified prefix.
-            Example: extract_number('Video_10.mp4', 'Video') returns 10
+            Example: extract_number('Video_10.mp4', 'Video') returns 10.
             If no match is found, returns a large number to sort unmatched files last.
             """
             pattern = rf'{prefix}_(\d+)'
@@ -7014,195 +7006,218 @@ class MultimediaSuiteApp:
                 return int(match.group(1))
             else:
                 return float('inf')  # Assign a high number to sort unmatched files last
-
-        # Function to check if a sound file is a valid sound effect
-        def is_sound_effect(file_path):
+        
+        # Function to extract the original prompt from a text file
+        def extract_prompt(video_file):
+            """
+            Extracts the prompt text associated with a video file.
+            Assumes that the prompt is stored in a text file with the same base name as the video.
+            Example: 'Video_1.mp4' has 'Video_1.txt'
+            """
+            base_name = os.path.splitext(os.path.basename(video_file))[0]
+            prompt_file = os.path.join(self.video_save_folder, f"{base_name}.txt")
+            if os.path.exists(prompt_file):
+                with open(prompt_file, 'r', encoding='utf-8') as f:
+                    return f.read().lower()
+            else:
+                print(f"No prompt file found for '{video_file}'. Proceeding without prompt-based adjustments.")
+                return ""
+        
+        # Function to determine if the sound effect file is valid
+        def is_sound_effect_valid(sound_file_path, 
+                                  dbfs_threshold=-60, 
+                                  flatness_lower=0.15, 
+                                  flatness_upper=0.90,
+                                  include_keywords=None):
+            """
+            Analyzes the audio content to determine if the sound effect is valid.
+            Excludes sounds with strong harmonic content (e.g., musical instruments) and garbled noise,
+            unless they contain specific keywords indicating importance.
+            
+            Parameters:
+            - sound_file_path: Path to the sound effect file.
+            - dbfs_threshold: Minimum dBFS to consider the sound as not too quiet.
+            - flatness_lower: Lower bound for spectral flatness to exclude harmonic sounds.
+            - flatness_upper: Upper bound for spectral flatness to exclude noise or garbled sounds.
+            - include_keywords: List of keywords; if present in the filename, the sound is included regardless of flatness.
+            
+            Returns:
+            - True if the sound effect is valid, False otherwise.
+            """
+            if include_keywords is None:
+                include_keywords = ['chant', 'crowd', 'murmur', 'protest', 'applause', 'cheer']
+            
+            filename = os.path.basename(sound_file_path).lower()
+            
+            # Compile regex pattern for inclusion keywords with word boundaries and optional suffixes
+            pattern = r'\b(' + '|'.join(include_keywords) + r')\w*\b'
+            
+            # Check for inclusion keywords in filename using regex
+            if re.search(pattern, filename):
+                print(f"Including '{os.path.basename(sound_file_path)}' based on filename containing keywords.")
+                return True  # Include sound without further checks
+            
             try:
-                y, sr = librosa.load(file_path, sr=None)
-                if y.size == 0:
-                    return False
-                # Compute the spectral centroid
-                spectral_centroids = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
-                # Compute the zero-crossing rate
-                zcr = librosa.feature.zero_crossing_rate(y)
-                # Apply thresholds to determine if it's a sound effect
-                threshold_centroid = 3000  # Adjust based on your data
-                threshold_zcr = 0.1        # Adjust based on your data
-                if (spectral_centroids.mean() < threshold_centroid and zcr.mean() > threshold_zcr):
-                    return True
-                return False
+                sound = AudioSegment.from_file(sound_file_path)
+                # Convert to mono to simplify spectral analysis
+                if sound.channels > 1:
+                    sound = sound.set_channels(1)
             except Exception as e:
-                print(f"Error analyzing sound effect {file_path}: {e}")
+                print(f"Error loading '{sound_file_path}': {e}")
                 return False
 
-        # Function to load the YOLOv5 model
-        def load_yolo_model():
-            try:
-                # Check if model is already loaded
-                if 'model' in globals() or 'model' in locals():
-                    return model
-                print("Loading YOLOv5 model...")
-                model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
-                print("YOLOv5 model loaded successfully.")
-                return model
-            except Exception as e:
-                print(f"Error loading YOLOv5 model: {e}")
-                messagebox.showerror("Model Load Error", f"Failed to load YOLOv5 model.\nError: {e}")
-                sys.exit(1)  # Exit the script if the model cannot be loaded
+            # Check if the sound is not silent or too quiet
+            if sound.dBFS < dbfs_threshold:
+                print(f"Excluding '{os.path.basename(sound_file_path)}' due to low volume (dBFS: {sound.dBFS:.2f}).")
+                return False
 
-        # Function to extract frames from a video and detect events
-        def process_video_and_detect_events(video_file, model):
-            cap = cv2.VideoCapture(video_file)
-            fps = cap.get(cv2.CAP_PROP_FPS)
-            frame_interval = int(fps * 0.5)  # Analyze every half second
-            event_timestamps = []
-            frame_count = 0
-            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            print(f"Processing video {video_file}, total frames: {total_frames}, fps: {fps}")
+            # Convert to numpy array
+            samples = np.array(sound.get_array_of_samples())
+            if len(samples) == 0:
+                print(f"Excluding '{os.path.basename(sound_file_path)}' because it contains no samples.")
+                return False
 
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                if frame_count % frame_interval == 0:
-                    # Convert frame to RGB
-                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    # Perform object detection
-                    results = model(frame_rgb, size=640)
-                    detections = results.xyxy[0]
-                    for *box, conf, cls in detections:
-                        class_name = results.names[int(cls)]
-                        # Detect specific events (add or remove class names as needed)
-                        if class_name in ['dog', 'cat', 'bird', 'firework']:
-                            timestamp = frame_count / fps
-                            event_timestamps.append((timestamp, class_name))
-                            print(f"Detected {class_name} at {timestamp:.2f} seconds")
-                frame_count += 1
-            cap.release()
-            return event_timestamps
+            # Normalize samples
+            samples = samples / np.max(np.abs(samples))
 
-        # Function to select appropriate sound file based on detected event
-        def select_sound_file(event):
-            sound_effects = {
-                'dog': 'dog_bark.wav',
-                'cat': 'cat_meow.wav',
-                'bird': 'bird_chirp.wav',
-                'firework': 'firework_sound.wav',
-            }
-            return os.path.join('sound_effects_directory', sound_effects.get(event, 'default_sound.wav'))
+            # Calculate spectral flatness
+            def spectral_flatness(waveform, fs, nperseg=1024):
+                # Compute the power spectral density
+                freqs, psd = welch(waveform, fs=fs, nperseg=nperseg)
+                # Avoid zeros
+                psd = psd + 1e-10
+                # Calculate geometric and arithmetic mean
+                geom_mean = np.exp(np.mean(np.log(psd)))
+                arith_mean = np.mean(psd)
+                # Spectral flatness measure
+                flatness = geom_mean / arith_mean
+                return flatness
 
-        # Function to get dynamic volume based on event
-        def get_dynamic_volume(event):
-            volume_levels = {
-                'dog': -5,
-                'cat': -6,
-                'bird': -8,
-                'firework': -3,
-            }
-            return volume_levels.get(event, -4)
+            flatness = spectral_flatness(samples, fs=sound.frame_rate)
 
-        # Function to get pan value based on event
-        def get_pan_value(event):
-            pan_values = {
-                'dog': -0.5,        # Pan slightly to the left
-                'cat': 0.5,         # Pan slightly to the right
-                'bird': 0.0,        # Center
-                'firework': 0.0,    # Center
-            }
-            return pan_values.get(event, 0.0)
+            # Log the spectral flatness and dBFS for debugging
+            print(f"'{os.path.basename(sound_file_path)}' - dBFS: {sound.dBFS:.2f}, Spectral Flatness: {flatness:.2f}")
+
+            # Set balanced thresholds to exclude strongly harmonic or noisy sounds
+            if flatness < flatness_lower:
+                print(f"Excluding '{os.path.basename(sound_file_path)}' due to low spectral flatness ({flatness:.2f}), indicating strong harmonic content.")
+                return False
+            elif flatness > flatness_upper:
+                print(f"Excluding '{os.path.basename(sound_file_path)}' due to high spectral flatness ({flatness:.2f}), indicating excessive noise or garbled sound.")
+                return False
+            else:
+                return True
 
         # Function to combine all audio layers (WAV files) from a Video_X folder into a single soundscape
-        def combine_sound_effects_layers(video_folder, event_timestamps, video_duration_ms):
-            DURATION_MS = video_duration_ms  # Duration of the video in milliseconds
+        def combine_sound_effects_layers(video_folder, 
+                                         dbfs_threshold=-60, 
+                                         flatness_lower=0.15, 
+                                         flatness_upper=0.90, 
+                                         fallback=False,
+                                         prompt_keywords=None):
+            DURATION_MS = 6000  # All sounds are trimmed/padded to 6 seconds
+
+            print(f"\nProcessing folder: {video_folder}")
+
+            # List all .wav files in the folder
+            try:
+                all_files = os.listdir(video_folder)
+            except Exception as e:
+                print(f"Error accessing folder '{video_folder}': {e}")
+                messagebox.showerror("Folder Access Error", f"Cannot access folder: {video_folder}\nError: {e}")
+                return None
+            print(f"Files in folder: {all_files}")
+
+            sound_effect_files = sorted([f for f in all_files if f.lower().endswith('.wav')], key=natural_sort_key)
+            if not sound_effect_files:
+                print(f"No .wav files found in '{video_folder}'.")
+                messagebox.showwarning("No Audio Files", f"No .wav files found in '{video_folder}'. Skipping this folder.")
+                return None
+
+            # Start with a 6-second silent audio segment
             combined_audio = AudioSegment.silent(duration=DURATION_MS)
-            for timestamp, event in event_timestamps:
-                sound_file_path = select_sound_file(event)
-                if not os.path.exists(sound_file_path):
-                    print(f"Sound effect file not found: {sound_file_path}")
+
+            included_files = 0  # Counter for included sound effects
+            excluded_files = 0  # Counter for excluded sound effects
+
+            # Define keywords to prioritize
+            if prompt_keywords is None:
+                prompt_keywords = ['chant', 'crowd', 'murmur', 'protest', 'applause', 'cheer']
+
+            # Process each sound file
+            for sound_file in sound_effect_files:
+                sound_file_path = os.path.join(video_folder, sound_file)
+
+                # Determine if the sound effect should be included based on keywords and spectral flatness
+                is_valid = is_sound_effect_valid(sound_file_path, 
+                                                dbfs_threshold=dbfs_threshold, 
+                                                flatness_lower=flatness_lower, 
+                                                flatness_upper=flatness_upper,
+                                                include_keywords=prompt_keywords)
+                if not is_valid:
+                    excluded_files += 1
                     continue
-                if not is_sound_effect(sound_file_path):
-                    print(f"Skipping {sound_file_path} as it doesn't meet the sound effect criteria.")
-                    continue
+
+                print(f"Loading sound file: {sound_file_path}")
+
                 try:
-                    sound = AudioSegment.from_file(sound_file_path)
+                    # Load and trim the sound file to 6 seconds
+                    sound = AudioSegment.from_wav(sound_file_path)[:DURATION_MS]
                 except Exception as e:
-                    print(f"Error loading sound effect {sound_file_path}: {e}")
+                    print(f"Error loading '{sound_file_path}': {e}")
+                    messagebox.showwarning("Audio Load Error", f"Failed to load audio file: '{sound_file_path}'\nError: {e}\nSkipping this file.")
+                    excluded_files += 1
                     continue
-                # Apply dynamic volume
-                dynamic_volume = get_dynamic_volume(event)
-                sound = sound + dynamic_volume
-                # Apply panning
-                pan_value = get_pan_value(event)
-                sound = sound.pan(pan_value)
+
+                # Determine volume adjustment based on keywords
+                # If the file name contains priority keywords, increase its volume
+                priority = any(keyword in sound_file.lower() for keyword in prompt_keywords)
+                if priority:
+                    sound = sound + 6  # Increase volume by 6 dB for important sounds
+                    print(f"Increasing volume for '{sound_file}' by 6 dB due to priority keywords.")
+                else:
+                    sound = sound - 3  # Decrease volume by 3 dB for less important sounds
+                    print(f"Decreasing volume for '{sound_file}' by 3 dB as it is a non-priority sound.")
+
                 # Apply fade in/out for smoothness
                 sound = sound.fade_in(50).fade_out(50)
-                # Overlay the sound at the correct position
-                position_ms = int(timestamp * 1000)
-                combined_audio = combined_audio.overlay(sound, position=position_ms)
+
+                # Overlay the adjusted sound onto the combined audio
+                combined_audio = combined_audio.overlay(sound)
+                included_files += 1
+
+            print(f"Included {included_files} sound effects, Excluded {excluded_files} sound effects from '{video_folder}'.")
+
+            if included_files == 0:
+                if not fallback:
+                    print(f"No valid sound effects found in '{video_folder}'. Attempting to include all sounds without filtering.")
+                    # Attempt to include all sounds without filtering
+                    return combine_sound_effects_layers(video_folder, 
+                                                       dbfs_threshold=-100,  # Very low threshold
+                                                       flatness_lower=0.0, 
+                                                       flatness_upper=1.0, 
+                                                       fallback=True,
+                                                       prompt_keywords=prompt_keywords)
+                else:
+                    print(f"No sound effects could be included from '{video_folder}' even after fallback.")
+                    messagebox.showwarning("No Valid Audio Files", f"No valid sound effects found in '{video_folder}'. Skipping this folder.")
+                    return None
+
             # Apply master gain to prevent overall loudness
             master_gain = -6  # Reduce overall volume by 6 dB
             combined_audio = combined_audio + master_gain
+
             # Export the combined soundscape
             combined_audio_path = os.path.join(video_folder, "combined_soundscape.wav")
             try:
                 combined_audio.export(combined_audio_path, format="wav")
-                print(f"Combined soundscape saved at {combined_audio_path}")
+                print(f"Combined soundscape saved at '{combined_audio_path}'")
             except Exception as e:
                 print(f"Error exporting combined soundscape: {e}")
-                messagebox.showerror("Audio Export Error", f"Failed to export combined soundscape:\n{combined_audio_path}\nError: {e}")
+                messagebox.showerror("Audio Export Error", f"Failed to export combined soundscape:\n'{combined_audio_path}'\nError: {e}")
                 return None
+
             return combined_audio_path
-
-        # Custom dialog class for sorting method selection using radio buttons
-        class SortingDialog(tk.Toplevel):
-            def __init__(self, parent):
-                super().__init__(parent)
-                self.title("Select Sorting Method")
-                self.geometry("400x250")
-                self.resizable(False, False)
-                self.grab_set()  # Make the dialog modal
-                self.sorting_method = tk.StringVar(value="default")
-                self.result = None
-
-                # Branding: Add a title and description
-                title_label = tk.Label(self, text="Sorting Method Selection", font=("Helvetica", 16, "bold"), fg="#333")
-                title_label.pack(pady=(20, 10))
-
-                desc_label = tk.Label(self, text="Please choose how you want your videos to be sorted:", font=("Arial", 12), fg="#555")
-                desc_label.pack(pady=(0, 20))
-
-                # Radio buttons for sorting options
-                rb_steps = tk.Radiobutton(self, text="Steps", variable=self.sorting_method, value="steps", font=("Arial", 12))
-                rb_guidance = tk.Radiobutton(self, text="Guidance Scale", variable=self.sorting_method, value="guidance_scale", font=("Arial", 12))
-                rb_default = tk.Radiobutton(self, text="Default (Prompt Set Order)", variable=self.sorting_method, value="default", font=("Arial", 12))
-
-                rb_steps.pack(anchor='w', padx=40, pady=5)
-                rb_guidance.pack(anchor='w', padx=40, pady=5)
-                rb_default.pack(anchor='w', padx=40, pady=5)
-
-                # Frame for OK and Cancel buttons
-                button_frame = tk.Frame(self)
-                button_frame.pack(pady=20)
-
-                ok_button = tk.Button(button_frame, text="OK", width=10, command=self.on_ok, bg="#4CAF50", fg="white", font=("Arial", 10, "bold"))
-                cancel_button = tk.Button(button_frame, text="Cancel", width=10, command=self.on_cancel, bg="#f44336", fg="white", font=("Arial", 10, "bold"))
-
-                ok_button.pack(side='left', padx=10)
-                cancel_button.pack(side='right', padx=10)
-
-            def on_ok(self):
-                self.result = self.sorting_method.get()
-                self.destroy()
-
-            def on_cancel(self):
-                self.result = "default"
-                self.destroy()
-
-        # Function to get sorting method via dialog
-        def get_sorting_method():
-            dialog = SortingDialog(None)
-            dialog.wait_window()  # Wait until the dialog is closed
-            return dialog.result
 
         # Ensure video and audio folders are valid
         if not hasattr(self, 'video_save_folder') or not self.video_save_folder or not os.path.exists(self.video_save_folder):
@@ -7219,34 +7234,18 @@ class MultimediaSuiteApp:
                 messagebox.showerror("Operation Cancelled", "No Audio folder selected. Operation cancelled.")
                 return  # Exit if no folder is selected
 
-        # Ask the user for sorting preference using radio buttons
-        sorting_method = get_sorting_method()
-        print(f"User selected sorting method: {sorting_method}")
-
-        # Define sorting key
-        def sorting_key(filename):
-            if sorting_method == "steps":
-                return extract_number(filename, 'Step')
-            elif sorting_method == "guidance_scale":
-                return extract_number(filename, 'Scale')
-            else:
-                return extract_number(filename, 'Video')
-
         # Retrieve and sort video files
         video_files = [f for f in os.listdir(self.video_save_folder) if f.lower().endswith(('.mp4', '.avi', '.mov', '.mkv'))]
-        video_files = sorted(video_files, key=lambda x: sorting_key(x))
+        video_files = sorted(video_files, key=lambda x: extract_number(x, 'Video'))
         video_files = [os.path.join(self.video_save_folder, f) for f in video_files]
 
-        print(f"Sorted video files: {video_files}")  # Debugging print
+        print(f"\nSorted video files: {video_files}")  # Debugging print
 
         if not video_files:
             messagebox.showwarning("No Video Files", "No video files found in the Video folder.")
             return
 
         final_clips = []
-
-        # Load the YOLOv5 model
-        model = load_yolo_model()
 
         # Process each video and match it with its corresponding audio
         for video_file in video_files:
@@ -7256,40 +7255,34 @@ class MultimediaSuiteApp:
             video_folder = os.path.join(self.audio_save_folder, f"Video_{video_number}")
 
             if not os.path.exists(video_folder):
-                messagebox.showwarning("Missing Audio Folder", f"No matching audio folder found for {video_file}. Skipping.")
+                messagebox.showwarning("Missing Audio Folder", f"No matching audio folder found for '{os.path.basename(video_file)}'. Skipping.")
                 continue
 
-            try:
-                # Load the video clip
-                video_clip = VideoFileClip(video_file)
-                video_duration_ms = int(video_clip.duration * 1000)
-            except Exception as e:
-                print(f"Error loading video {video_file}: {e}")
-                messagebox.showwarning("Video Load Error", f"Failed to load video {video_file}.\nError: {e}\nSkipping.")
-                continue
-
-            # Process video and detect events
-            event_timestamps = process_video_and_detect_events(video_file, model)
+            # Extract the prompt text for the current video
+            prompt_text = extract_prompt(video_file)
+            # Identify important keywords from the prompt
+            prompt_keywords = ['chant', 'crowd', 'murmur', 'protest', 'applause', 'cheer', 'speech', 'debate', 'assembly']
 
             # Combine sound effects layers into a soundscape for this video
-            soundscape_path = combine_sound_effects_layers(video_folder, event_timestamps, video_duration_ms)
+            soundscape_path = combine_sound_effects_layers(video_folder, 
+                                                           prompt_keywords=prompt_keywords)
             if not soundscape_path:
                 continue
 
             try:
-                # Reload the video clip to avoid conflicts
-                video_clip = VideoFileClip(video_file)
+                # Load the video clip and trim to 6 seconds
+                video_clip = VideoFileClip(video_file).subclip(0, 6)
             except Exception as e:
-                print(f"Error reloading video {video_file}: {e}")
-                messagebox.showwarning("Video Load Error", f"Failed to reload video {video_file}.\nError: {e}\nSkipping.")
+                print(f"Error loading video '{video_file}': {e}")
+                messagebox.showwarning("Video Load Error", f"Failed to load video '{video_file}'.\nError: {e}\nSkipping.")
                 continue
 
             try:
                 # Load the combined audio (soundscape)
                 audio_clip = AudioFileClip(soundscape_path)
             except Exception as e:
-                print(f"Error loading audio {soundscape_path}: {e}")
-                messagebox.showwarning("Audio Load Error", f"Failed to load audio for {video_file}.\nError: {e}\nSkipping.")
+                print(f"Error loading audio '{soundscape_path}': {e}")
+                messagebox.showwarning("Audio Load Error", f"Failed to load audio for '{video_file}'.\nError: {e}\nSkipping.")
                 continue
 
             try:
@@ -7300,26 +7293,27 @@ class MultimediaSuiteApp:
                 output_filename = f"{base_name}_combined.mp4"
                 output_path = os.path.join(self.video_save_folder, output_filename)
                 final_video.write_videofile(output_path, codec="libx264", audio_codec="aac", verbose=False, logger=None)
-                print(f"Generated combined video for {video_file} and saved to {output_path}")
+                print(f"Generated combined video for '{video_file}' and saved to '{output_path}'")
 
                 # Add the final video clip to the list for final combination later
                 final_clips.append(final_video)
             except Exception as e:
-                print(f"Error combining video and audio for {video_file}: {e}")
-                messagebox.showwarning("Combine Error", f"Failed to combine video and audio for {video_file}.\nError: {e}\nSkipping.")
+                print(f"Error combining video and audio for '{video_file}': {e}")
+                messagebox.showwarning("Combine Error", f"Failed to combine video and audio for '{video_file}'.\nError: {e}\nSkipping.")
                 continue
 
         # Combine all final clips into one video (if more than one)
         if final_clips:
             try:
+                print("\nConcatenating all combined video clips into FINAL_VIDEO.mp4...")
                 final_combined_video = concatenate_videoclips(final_clips, method="compose")
                 final_output_path = os.path.join(self.video_save_folder, "FINAL_VIDEO.mp4")
                 final_combined_video.write_videofile(final_output_path, codec="libx264", audio_codec="aac")
-                print(f"\nFinal combined video saved to: {final_output_path}")
-                messagebox.showinfo("Combine Successful", f"Final combined video saved to:\n{final_output_path}")
+                print(f"\nFinal combined video saved to: '{final_output_path}'")
+                messagebox.showinfo("Combine Successful", f"Final combined video saved to:\n'{final_output_path}'")
             except Exception as e:
                 print(f"Error combining final videos: {e}")
-                messagebox.showerror("Final Combine Error", f"Failed to create FINAL_VIDEO.mp4.\nError: {e}")
+                messagebox.showerror("Final Combine Error", f"Failed to create 'FINAL_VIDEO.mp4'.\nError: {e}")
         else:
             messagebox.showwarning("No Videos Selected", "No videos were selected for the final compilation.")
 
@@ -7328,6 +7322,7 @@ class MultimediaSuiteApp:
             messagebox.showinfo("Combine Successful", "The videos and audio have been successfully combined.")
         else:
             messagebox.showinfo("Combine Completed", "The combine process has finished, but no videos were processed.")
+
 
     def select_audio_for_video(self, video_file, matching_audio_files):
         """
