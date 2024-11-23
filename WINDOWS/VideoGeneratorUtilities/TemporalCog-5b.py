@@ -211,61 +211,27 @@ def select_prompt_file():
         return None
     return file_path
 
-def parse_prompt_file(lines: list):
+def parse_prompt_line(line: str):
     """
-    Parses the prompt file lines into a list of prompt dictionaries.
+    Parses a single line from the prompt list file.
+    Expected format:
+    positive: [Your positive prompt]
+    negative: [Your negative prompt]
+    --------------------
 
-    Parameters:
-    - lines (list): List of lines from the prompt file.
-
-    Returns:
-    - list: A list of dictionaries with 'positive' and 'negative' prompts.
+    Returns a dictionary with keys: 'positive' or 'negative', or 'delimiter' for delimiter lines.
     """
-    prompts = []
-    current_prompt = {}
-    current_section = None  # Can be 'positive', 'negative', or None
-
-    for idx, line in enumerate(lines, start=1):
-        stripped_line = line.strip()
-        
-        if not stripped_line:
-            continue  # Skip empty lines
-
-        if stripped_line.startswith("positive:"):
-            if "positive" in current_prompt:
-                print(f"Warning: New 'positive:' found before completing previous prompt at line {idx}. Skipping previous prompt.")
-                current_prompt = {}
-            current_prompt["positive"] = stripped_line[len("positive:"):].strip()
-            current_section = "positive"
-        elif stripped_line.startswith("negative:"):
-            if "positive" not in current_prompt:
-                print(f"Warning: 'negative:' section without a preceding 'positive:' at line {idx}. Skipping.")
-                current_section = None
-                continue
-            current_prompt["negative"] = stripped_line[len("negative:"):].strip()
-            current_section = "negative"
-        elif set(stripped_line) == set("-"):
-            if "positive" in current_prompt and "negative" in current_prompt:
-                prompts.append(current_prompt)
-            else:
-                if "positive" in current_prompt:
-                    print(f"Warning: 'negative:' section missing for prompt before line {idx}. Skipping.")
-            current_prompt = {}
-            current_section = None
-        else:
-            if current_section and current_section in current_prompt:
-                # Append the line to the current section
-                current_prompt[current_section] += " " + stripped_line
-            else:
-                print(f"Warning: Unrecognized line format at line {idx}: '{stripped_line}'. Skipping.")
-
-    # Handle the last prompt if file doesn't end with delimiter
-    if "positive" in current_prompt and "negative" in current_prompt:
-        prompts.append(current_prompt)
-    elif "positive" in current_prompt:
-        print(f"Warning: Last prompt missing 'negative:' section. Skipping.")
-
-    return prompts
+    if line.startswith("positive:"):
+        positive_prompt = line[len("positive:"):].strip()
+        return {"positive": positive_prompt}
+    elif line.startswith("negative:"):
+        negative_prompt = line[len("negative:"):].strip()
+        return {"negative": negative_prompt}
+    elif set(line.strip()) == set("-"):
+        return {"delimiter": True}
+    else:
+        # Unrecognized line
+        return {"unrecognized": True}
 
 def sanitize_filename(filename: str):
     """
@@ -433,6 +399,77 @@ def get_seed():
 
     return seed_value
 
+def get_generation_mode():
+    """
+    Opens a popup dialog to select the generation mode: 'Normal Mode' or 'Added Images'.
+    
+    Returns:
+    - mode (str): 'normal' or 'added_images'
+    """
+    import tkinter as tk
+    from tkinter import messagebox
+
+    def set_mode(mode):
+        nonlocal selected_mode
+        selected_mode = mode
+        root.quit()
+
+    selected_mode = None
+
+    root = tk.Tk()
+    root.title("Select Generation Mode")
+
+    tk.Label(root, text="Choose Generation Mode:", font=("Arial", 12)).pack(padx=20, pady=10)
+
+    button_frame = tk.Frame(root)
+    button_frame.pack(pady=10)
+
+    normal_button = tk.Button(button_frame, text="Normal Mode", width=15, command=lambda: set_mode("normal"))
+    normal_button.pack(side="left", padx=10)
+
+    added_images_button = tk.Button(button_frame, text="Added Images", width=15, command=lambda: set_mode("added_images"))
+    added_images_button.pack(side="left", padx=10)
+
+    root.mainloop()
+    root.destroy()
+
+    if selected_mode not in ["normal", "added_images"]:
+        messagebox.showwarning("No Mode Selected", "No generation mode was selected. Exiting.")
+        return None
+
+    return selected_mode
+
+def select_output_directory(prompt_dir: str):
+    """
+    Opens a dialog to select the output directory.
+    If the user cancels, creates a default 'Generated_Videos' directory inside the prompt directory.
+
+    Parameters:
+    - prompt_dir (str): The directory where the prompt file is located.
+
+    Returns:
+    - output_dir (str): The selected output directory path.
+    """
+    root = tk.Tk()
+    root.withdraw()  # Hide the main window
+    output_dir = filedialog.askdirectory(
+        title="Select Output Directory for Generated Videos",
+        initialdir=prompt_dir
+    )
+    root.destroy()
+
+    if not output_dir:
+        # User canceled; create a default 'Generated_Videos' directory inside prompt_dir
+        output_dir = os.path.join(prompt_dir, "Generated_Videos")
+        os.makedirs(output_dir, exist_ok=True)
+        print(f"No output directory selected. Using default directory: {output_dir}")
+    else:
+        # Ensure the directory exists
+        os.makedirs(output_dir, exist_ok=True)
+        print(f"Output directory selected: {output_dir}")
+
+    return output_dir
+
 # --------------------- Video Generation Function ---------------------
 
 def generate_video(
@@ -470,6 +507,8 @@ def generate_video(
         with torch.inference_mode():
             # Generate the video frames based on the prompt
             if generate_type == "i2v":
+                if image_or_video_path is None:
+                    raise ValueError("Image path must be provided for 'i2v' generation type.")
                 image = load_image(image=image_or_video_path)
                 if image is None:
                     raise ValueError(f"Failed to load image from path: {image_or_video_path}")
@@ -550,6 +589,17 @@ def main():
     if not prompt_file:
         return
 
+    # Determine the directory of the prompt file
+    prompt_dir = os.path.dirname(prompt_file)
+
+    # Select the output directory
+    output_dir = select_output_directory(prompt_dir)
+
+    # Get generation mode from the user
+    generation_mode = get_generation_mode()
+    if not generation_mode:
+        return
+
     # Get parameters from the user
     guidance_scales, inference_steps = get_parameters()
     if not guidance_scales or not inference_steps:
@@ -562,16 +612,42 @@ def main():
     SEED = get_seed()
     print(f"Using seed value: {SEED}")
 
-    # Determine the directory of the prompt file
-    output_dir = os.path.dirname(prompt_file)
-
     # Read and parse the prompts
     try:
         with open(prompt_file, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
-        # Replace the existing line-by-line parsing with the new comprehensive parser
-        prompts = parse_prompt_file(lines)
+        prompts = []
+        current_prompt = {}
+        for idx, line in enumerate(lines, start=1):
+            parsed = parse_prompt_line(line)
+            if "unrecognized" in parsed:
+                print(f"Warning: Unrecognized line format at line {idx}: '{line.strip()}'. Skipping.")
+                continue
+            if "delimiter" in parsed:
+                if "positive" in current_prompt and "negative" in current_prompt:
+                    prompts.append(current_prompt)
+                    current_prompt = {}
+                else:
+                    if "positive" in current_prompt:
+                        print(f"Warning: 'negative:' section missing for prompt at line {idx}. Skipping.")
+                    current_prompt = {}
+                continue
+            if "positive" in parsed:
+                if "positive" in current_prompt:
+                    print(f"Warning: New 'positive:' found before completing previous prompt at line {idx}. Skipping previous prompt.")
+                current_prompt["positive"] = parsed["positive"]
+            elif "negative" in parsed:
+                if "positive" not in current_prompt:
+                    print(f"Warning: 'negative:' section without a preceding 'positive:' at line {idx}. Skipping.")
+                    continue
+                current_prompt["negative"] = parsed["negative"]
+
+        # Handle last prompt if missing delimiter
+        if "positive" in current_prompt and "negative" in current_prompt:
+            prompts.append(current_prompt)
+        elif "positive" in current_prompt:
+            print(f"Warning: Last prompt missing 'negative:' section. Skipping.")
 
     except Exception as e:
         print(f"Error reading prompt file: {e}")
@@ -629,6 +705,22 @@ def main():
         print(f"Negative Prompt: {summarized_negative}")
         print(f"5-Word Summary: {five_word_summary}")
         print(f"Output Filename: video_{idx}_5b_[gs]gs_[steps]steps_{safe_summary}.mp4")
+
+        # Determine the image path if in 'added_images' mode
+        image_path = None
+        if generation_mode == "added_images":
+            # Look for 'video_{idx}.png' or 'video_{idx}.jpeg' in the output_dir
+            possible_extensions = ['.png', '.jpeg', '.jpg']
+            for ext in possible_extensions:
+                potential_path = os.path.join(output_dir, f"video_{idx}{ext}")
+                if os.path.isfile(potential_path):
+                    image_path = potential_path
+                    print(f"Using image for video {idx}: {potential_path}")
+                    break
+            if image_path is None:
+                print(f"No corresponding image found for video {idx}. Skipping this prompt.")
+                messagebox.showwarning("Image Not Found", f"No corresponding image found for video {idx} (expected 'video_{idx}.png' or 'video_{idx}.jpeg'). Skipping this prompt.")
+                continue  # Skip this prompt if image is not found
 
         # Iterate over each guidance scale and inference step to generate multiple videos per prompt
         for gs in guidance_scales:
@@ -701,7 +793,7 @@ def main():
                     generate_type=GENERATE_TYPE,
                     pipe=pipe,
                     output_path=output_path,
-                    image_or_video_path=None,  # Modify if using 'i2v' or 'v2v'
+                    image_or_video_path=image_path if generation_mode == "added_images" else None,
                     num_inference_steps=steps,
                     guidance_scale=gs,
                     seed=SEED,  # Use the seed value obtained from the user
