@@ -8,7 +8,7 @@ import tkinter as tk
 from tkinter import filedialog, simpledialog, messagebox, Menu, ttk
 from tkinter.scrolledtext import ScrolledText
 from moviepy.editor import VideoFileClip, concatenate_videoclips, AudioFileClip, concatenate_audioclips, concatenate_videoclips
-from pydub import AudioSegment
+from pydub import AudioSegment, effects
 from PIL import Image, ImageTk
 import threading
 import requests
@@ -23,10 +23,13 @@ import socket
 import time
 import logging
 import scipy
+from scipy.signal import welch
 import torch
 from diffusers import AudioLDM2Pipeline
 from pathlib import Path
 import uuid
+import numpy as np  # Ensure this line is present
+
 
 
 
@@ -54,40 +57,7 @@ pipe = pipe.to("cuda")
 
 
 SETTINGS_FILE = "settings.json"
-def ensure_ollama_server_and_model(model_name="llama3.2"):
-    start_or_find_ollama_server()
-    ensure_model_available(model_name)
-# Save settings to .env file for persistence
-def start_or_find_ollama_server():
-    ollama_port = find_ollama_port()
-    if ollama_port:
-        print(f"Found Ollama server running on port {ollama_port}.")
-        global OLLAMA_API_URL
-        OLLAMA_API_URL = f"http://localhost:{ollama_port}/api/generate"
-    else:
-        ollama_port = find_available_port()
-        start_ollama_server(ollama_port)
-        wait_for_ollama_server()
 
-
-def detect_gpu():
-    """
-    Detects if a GPU is available using torch and returns a boolean value.
-    If a GPU is found, it returns True; otherwise, it returns False.
-    """
-    try:
-        import torch
-        if torch.cuda.is_available():
-            print("GPU detected.")
-            return True
-        else:
-            print("No GPU detected.")
-            return False
-    except ImportError:
-        print("Torch is not installed, assuming no GPU.")
-        return False
-        
-        
 def parse_model_response(response):
     """
     Parses the model's response to extract the positive sounds and ensures the negative section is empty.
@@ -124,467 +94,7 @@ def parse_model_response(response):
 
     # Return the formatted prompt with 'negative:' empty if necessary
     formatted_prompt = f"positive: {positive_content}\nnegative: {negative_content}"
-    return formatted_prompt        
-
-def run_audioldm2(prompt_text, output_filename, index):
-    try:
-        # Construct the AudioLDM2 command
-        command = [
-            sys.executable, '-m', 'audioldm2',
-            '-t', prompt_text,
-            '-s', output_filename,
-            '--model_name', model_name,
-            '--device', device,
-            '--ddim_steps', str(ddim_steps),
-            '--guidance_scale', str(guidance_scale),
-            '--duration', str(duration),
-            '--n_candidate_gen_per_text', str(n_candidate_gen_per_text),
-            '--seed', str(seed),
-            '--mode', 'generation'
-        ]
-
-        print(f"[AudioLDM2] Executing command: {' '.join(command)}")
-        result = subprocess.run(
-            command,
-            check=True,
-            capture_output=True,
-            text=True,
-            env=os.environ.copy()  # Inherit environment variables
-        )
-        print(f"[AudioLDM2] Generated sound effect for prompt {index}: {prompt_text}")
-    except subprocess.CalledProcessError as e:
-        print(f"[AudioLDM2 Error] Failed to generate sound effect for prompt {index}: {e.stderr}")
-        messagebox.showerror("AudioLDM2 Error", f"Failed to generate sound effect for prompt {index}.\nError: {e.stderr}")
-    except Exception as e:
-        print(f"[AudioLDM2 Error] Unexpected error for prompt {index}: {e}")
-        messagebox.showerror("AudioLDM2 Error", f"Failed to generate sound effect for prompt {index}.\nError: {e}")
-    finally:
-        # Update progress bar
-        progress_bar['value'] = index
-        progress_window.update_idletasks()
-
-        
-def handle_multiple_json_objects(response_text):
-    try:
-        json_objects = response_text.splitlines()
-        for json_object in json_objects:
-            try:
-                data = json.loads(json_object)
-                # Process only if 'response' field exists
-                if "response" in data:
-                    print("Parsed JSON object:", data["response"])
-                    # Further processing if needed
-            except json.JSONDecodeError as e:
-                print(f"Error decoding JSON object: {e}")
-    except Exception as e:
-        print(f"General error processing response: {e}")
-
-
-def find_available_port(start_port=11435, max_attempts=10):
-    """
-    Find an available port starting from the given start_port.
-    Tries up to max_attempts ports.
-    """
-    for port in range(start_port, start_port + max_attempts):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            if sock.connect_ex(('localhost', port)) != 0:
-                return port
-    raise Exception("No available ports found.")
-
-def check_if_port_in_use(port):
-    """Checks if the given port is in use."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        result = sock.connect_ex(('localhost', port))
-        return result == 0
-        
-def find_ollama_port():
-    """
-    Check if Ollama is running on the default port.
-    If not, return the port where Ollama is running or None if not found.
-    """
-    for port in range(11420, 11435):  # Scan potential ports
-        if check_if_port_in_use(port):
-            return port
-    return None
-        
-def detect_gpu():
-    """
-    Detects if a GPU is available using torch and returns a boolean value.
-    If a GPU is found, it returns True; otherwise, it returns False.
-    """
-    try:
-        import torch
-        if torch.cuda.is_available():
-            print("GPU detected.")
-            return True
-        else:
-            print("No GPU detected.")
-            return False
-    except ImportError:
-        print("Torch is not installed, assuming no GPU.")
-        return False
-
-def disable_gpu_option_if_no_gpu(gpu_var, device_combobox):
-    """
-    Disables the GPU option if no GPU is detected. Otherwise, it automatically selects GPU.
-    Args:
-        gpu_var: The tkinter variable for the device selection.
-        device_combobox: The tkinter combobox for selecting the device (CPU/GPU).
-    """
-    if detect_gpu():
-        gpu_var.set("cuda")  # Auto-select GPU
-        device_combobox.config(state="readonly")  # Lock the selection to GPU
-    else:
-        gpu_var.set("cpu")
-        device_combobox.set("cpu")
-        device_combobox.config(state="disabled")  # Disable GPU option if not available
-
-def save_settings():
-    with open(".env", "w") as f:
-        f.write(f"COMFYUI_PROMPTS_FOLDER={COMFYUI_PROMPTS_FOLDER}\n")
-        f.write(f"LAST_USED_DIRECTORY={LAST_USED_DIRECTORY}\n")
-    print("Settings have been saved to .env file.")
-
-    
-def format_prompt(prompt_data):
-    """
-    Formats a single prompt set into the final prompt list format.
-    """
-    # Extracting key details from the prompt data
-    title = prompt_data.get('Title', 'Untitled')
-    description = prompt_data.get('Description', 'No description provided.')
-    time_of_day = prompt_data.get('Time of day', '00:00')
-    theme = prompt_data.get('Theme', 'Adventure')
-    lighting = prompt_data.get('Lighting', 'Natural Light')
-    shot_composition = prompt_data.get('Shot composition', 'Rule of Thirds')
-    camera_movement = prompt_data.get('Camera movement', 'Pan')
-    art_style = prompt_data.get('Art style', 'Realism')
-    lens = prompt_data.get('Lens', 'Wide Angle')
-
-    # Constructing positive prompt
-    positive_prompt = (
-        f"Create a {art_style.lower()} {theme.lower()} video capturing {description.lower()}. "
-        f"Adopt the {shot_composition.lower()} to highlight the journey's thrill. "
-        f"The {lighting.lower()} from the {time_of_day.lower()} should guide their paths. "
-        f"Use a {lens.lower()} lens for a broad view and {camera_movement.lower()} "
-        "to provide a sweeping view of the landscape."
-    )
-
-    # Constructing negative prompt
-    negative_prompt = (
-        f"Avoid unnatural lighting or closed shots which may distort the {theme.lower()} theme. "
-        f"Do not ignore the {shot_composition.lower()} which may unbalance the shot composition, "
-        f"and refrain from static or zoomed-in views that fail to capture the whole scene."
-    )
-
-    # Return the formatted prompt
-    return f"positive: {positive_prompt}\nnegative: {negative_prompt}\n--------------------"
-    return f"positive: {positive_prompt}\nnegative: {negative_prompt}\n--------------------"
-
-# Function to format the raw prompts into the required structure
-
-def format_prompts_for_output(raw_prompts):
-    """
-    Takes the raw prompts and formats them into the required positive/negative structure.
-    """
-    formatted_prompts = ""
-    for index, prompt in enumerate(raw_prompts, start=1):
-        # Ensure that each prompt is a dictionary or structured data
-        if isinstance(prompt, dict):
-            positive_prompt = f"positive: {prompt.get('positive', 'N/A')}"
-            negative_prompt = f"negative: {prompt.get('negative', 'N/A')}"
-        else:
-            # If prompt is not a dict, handle it as a string or simple type
-            positive_prompt = f"positive: {prompt}"
-            negative_prompt = "negative: N/A"
-
-        separator = "--------------------"
-        formatted_prompts += positive_prompt + negative_prompt + separator
-    return formatted_prompts
-
-def clean_prompt_text(raw_text):
-    """
-    Cleans the raw text response by removing unnecessary whitespace and ensuring proper formatting.
-
-    Args:
-        raw_text (str): The raw text response from the API.
-
-    Returns:
-        str: The cleaned text.
-    """
-    # Remove any leading/trailing whitespace
-    cleaned_text = raw_text.strip()
-    return cleaned_text
-
-
-def format_and_overwrite_prompts_file(file_path):
-    """
-    Formats the raw prompts from a JSON file and overwrites the file with formatted prompts.
-    
-    Args:
-        file_path (str): The full path to the raw prompts JSON file.
-    """
-    try:
-        # Check if file_path is a directory
-        if os.path.isdir(file_path):
-            error_message = f"Expected a file path but received a directory: {file_path}"
-            print(error_message)
-            messagebox.showerror("Invalid File Path", error_message)
-            return
-        
-        # Ensure the file exists
-        if not os.path.exists(file_path):
-            error_message = f"The file does not exist: {file_path}"
-            print(error_message)
-            messagebox.showerror("File Not Found", error_message)
-            return
-        
-        # Read the raw prompts from the JSON file
-        with open(file_path, 'r', encoding='utf-8') as file:
-            raw_data = json.load(file)
-        
-        formatted_prompts = []
-        for prompt_data in raw_data:
-            formatted_prompts.append(format_prompt(prompt_data))
-        
-        # Join all formatted prompts with a divider
-        formatted_prompts_str = "\n--------------------\n".join(formatted_prompts)
-        
-        # Save the formatted prompts back to the same file
-        with open(file_path, 'w', encoding='utf-8') as file:
-            file.write(formatted_prompts_str)
-        
-        print(f"Formatted prompts successfully saved to {file_path}")
-        messagebox.showinfo("Formatting Successful", f"Formatted prompts have been saved to:\n{file_path}")
-    
-    except PermissionError:
-        error_message = f"Permission denied: Unable to write to {file_path}.\nPlease check your file permissions."
-        print(error_message)
-        messagebox.showerror("Permission Denied", error_message)
-    
-    except FileNotFoundError:
-        error_message = f"File not found: The file does not exist at {file_path}."
-        print(error_message)
-        messagebox.showerror("File Not Found", error_message)
-    
-    except json.JSONDecodeError as e:
-        error_message = f"JSON Decode Error: {e}"
-        print(error_message)
-        messagebox.showerror("JSON Error", error_message)
-    
-    except Exception as e:
-        error_message = f"An error occurred while formatting prompts: {e}"
-        print(error_message)
-        messagebox.showerror("Formatting Error", error_message)
-
-
-def save_raw_prompts(raw_prompts, file_path):
-    """
-    Saves raw prompt data to a specified file in JSON format.
-
-    Args:
-        raw_prompts (list): A list of dictionaries containing raw prompt data.
-        file_path (str): The file path where the prompts will be saved.
-    """
-    try:
-        # Check if file_path is a directory
-        if os.path.isdir(file_path):
-            # Assign a default filename if none is provided
-            file_path = os.path.join(file_path, RAW_PROMPTS_FILENAME)
-            print(f"No filename provided. Using default filename: {RAW_PROMPTS_FILENAME}")
-
-        # Ensure the output directory exists
-        directory = os.path.dirname(file_path)
-        if directory:
-            os.makedirs(directory, exist_ok=True)
-            print(f"Ensured the directory exists: {directory}")
-
-        # Save the raw prompts as JSON
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(raw_prompts, f, indent=4)
-        
-        print(f"Raw prompts successfully saved to {file_path}")
-        messagebox.showinfo("Save Successful", f"Raw prompts have been saved to:\n{file_path}")
-    
-    except PermissionError:
-        error_message = f"Permission denied: Unable to write to {file_path}.\nPlease check your directory permissions."
-        print(error_message)
-        messagebox.showerror("Permission Denied", error_message)
-    
-    except FileNotFoundError:
-        error_message = f"File not found: The directory does not exist for {file_path}."
-        print(error_message)
-        messagebox.showerror("File Not Found", error_message)
-    
-    except Exception as e:
-        error_message = f"Failed to save raw prompts to {file_path}: {e}"
-        print(error_message)
-        messagebox.showerror("Save Error", error_message)
-
-    # Example usage
-    raw_prompt_data = [
-        {
-            "Title": "Midnight Expedition",
-            "Description": "a group of explorers on a test mission, navigating through a dense forest at midnight in the 1900s.",
-            "Time of day": "00:00 - Midnight",
-            "Theme": "Adventure",
-            "Lighting": "Natural Light",
-            "Shot composition": "Rule of Thirds",
-            "Camera movement": "Pan",
-            "Art style": "Realism",
-            "Lens": "Wide Angle"
-        },
-        # Add more prompts here
-    ]
-
-    # Define the output directory and file name separately
-    output_directory = os.path.join(OUTPUT_DIRECTORY, "raw_prompts")
-    file_name = RAW_PROMPTS_FILENAME  # "RAW_prompts.json"
-    raw_prompts_file_path = os.path.join(output_directory, file_name)
-
-    # Step 1: Save raw prompts to file
-    save_raw_prompts(raw_prompt_data, raw_prompts_file_path)
-
-    # Step 2: Format the prompts and overwrite the file
-    format_and_overwrite_prompts_file(raw_prompts_file_path)
-
-
-def format_prompts_to_file(prompts_data, OUTPUT_DIRECTORY):
-    """
-    Formats the video prompts from raw data and writes them into the final prompt list format.
-    """
-    try:
-        formatted_prompts = []
-        for prompt_data in prompts_data:  # Assume prompts_data is a list of dictionaries
-            formatted_prompts.append(format_prompt(prompt_data))
-        
-        # Writing the formatted prompts to the file
-        with open(OUTPUT_DIRECTORY, 'w') as output_file:
-            output_file.write("\n".join(formatted_prompts))
-
-        print(f"Formatted prompts saved to {OUTPUT_DIRECTORY}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        
-def format_prompts_from_raw_text(raw_text):
-    """
-    Takes the raw response text and formats it into positive/negative structure.
-    """
-    formatted_prompts = ""
-    prompt_sections = raw_text.split("")
-
-    for section in prompt_sections:
-        if section.strip() == "": 
-            continue
-        
-        # Extract prompt content and format into positive/negative
-        positive_prompt = f"positive: {section}"
-        negative_prompt = "negative: "
-        separator = "--------------------"
-        
-        formatted_prompts += positive_prompt + negative_prompt + separator
-
-    return formatted_prompts
-
-
-def format_and_save_prompts(raw_prompt_data, output_directory=OUTPUT_DIRECTORY, file_name=FORMATTED_PROMPTS_FILENAME):
-    """
-    Formats the prompts and saves them into a file.
-
-    Args:
-        raw_prompt_data (list): A list of dictionaries with raw prompt data.
-        output_directory (str): The directory where the file will be saved.
-        file_name (str): The name of the file.
-    """
-    if not raw_prompt_data:
-        print("Error: No raw prompts to format.")
-        return
-
-    # Ensure the output directory exists
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)
-
-    formatted_prompts = []
-
-    # Format each prompt in the list
-    for prompt_data in raw_prompt_data:
-        formatted_prompt = format_prompt(prompt_data)  # Assuming format_prompt is defined
-        formatted_prompts.append(formatted_prompt)
-
-    # Join all formatted prompts with a divider
-    formatted_prompts_str = "\n--------------------\n".join(formatted_prompts)
-
-    # Construct full file path
-    file_path = os.path.join(output_directory, file_name)
-
-    # Save the formatted prompts to file
-    self.save_to_file(formatted_prompts_str, file_path)  # Assuming save_to_file is defined  
-def extract_video_prompts(api_response):
-    # This splits prompts by "**" and works from the JSON's response text
-    response_text = api_response["response"]
-    prompt_list = response_text.split("**")[1:]  # Skip initial part, start from numbered prompts
-
-    # Extract and format video prompts
-    video_prompts = []
-    for i in range(0, len(prompt_list), 2):
-        title = prompt_list[i].strip()
-        details = prompt_list[i + 1].strip()
-        full_prompt = f"{title}\n{details}"
-        formatted_prompt = format_prompt(full_prompt)
-        video_prompts.append(formatted_prompt)
-    
-    return video_prompts
-    
-def extract_audio_prompts(api_response):
-    # This is a placeholder implementation; customize as per your API structure
-    audio_prompts = ["Craft an immersive soundscape for each adventure prompt."]
-    formatted_audio_prompts = [format_prompt(prompt, is_audio=True) for prompt in audio_prompts]
-    return formatted_audio_prompts
-    
-def save_prompts_to_file(video_prompts, audio_prompts, video_file_path, audio_file_path):
-    try:
-        # Get the directory paths from the file paths
-        video_dir = os.path.dirname(video_file_path)
-        audio_dir = os.path.dirname(audio_file_path)
-
-        # Check if the directories exist, if not, create them
-        if not os.path.exists(video_dir):
-            os.makedirs(video_dir)
-        if not os.path.exists(audio_dir):
-            os.makedirs(audio_dir)
-
-        # Writing the video prompts to the video file
-        with open(video_file_path, 'w') as video_file:
-            video_file.writelines(video_prompts)
-        
-        # Writing the audio prompts to the audio file
-        with open(audio_file_path, 'w') as audio_file:
-            audio_file.writelines(audio_prompts)
-
-        print(f"Prompts saved to {video_file_path} and {audio_file_path} successfully.")
-    
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-
-def load_prompt_file(file_path):
-    """
-    Load a text file with proper encoding handling.
-    """
-    try:
-        # Try reading with UTF-8 encoding
-        with open(file_path, "r", encoding="utf-8") as file:
-            return file.read()
-    except UnicodeDecodeError:
-        try:
-            # Fallback to ISO-8859-1 encoding if UTF-8 fails
-            with open(file_path, "r", encoding="ISO-8859-1") as file:
-                return file.read()
-        except UnicodeDecodeError as e:
-            print(f"Error: Unable to decode file {file_path}: {e}")
-            messagebox.showerror("Encoding Error", f"Failed to decode file: {file_path}.")
-            return None
-
+    return formatted_prompt       
 
 def set_output_directory():
     global OUTPUT_DIRECTORY, LAST_USED_DIRECTORY
@@ -596,8 +106,6 @@ def set_output_directory():
     else:
         messagebox.showwarning("Output Directory", "No directory selected.")
 
-
-
 # Function to set the ComfyUI INSPIRE prompts folder
 def set_comfyui_prompts_folder():
     global COMFYUI_PROMPTS_FOLDER
@@ -608,142 +116,6 @@ def set_comfyui_prompts_folder():
     else:
         messagebox.showwarning("ComfyUI Prompts Folder", "No directory selected.")
 
-
-def generate_prompts(input_concept, prompt_type, video_options, model_name=REQUIRED_MODEL):
-    """
-    Generate refined, natural language prompts for video or audio generation models, incorporating all selected options.
-    Each prompt will maintain the format of positive and negative aspects while being cohesive and detailed.
-
-    Parameters:
-    - input_concept: The central idea or theme for the prompts.
-    - prompt_type: Either 'video' or 'audio'.
-    - video_options: Dictionary of video options (e.g., decade, camera type, lighting, etc.)
-    - model_name: The model used for generating prompts (default is REQUIRED_MODEL).
-    """
-
-    if not wait_for_ollama_server():
-        print("Ollama server is not responding.")
-        return None
-
-    # Ensure all options are treated as strings
-    decade = str(video_options.get('decade', 'unspecified era'))
-    theme = str(video_options.get('theme', 'general theme'))
-    art_style = str(video_options.get('art_style', 'standard art style'))
-    lighting = str(video_options.get('lighting', 'natural lighting'))
-    framing = str(video_options.get('framing', 'balanced framing'))
-    camera_movement = str(video_options.get('camera_movement', 'steady camera'))
-    shot_composition = str(video_options.get('shot_composition', 'simple composition'))
-    time_of_day = str(video_options.get('time_of_day', 'daytime'))
-    camera = str(video_options.get('camera', 'a cinematic camera'))
-    lens = str(video_options.get('lens', 'a regular lens'))
-    resolution = str(video_options.get('resolution', 'standard resolution'))
-
-    # Build prompt for video generation
-    if prompt_type == 'video':
-        # Create a cohesive and natural prompt for video generation
-        system_prompt = f"""
-        You are tasked with generating cinematic video prompts based on the concept: '{input_concept}'.
-        The prompts should describe scenes in rich visual detail, ensuring that each includes positive and negative descriptions of the visuals.
-        
-        Incorporate the following settings into the video prompts:
-
-        - Set the scene in the {decade}, capturing the essence and atmosphere of that time.
-        - Reflect the overall {theme}, making it a central part of the visuals and tone.
-        - Apply {art_style} to the visual elements, enhancing the aesthetic of each shot.
-        - Use {lighting} to create mood and visual impact, appropriate for the scenes.
-        - Ensure {framing} that complements the composition of each shot, focusing on clear, balanced visuals.
-        - Include {camera_movement} to add dynamic motion to the scenes, creating fluid transitions.
-        - Frame each shot with {shot_composition}, aligning the visual elements for maximum effect.
-        - Set the scene during {time_of_day}, ensuring the visuals reflect the appropriate lighting conditions.
-        - Use {camera} with {lens} to shoot the scenes, emphasizing the cinematic quality.
-        - Ensure the video is shot in {resolution}, maintaining clarity and detail in all scenes.
-
-        Each generated prompt should follow this format:
-
-        positive: Describe the positive aspects of the scene or shot, highlighting the most important visual and cinematic details.
-        negative: Describe what to avoid showing or exhibiting in the scene or shot, focusing on preventing common cinematic mistakes.
-        --------------------
-
-        Make sure the prompts are specific, cohesive, and visually compelling, and that all selected settings are reflected in each prompt.
-        """
-    elif prompt_type == 'audio':
-        system_prompt = f"""
-        You are tasked with generating sound prompts that complement the visual concept: '{input_concept}'.
-        Each sound prompt must follow this format, focusing on specific sound details:
-
-        positive: Describe the positive aspects of the soundscape, focusing on natural sound elements (e.g., rain, birds, footsteps).
-        negative: Describe what to avoid in the soundscape, ensuring there are no distracting or out-of-place noises.
-        --------------------
-
-        Ensure that the sounds align with the visual scenes, reflecting the selected settings and overall atmosphere.
-        """
-
-    else:
-        print("Invalid prompt type.")
-        return None
-
-    try:
-        # Construct the Ollama API payload
-        payload = {
-            "model": model_name,
-            "prompt": system_prompt,
-            "max_tokens": 10000
-        }
-        headers = {'Content-Type': 'application/json'}
-
-        # Send request to Ollama's local API
-        response = requests.post(f"{OLLAMA_API_URL}", headers=headers, json=payload)
-
-        # Print the raw response to inspect for issues
-        print("Raw response:", response.text)
-
-        if response.status_code == 200:
-            try:
-                # Parse the JSON response
-                generated_prompts = response.json().get('output', '').strip()
-                print(f"Generated Prompts:\n{generated_prompts}")
-                return generated_prompts
-            except json.JSONDecodeError as e:
-                print(f"JSON decoding error: {e}")
-                return None
-        else:
-            print(f"Ollama API Error: {response.json().get('error', 'Unknown error')}")
-            return None
-    except Exception as e:
-        print(f"Error generating prompts: {e}")
-        return None
-
-
-def invert_positive_negative(generated_prompts):
-    """
-    Invert the positive and negative labels in the generated prompts.
-    This is used for Chaos Mode in video prompts.
-    """
-    inverted_prompts = []
-    prompt_pairs = generated_prompts.split('--------------------')
-
-    for pair in prompt_pairs:
-        if "positive:" in pair and "negative:" in pair:
-            positive_part = pair.split("positive:", 1)[1].split("negative:", 1)[0].strip()
-            negative_part = pair.split("negative:", 1)[1].strip()
-            inverted_pair = f"positive: {negative_part}\nnegative: {positive_part}"
-            inverted_prompts.append(inverted_pair)
-
-    return "--------------------\n".join(inverted_prompts)
-
-# Function to enable button when appropriate
-def enable_button(button):
-    """
-    Enables a given Tkinter button.
-
-    Args:
-        button (tk.Button): The button to enable.
-    """
-    button.config(state='normal')
-
-# Function to disable button
-def disable_button(button):
-    button.config(state=tk.DISABLED, bg="gray")
 
 # Function to extract number from filename for sorting
 def extract_number_from_filename(filename):
@@ -4102,8 +3474,10 @@ CAMERAS = {
 selected_decade = "2020s"
 print(CAMERAS[selected_decade])
 
+
 # Decades list for UI or sorting purposes
 DECADES = sorted(CAMERAS.keys())
+
 
 class MultimediaSuiteApp:
     def __init__(self, root):
@@ -4152,9 +3526,7 @@ class MultimediaSuiteApp:
         except requests.exceptions.ConnectionError:
             print("Ollama server is not running, trying to start it...")
             subprocess.Popen(["ollama", "serve"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if not self.wait_for_ollama_server():  # No port needed now
-                print("Failed to start Ollama.")
-                sys.exit(1)
+
         
         # Ensure the model is pulled
         self.ensure_model_available(model_name)
@@ -4202,42 +3574,7 @@ class MultimediaSuiteApp:
                 return False
         return True
 
-        
-    def start_ollama_server(self, port):
-        """
-        Starts the Ollama server on the given port.
-        """
-        try:
-            print(f"Starting Ollama server on port {port}...")
-            subprocess.Popen(["ollama", "serve", "--port", str(port)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            global OLLAMA_API_URL
-            OLLAMA_API_URL = f"http://localhost:{port}"
-            print(f"Ollama server started successfully on port {port}.")
-        except subprocess.CalledProcessError as e:
-            messagebox.showerror("Ollama Server Error", f"Failed to start Ollama server: {e}")
-            sys.exit(1)
 
-
-    def wait_for_ollama_server(self, timeout=60, interval=5):
-        """
-        Waits for the Ollama server to be up and running.
-        Args:
-            timeout (int): Maximum time to wait for the server to start (in seconds).
-            interval (int): Time between status checks (in seconds).
-        Returns:
-            bool: True if the server is up, False otherwise.
-        """
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            try:
-                response = requests.get(f"{OLLAMA_API_URL}")
-                if response.status_code == 200:
-                    print("Ollama server is up and running.")
-                    return True
-            except requests.ConnectionError:
-                pass  # Server not up yet
-            time.sleep(interval)
-        return False
 
     
     def check_huggingface_token(self):
@@ -4264,93 +3601,7 @@ class MultimediaSuiteApp:
                 self.huggingface_api_token = token
                 print("Huggingface API token loaded from settings file.")
                 return
-        
-        # If not found, prompt the user to enter it
-        self.prompt_huggingface_token()
     
-    def prompt_huggingface_token(self):
-        """
-        Displays a popup window to prompt the user to enter their Huggingface API token.
-        """
-        popup = tk.Toplevel(self.root)
-        popup.title("Huggingface API Token Required")
-        popup.configure(bg='#0A2239')
-        popup.geometry("500x200")
-        popup.grab_set()  # Make it modal
-
-        label = tk.Label(
-            popup,
-            text="Huggingface API token is required for Ollama.\nPlease enter your Huggingface API token below:",
-            bg='#0A2239',
-            fg='white',
-            font=('Helvetica', 12),
-            justify='left'
-        )
-        label.pack(pady=20, padx=20)
-
-        token_entry = tk.Entry(
-            popup,
-            show='*',
-            width=50,
-            font=('Helvetica', 12)
-        )
-        token_entry.pack(pady=10)
-
-        def save_token():
-            token = token_entry.get().strip()
-            if not token:
-                messagebox.showerror("Input Error", "Huggingface API token cannot be empty.")
-                return
-            # Save to settings.json
-            settings = {}
-            if os.path.exists(SETTINGS_FILE):
-                with open(SETTINGS_FILE, 'r') as f:
-                    try:
-                        settings = json.load(f)
-                    except json.JSONDecodeError:
-                        settings = {}
-            settings['huggingface_api_token'] = token
-            try:
-                with open(SETTINGS_FILE, 'w') as f:
-                    json.dump(settings, f, indent=4)
-                self.huggingface_api_token = token
-                messagebox.showinfo("Token Saved", "Huggingface API token has been saved successfully.")
-                popup.destroy()
-            except Exception as e:
-                messagebox.showerror("Save Error", f"Failed to save the token: {e}")
-
-        save_button = tk.Button(
-            popup,
-            text="Save Token",
-            command=save_token,
-            bg="#28a745",
-            fg='white',
-            font=('Helvetica', 12, 'bold'),
-            activebackground="#1e7e34",
-            activeforeground='white',
-            cursor="hand2",
-            width=15
-        )
-        save_button.pack(pady=10)
-
-    @staticmethod
-    def detect_gpu():
-        """
-        Detects if a GPU is available using torch and returns a boolean value.
-        If a GPU is found, it returns True; otherwise, it returns False.
-        """
-        try:
-            import torch
-            if torch.cuda.is_available():
-                print("GPU detected.")
-                return True
-            else:
-                print("No GPU detected.")
-                return False
-        except ImportError:
-            print("Torch is not installed, assuming no GPU.")
-            return False
-
         
     def build_gui(self):
         # Configure root grid for responsiveness
@@ -4374,7 +3625,7 @@ class MultimediaSuiteApp:
         # Instructions
         self.instructions = tk.Label(
             self.root,
-            text="Enter the desired prompt concept (max 400 characters):",
+            text="Enter the desired prompt concept (max 50,000 characters):",
             bg='#0A2239',
             fg='white',
             font=('Helvetica', 14, 'bold')
@@ -4613,9 +3864,9 @@ class MultimediaSuiteApp:
 
         # Enable or disable buttons based on text length
         if 1 <= char_count <= 50000:
-            enable_button(self.generate_video_prompts_button)
+            self.enable_button(self.generate_video_prompts_button)
         else:
-            disable_button(self.generate_video_prompts_button)
+            self.disable_button(self.generate_video_prompts_button)
             
 
     def generate_videos(self):
@@ -4637,72 +3888,11 @@ class MultimediaSuiteApp:
                 subprocess.run(["git", "clone", "https://github.com/THUDM/CogVideo"], check=True)
                 messagebox.showinfo("Clone Complete", "CogVideo repository successfully cloned.")
 
-            # Check if the virtual environment exists
-            if not os.path.exists(os.path.join(cogvx_venv_path, "Scripts", "activate")):
-                # Create Virtual Environment and Install Dependencies
-                self.create_cogvx_environment(cogvideo_path, cogvx_venv_path)
-
             # Activate Environment and Run the Utility
             self.activate_and_run_utility(cogvideo_path, temporal_script)
 
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
-
-    def create_cogvx_environment(self, cogvideo_path, cogvx_venv_path):
-        try:
-            messagebox.showinfo("Creating Virtual Environment", "Setting up CogVx environment with Python 3.12.")
-
-            # Ensure Python 3.12 is used for this virtual environment
-            subprocess.run(["py", "-3.12", "-m", "venv", cogvx_venv_path], check=True)
-
-            # Install the necessary dependencies for CogVideo
-            pip_executable = os.path.join(cogvx_venv_path, "Scripts", "pip.exe")
-            requirements_file = os.path.join(cogvideo_path, "requirements.txt")
-
-            subprocess.run([pip_executable, "install", "-r", requirements_file], check=True)
-            subprocess.run([pip_executable, "install", "torch==2.0.1+cu118", "torchvision==0.15.2+cu118", "torchaudio==2.0.2+cu118", "--index-url", "https://download.pytorch.org/whl/cu118"], check=True)
-            subprocess.run([pip_executable, "install", "moviepy==2.0.0.dev2"], check=True)
-
-            messagebox.showinfo("Environment Setup Complete", "CogVx environment has been successfully created and dependencies installed.")
-
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to create virtual environment or install dependencies: {e}")
-
-    def activate_and_run_utility(self, cogvideo_path, temporal_script):
-        try:
-            # Clear any residual memory before running the script
-            import torch
-            import gc
-
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                torch.cuda.ipc_collect()
-            gc.collect()
-
-            # Path to the virtual environment's Python executable
-            if platform.system() == "Windows":
-                python_executable = os.path.join(cogvideo_path, "CogVx", "Scripts", "python.exe")
-            else:
-                python_executable = os.path.join(cogvideo_path, "CogVx", "bin", "python")
-
-            # Full path to the TemporalCog script (2b or 5b)
-            temporal_script_path = os.path.join(cogvideo_path, temporal_script)
-
-            # Build the command
-            command = [python_executable, temporal_script_path]
-
-            # Run the script in a new console window and ensure output is visible
-            if platform.system() == "Windows":
-                # Use CREATE_NEW_CONSOLE to open a new console window
-                subprocess.Popen(command, cwd=cogvideo_path, creationflags=subprocess.CREATE_NEW_CONSOLE)
-            else:
-                # For Unix-like systems, run the script normally
-                subprocess.Popen(command, cwd=cogvideo_path)
-
-            messagebox.showinfo("Script Execution", f"{temporal_script} has been started successfully.")
-
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to execute the script: {e}")
 
 
     def create_smart_directory_and_filenames(self, input_concept):
@@ -4749,86 +3939,7 @@ class MultimediaSuiteApp:
         self.build_video_options(self.video_options_window)
 
         
-    def clean_prompt_text(self, prompt_text):
-        """
-        Cleans the prompt text by extracting only the positive and negative sections in the required format.
-        
-        Args:
-            prompt_text (str): The raw prompt text from the model.
-        
-        Returns:
-            str: The cleaned and formatted prompts.
-        """
-        # Split the prompt sets based on the separator
-        prompt_sets = prompt_text.strip().split("--------------------")
 
-        cleaned_prompts = []
-        for prompt_set in prompt_sets:
-            prompt_set = prompt_set.strip()
-            if not prompt_set:
-                continue
-
-            # Match the exact format required (case-insensitive)
-            prompt_match = re.search(r"^positive:\s*(.*?)\nnegative:\s*(.*)", prompt_set, re.DOTALL | re.IGNORECASE)
-            if prompt_match:
-                positive_section = prompt_match.group(1).strip()
-                negative_section = prompt_match.group(2).strip()
-
-                # Ensure negative_section starts with 'Avoid' and ends with a period
-                negative_section = re.sub(r"^-*\s*Avoid\s*", "Avoid ", negative_section, flags=re.MULTILINE | re.IGNORECASE)
-                negative_section = re.sub(r"^\s*\*", "", negative_section)  # Remove any leading asterisks
-
-                if not negative_section.lower().startswith("avoid"):
-                    negative_section = f"Avoid {negative_section}"
-
-                if not negative_section.endswith('.'):
-                    negative_section += '.'
-
-                # Reconstruct the prompt in the exact required format
-                cleaned_prompt = f"positive: {positive_section}\nnegative: {negative_section}"
-                cleaned_prompts.append(cleaned_prompt)
-            else:
-                # If the format doesn't match, skip this prompt set or handle accordingly
-                print(f"Skipping malformed prompt set:\n{prompt_set}")
-                continue
-
-        # Join the cleaned prompts with the separator
-        return "\n--------------------\n".join(cleaned_prompts)
-
-        
-    def ensure_single_negative(self, formatted_prompts):
-        """
-        Ensures that each prompt set contains only one negative statement.
-        Removes any additional negative statements.
-
-        Args:
-            formatted_prompts (str): The concatenated prompts string.
-
-        Returns:
-            str: The cleaned prompts with only one negative per set.
-        """
-        prompt_sets = formatted_prompts.split('--------------------')
-        cleaned_prompts = ""
-
-        for prompt_set in prompt_sets:
-            prompt_set = prompt_set.strip()
-            if not prompt_set:
-                continue
-
-            # Extract one positive and one negative using regex
-            positive_match = re.search(r"positive:\s*(.+)", prompt_set, re.IGNORECASE)
-            negative_matches = re.findall(r"negative:\s*(.+)", prompt_set, re.IGNORECASE)
-
-            if positive_match and negative_matches:
-                positive_prompt = positive_match.group(1).strip()
-                negative_prompt = negative_matches[0].strip()  # Take only the first negative
-                cleaned_prompts += f"positive: {positive_prompt}\nnegative: {negative_prompt}\n--------------------\n"
-            else:
-                # Handle incomplete prompt sets
-                messagebox.showwarning("Formatting Warning", f"Incomplete or malformed prompt detected:\n{prompt_set}")
-                continue
-
-        return cleaned_prompts.strip()
 
     def save_to_file(self, content, file_path):
         """
@@ -4901,18 +4012,6 @@ class MultimediaSuiteApp:
 
         self.build_audio_options(self.audio_options_window)
 
-
-    def contains_year(self, text):
-        """
-        Checks if the provided text contains a four-digit year between 1900 and 2099.
-
-        Args:
-            text (str): The text to check for a year.
-
-        Returns:
-            bool: True if a year is found, False otherwise.
-        """
-        return bool(re.search(r'\b(19|20)\d{2}\b', text))
         
     def get_setting_value(self, var, options_list, random_var, custom_entry_var=None):
         """
@@ -4984,6 +4083,7 @@ class MultimediaSuiteApp:
         In 'Story Mode', first generate a coherent story outline and then create detailed prompts for each scene.
         In 'Non-Story Mode', generate prompts individually without any overlap.
         Incorporates best prompting practices for enhanced prompt quality.
+        Integrates a foundational decade to set the cinematic aesthetics while allowing narrative traversal across multiple decades.
         """
         input_concept = self.input_text.get("1.0", tk.END).strip()
 
@@ -5010,133 +4110,38 @@ class MultimediaSuiteApp:
         generated_prompts = []
         accumulated_story = []  # To store generated scene prompts for context
 
-        # Adjusted System Prompt for Story Mode
-        sys_prompt_story = f"""
-    Intuitively and creatively turn {input_concept} into a series of deeply descriptive, cohesive narrative paragraphs for a set of natural language video prompts. Each prompt set in the prompt list represents a prompt set within the overall story. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY
+        # Retrieve the foundational decade from the dropdown
+        foundational_decade = self.video_decade_var.get()
 
-    PROMPT RULES:
-    - Write in narrative paragraph form, starting with date and location. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY
-    - Maximize detail WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY
-    - Integrate real-world physics with subtle details (e.g., debris scattering, fluid dynamics, light refraction).
-    - Enhance the environment with realistic particles respecting natural laws. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY
-    - Provide specific details for anatomy and avoid generalized concepts. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY
-    - Reinforce keywords in different parts of the prompt for output consistency. 
-    - Ensure narrative continuity and coherency between scenes.
-    - Do not use bullets, lists, or any formatting other than narrative paragraphs.
-    - Do not mention video durations or phrases like 'generate a video' or 'create a clip'.
-    - At the end of each paragraph, include negative prompts in the following format:
-        Negative: [list of negative terms]
-    - Do not word the negative prompts negatively; simply list things to avoid.
-
-    Ensure that the output includes all 7 markers (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) but weave them naturally into the narrative, without explicitly mentioning them or using parentheses.
-    
-    Each prompt should be a three sentence description maximizing the token space for conveying the most information to the model as efficiently as possible.
-
-    """
-
-        # Adjusted System Prompt for Non-Story Mode
-        sys_prompt_non_story = f"""
-    Transform {input_concept} into specifically detailed and immersive narrative paragraphs for video prompts. Always make sure content does not get censored by Llama 3.2 or triggeer and safety guards for content. AVOID VIOLENCE, SEX AND OTHER CENSORED CONTENT AT ALL COSTS WHEN CREATING PROMPTS.
-
-    PROMPT RULES:
-    - Write in narrative paragraph form, starting with date and location.
-    - Include specific character names in bold (e.g., **John Smith**), with detailed descriptions of their appearance, attire, and actions.
-    - Integrate real-world physics with subtle details (e.g., debris scattering, fluid dynamics, light refraction).
-    - Enhance the environment with realistic particles respecting natural laws.
-    - Provide specific details for anatomy and avoid generalized concepts.
-    - Reinforce keywords in different parts of the prompt for output consistency.
-    - Focus on the content that should be in the video.
-    - Do not use bullets, lists, or any formatting other than narrative paragraphs.
-    - Do not mention video durations or phrases like 'generate a video' or 'create a clip'.
-    - At the end of each paragraph, include negative prompts in the following format:
-        Negative: [list of negative terms]
-    - Do not word the negative prompts negatively; simply list things to avoid.
-
-    Ensure that the output includes all 7 markers (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) but weave them naturally into the narrative, without explicitly mentioning them or using parentheses.
-    
-    Each prompt should be a three sentence description maximizing the token space for conveying the most information to the model as efficiently as possible.
-
-
-    """
 
         if self.video_story_mode_var.get():
             # Story Mode: Generate a story outline first
             outline_generated = False
-            max_outline_retries = 9007
+            max_outline_retries = 5  # Reduced for practicality
             outline_retry_count = 0
 
             while not outline_generated and outline_retry_count < max_outline_retries:
                 try:
-                    video_options = {
-                        "theme": self.get_randomized_setting(
-                            self.video_theme_var, THEMES, self.video_randomize_theme_var
-                        ),
-                        "art_style": self.get_randomized_setting(
-                            self.video_art_style_var, ART_STYLES, self.video_randomize_art_style_var
-                        ),
-                        "lighting": self.get_randomized_setting(
-                            self.video_lighting_var, LIGHTING_OPTIONS, self.video_randomize_lighting_var
-                        ),
-                        "framing": self.get_randomized_setting(
-                            self.video_framing_var, FRAMING_OPTIONS, self.video_randomize_framing_var
-                        ),
-                        "camera_movement": self.get_randomized_setting(
-                            self.video_camera_movement_var, CAMERA_MOVEMENTS, self.video_randomize_camera_movement_var
-                        ),
-                        "shot_composition": self.get_randomized_setting(
-                            self.video_shot_composition_var, SHOT_COMPOSITIONS, self.video_randomize_shot_composition_var
-                        ),
-                        "time_of_day": self.get_randomized_setting(
-                            self.video_time_of_day_var, TIME_OF_DAY_OPTIONS, self.video_randomize_time_of_day_var
-                        ),
-                        "camera": self.get_randomized_setting(
-                            self.video_camera_var, CAMERAS.get(self.video_decade_var.get(), []), self.video_randomize_camera_var
-                        ),
-                        "lens": self.get_randomized_setting(
-                            self.video_lens_var, LENSES, self.video_randomize_lens_var
-                        ),
-                        "resolution": self.get_randomized_setting(
-                            self.video_resolution_var, RESOLUTIONS.get(self.video_decade_var.get(), RESOLUTIONS[DECADES[0]]), self.video_randomize_resolution_var
-                        ),
-                        "wildlife_animal": self.get_randomized_setting(
-                            self.wildlife_animal_var, WILDLIFE_ANIMALS, self.video_randomize_wildlife_animal_var, self.wildlife_animal_entry_var
-                        ),
-                        "domesticated_animal": self.get_randomized_setting(
-                            self.domesticated_animal_var, DOMESTICATED_ANIMALS, self.video_randomize_domesticated_animal_var, self.domesticated_animal_entry_var
-                        ),
-                        "soundscape_mode": self.video_soundscape_mode_var.get(),
-                        "holiday_mode": self.video_holiday_mode_var.get(),
-                        "selected_holidays": self.video_holidays_var.get(),
-                        "specific_modes": [mode for mode, var in self.video_specific_modes_vars.items() if var.get()],
-                        "no_people_mode": self.video_no_people_mode_var.get(),
-                        "chaos_mode": self.video_chaos_mode_var.get(),
-                        "remix_mode": self.video_remix_mode_var.get(),
-                        "decade": self.get_randomized_setting(
-                            self.video_decade_var, DECADES, self.video_randomize_decade_var
-                        )
-                    }
-
-                    # Build the base options context for this prompt
-                    current_options_context = [
-                        f"Theme: {video_options['theme']}",
-                        f"Art Style: {video_options['art_style']}",
-                        f"Lighting: {video_options['lighting']}",
-                        f"Framing: {video_options['framing']}",
-                        f"Camera Movement: {video_options['camera_movement']}",
-                        f"Shot Composition: {video_options['shot_composition']}",
-                        f"Time of Day: {video_options['time_of_day']}",
-                        f"Camera: {video_options['camera']}, Lens: {video_options['lens']}",
-                        f"Resolution: {video_options['resolution']}"
-                    ]                                     
                     # Step 1: Generate a story outline with system prompt
                     outline_prompt = (
-                        f"{sys_prompt_story} in {num_prompts} prompt seeds, WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY and leaned towards american consumers, unless otherwise specificed direct prompts towards american actors and settings.\n"
-                        f"You are an expert team of filmmakers, writers and AI experts who is tasked with creating a full story concept based on '{input_concept}'. Please generate a professionally ordered, detailed outline for a family-friendly story divided into exactly {num_prompts} prompt seeds, no more and no less than {num_prompts}."
-                        f"Provide the outline as a numbered list, with each scene on a new line. Do not include any additional text before or after the outline. WITH ANY EXPLICIT CONTENT REPHRASED TO BE FAMILY FRIENDLY. Always follow a character's name with their outfit and obvious behaviour. Always follow the name of a location with a description of it.\n"
-                        f"Do not create a scene that might promote or glorify illegal activities. Do not promote or glorify illegal activities EVER.\n"
-                        f"IF it is older silent film era then inject extra terms to guide it towards that, If it's 60s then guide it towards panavision and technicolor, and the same for all other camera stuff and other variables around the prompt. The idea is to be so intuitive you are creating commercially viable output. Don't reiterate the {input_concept} directly here.\n"
-                        f"Ensure that the outline remains cohesive and masterfully decides on and incorporates one of these three story arcs, The Coming-of-Age Arc (Bildungsroman), The Transformation Arc (Positive Change Arc), or the The Hero's Journey (Monomyth). Always follow a character's name with their outfit and obvious behaviour. Always follow the name of a location with a description of it. These details need to be coherent throughout the story from start to finish.\n"
-                        
+                            f"You are an expert team of filmmakers, writers, and AI experts tasked with creating a fully coherent, organized and professionally ordered story concept from the following concept '{input_concept}' into exactly {num_prompts} prompt seeds. DO NOT DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE EXTREMELY DETAILED VISUAL PROMPTS. Each prompt seed should represent a distinct scene that advances the narrative without repetition or deviation from the original material and all things need to remain coherent and consistent throughout the story. Sometimes the input concept will be about animals, objects, scenes, aliens or anything else that isn't human - IF it is then include specific descriptors to guide the subject towards the intended species and away from human charateristics where desired and always make sure those describing factors are always present in other subsequent prompts to retain coherency across them. DO NOT ever list the PROS or CONS for a camera so token space is always maximized towards the actual scene itself. \n"
+                            f"Provide the outline as a numbered list, with each scene on a new line, starting from 1 up to {num_prompts}. Do not include any additional text before or after the outline. Do not create a scene that might promote or glorify illegal activities. Do not promote or glorify illegal activities EVER.\n"
+                            f"With an acute awareness and keen judhement, inject specific terminology and stylistic elements relevant to the time period, environment, setting and other factors contributing to the visual scene for this concept '{input_concept}'.\n"
+                            f"Utilize expert-level storytelling techniques to maintain narrative coherence, such as foreshadowing, character development arcs, thematic consistency, and logical plot progression that flows seamlessly from one scene to the next. DO NOT DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE EXTREMELY DETAILED VISUAL PROMPTS.\n"
+                            f"Never start with scene titling exposition like 'Scene 4...'. You are not reading the script. You are STRICTLY focus on visual elements and never describing sound, taste, feeling, vibe, context or provide exposition outside of visual descriptors. Do not reiterate the {input_concept} directly. Do not present vague placeholders like 'the unicorn's delicate features and the vibrant colors of the surrounding foliage' and instead describe the specific details for whatever is the subject. Never just say 'baby alien', describe it in detail so the AI knows exactly what to generate. Never presume it knows best. It must explicitely be given visual direction before it can generate reliably. Do not provide additional exposition back towards the user.\n"
+                            f"Ensure that each scene builds upon the previous one and that subjects remain consistent across scenes, you must include cohesive details for the subject across the scenes, maintaining a logical and engaging progression with setting and focus that aligns with the chosen story arc. Incorporate rising action, climax, and resolution appropriately to create a satisfying and commercially viable story.\n"
+                            f"Sometimes the input concept will be about animals, objects, scenes, aliens or something instead of humans. Use descriptive and evocative language to bring characters, aliens or whatever the subject is and it's setting to life.\n"
+                            f"**Additional Constraints to Avoid Common Issues:**\n"
+                            f"1. **Avoid Repetition:** Ensure that each scene introduces new elements or developments. Refrain from repeating characters, settings, or plot points unless it's essential for the narrative progression.\n"
+                            f"2. **Stay True to Original Material:** Align each scene closely with the original concept. Avoid introducing elements that stray from the established theme or setting.\n"
+                            f"3. **Scene Variety:** Incorporate a mix of dialogue-heavy scenes, action sequences, character interactions, and pivotal plot moments to maintain audience engagement.\n"
+                            f"4. **Consistency in Tone and Style:** Maintain a consistent narrative tone and stylistic approach throughout all scenes to ensure a unified story.\n"
+                            f"5. **Character Development:** Ensure that characters evolve logically in response to the events of each scene, reflecting growth or change in alignment with the story arc.\n"
+                            f"6. **Logical Progression:** Each scene should logically follow from the previous one, building towards the climax and resolution without abrupt jumps or inconsistencies.\n"
+                            f"7. **Use of Foreshadowing and Callbacks:** Strategically place hints or references early in the outline that pay off in later scenes, enhancing narrative depth.\n"
+                            f"8. **Clear Objective:** Maintain a clear objective or goal for the protagonist that drives the narrative forward across all prompt seeds.\n"
+                            f"9. **Exact Scene Count:** Confirm that the total number of scenes generated matches exactly {num_prompts}. If the AI stops before reaching the desired count, it should prompt to continue generating the remaining scenes.\n"
+                            f"10. **Numbered List Format:** Ensure each scene is numbered sequentially without skipping numbers. The AI should verify that all numbers from 1 to {num_prompts} are present.\n"
                     )
 
                     # Call the model to generate the outline
@@ -5153,7 +4158,7 @@ class MultimediaSuiteApp:
                         print(f"Temporal Story Outline still generating. Please be patient while I continue putting everything together for you... ({outline_retry_count})")
                 except Exception as e:
                     outline_retry_count += 1
-                    print(f"It looks like there has been an error your generating Temporal Story Outline: {e}. This is not common. Let me go ahead and retry that for you... ({outline_retry_count}/{max_outline_retries})")
+                    print(f"It looks like there has been an error generating Temporal Story Outline: {e}. This is not common. Let me go ahead and retry that for you... ({outline_retry_count}/{max_outline_retries})")
 
             if not outline_generated:
                 messagebox.showerror("Temporal Story Outline FAILED", "I am sorry! It looks like I've failed to generate your Temporal Story Outline after multiple attempts. Please go ahead and start it again. This is pretty rare.")
@@ -5254,7 +4259,7 @@ class MultimediaSuiteApp:
                         if video_options["remix_mode"]:
                             current_options_context.append("Add creative variations in visual styles or thematic choices.")
 
-                        # Prepare a summary of previous scenes
+                        # Prepare a summary of previous scenes for continuity
                         if prompt_index > 1:
                             # Summarize previous prompts without exceeding token limit
                             previous_scenes = "\n".join(
@@ -5266,14 +4271,14 @@ class MultimediaSuiteApp:
 
                         # Construct the detailed prompt with system prompt and user instructions
                         detailed_prompt = (
-                            f" Take {prompt_index}:{scene_description} and create a multi-paragraph, very long, extensive pg-13 friendly, long-form and extremely thorough visual description across a dozen sentences and no less, focusing on the visual scene for it including all specific details and aspects of the scene ensuring every thing is augmented with terms and keywords that further enforce that everything is set within {video_options['decade']} and specific extra words to guide the prompts towards conveying the idea it was shot on a {video_options['camera']} at all times. You are focusing on the visual aspects scene as if describing it to a blind person. Avoid abstract or emotional descriptions. Every prompt must utilize terms to further show it is set in {video_options['decade']} decade. By default use american names, settings, etc unless otherwise specified. DO NOT EVER USE VAGUE LANGUAGE LIKE 'of the era.' instead speak towards known tropes of {video_options['decade']}. DO NOT say stuff like 'capturing every detail of this mystical scene as if I'm describing it to a blind person.' You are only giving me the prompts and the positive prompt should be the visual scene itself in extremely thorough detail. Don't say stuff like 'with a bulky, difficult to transport camera,' instead speak towards how that effects the video itself, etc.\n"
-                            f"Don't say stuff like 'Describe the visually striking...' and just actually describe it in visual detail. ALWAYS INCLUDE extensive details for each of the following within {prompt_index}:{scene_description} (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) in extensive detail and integrated seamlessly into the narrative, traditional exposition is not required, only visual description of the 6 second visual scene is required in the expected temporal order. NEVER PROVIDE SINGLE SENTENCES OR SMALL PARAGRAPHS. Always follow a character's name with their outfit and obvious behaviour. Always follow the name of a location with a description of it. NEVER DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE EXTREMELY DETAILED VISUAL PROMPTS. NO SHORT PARAGRAPHS OR SENTENCES EVER.\n"
-                            f"- To enhance a video generation agent with an expert awareness of real-world physics, it is essential to incorporate principles that simulate environmental interactions and physical dynamics with precision. Lighting and shadows should be rendered to reflect natural light sources, considering their angle, intensity, and spectral properties, while shadows must exhibit accurate occlusion and scattering effects. Material properties should respond realistically to light, with metals showcasing reflectivity and color-dependent sheen, and surfaces like water demonstrating specular reflections and refraction. Environmental dynamics such as wind and fluid interactions must be modeled to influence elements like vegetation, fabric, or smoke, creating a sense of movement that aligns with natural airflow and turbulence. Similarly, gravity and forces should govern object interactions, ensuring that falling leaves, for instance, tumble and accelerate naturally, responding to air resistance. By embedding these nuanced details, the video generation agent can create immersive and visually authentic environments that resonate with real-world physics. NO SHORT PARAGRAPHS OR SENTENCES EVER.n"
-                            f"- All content must be within PG-13 guidelines and always family-friendly. Nothing explicit should be considered and should be replaced with cleaner phrasing. Each prompt should be a three sentence description maximizing the token space for conveying the most information to the model as efficiently as possible.\n"
-                            f"Generate exactly one Positive Prompt and one Negative Prompt as a Prompt Set for [idx]\n"
-                            f"Positive: [ALWAYS START WITH THE DECADE AND CAMERA LIKE 'Positive: Set in ['decade'], shot on a ['camera']...'] DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL. This should be as detailed as possible. NO SHORT PARAGRAPHS OR SENTENCES EVER."
-                            f"Negative: [A masterfully crafted negative prompt to compliment {prompt_index}:{scene_description}.] ONLY PRESENT IN STRAIGHT-FORWARD LIST FORMAT LIKE 'Blurry background figures, misaligned or awkward features, deformed limbs, distracting backgrounds, cluttered scenes' without exposition or reasoning or explantion. Just provide an optimized list with commas between each, never use dashes or dots or anything else besides commas. YOU CAN NOT mention names, titles or any specific character information or give full english directions in any way. Do not express or write anything that should be. Make sure the list takes into account specifics to {prompt_index}:{scene_description}. Most women don't have facial hair for example, etc. DO NOT EVER PROVIDE IN BULLETED FORM.]\n"
-
+                            f"{previous_scenes_summary}"
+                            f"Take Scene {prompt_index}: {scene_description} and create a multi-paragraph, very long, extensive PG-13 friendly, long-form and extremely thorough visual description across a dozen sentences and no less, focusing on the visual scene for it including all specific details and aspects of the scene ensuring everything is augmented with terms and keywords that further enforce that everything is set within {foundational_decade} and specific extra words to guide the prompts towards conveying the idea it was shot on a {video_options['camera']} at all times. DO NOT DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE EXTREMELY DETAILED VISUAL PROMPTS. You are focusing on the visual aspects of the scene as if describing it to a blind person. Avoid abstract or emotional descriptions. Every prompt must utilize terms to further show it is set in the {foundational_decade} decade. Sometimes the input concept will be about animals, objects, scenes, aliens or anything else that isn't human - IF it is then include specific descriptors to guide the subject towards the intended species and away from human charateristics where desired and always make sure those describing factors are always present in other subsequent prompts to retain coherency across them. DO NOT ever list the PROS or CONS for a camera so token space is always maximized towards the actual scene itself. DO NOT EVER USE VAGUE LANGUAGE LIKE 'of the era.' Instead, speak towards known tropes of the {foundational_decade} decade. DO NOT say stuff like 'capturing every detail of this mystical scene as if I'm describing it to a blind person.' You are only giving me the prompts, and the positive prompt should be the visual scene itself in extremely thorough detail. Don't say stuff like 'with a bulky, difficult to transport camera,' instead speak towards how that affects the video itself, etc. Ensure that each scene builds upon the previous one and that subjects remain consistent across scenes, you must include cohesive details for the subject across the scenes, maintaining a logical and engaging progression with setting and focus that aligns with the chosen story arc.\n"
+                            f"Don't say stuff like 'Describe the visually striking...' and just actually describe it in visual detail. ALWAYS INCLUDE extensive details for each of the following within Scene {prompt_index}: (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) in extensive detail and integrated seamlessly into the narrative. Traditional exposition is not required; only visual description of the scene is required in the expected temporal order. NEVER PROVIDE SINGLE SENTENCES OR SMALL PARAGRAPHS. Always follow a character's name with their outfit and obvious behavior if they're human. If they're non-human then describe they're physical features. Always follow the name of a location with a description of it. DO NOT DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE EXTREMELY DETAILED VISUAL PROMPTS. NO SHORT PARAGRAPHS OR SENTENCES EVER.\n"
+                            f"- To enhance a video generation agent with an expert awareness of real-world physics, it is essential to incorporate principles that simulate environmental interactions and physical dynamics with precision. Lighting and shadows should be rendered to reflect natural light sources, considering their angle, intensity, and spectral properties, while shadows must exhibit accurate occlusion and scattering effects. Material properties should respond realistically to light, with metals showcasing reflectivity and color-dependent sheen, and surfaces like water demonstrating specular reflections and refraction. Environmental dynamics such as wind and fluid interactions must be modeled to influence elements like vegetation, fabric, or smoke, creating a sense of movement that aligns with natural airflow and turbulence. Similarly, gravity and forces should govern object interactions, ensuring that falling leaves, for instance, tumble and accelerate naturally, responding to air resistance. By embedding these nuanced details, the video generation agent can create immersive and visually authentic environments that resonate with real-world physics. NO SHORT PARAGRAPHS OR SENTENCES EVER.\n"
+                            f"- All content must be within PG-13 guidelines and always family-friendly. Nothing explicit should be considered and should be replaced with cleaner phrasing. Each prompt should be a three-sentence description maximizing the token space for conveying the most information to the model as efficiently as possible.\n"
+                            f"Generate exactly one Positive Prompt and one Negative Prompt as a Prompt Set for Scene {prompt_index}\n"
+                            f"Positive: Set in {foundational_decade}, shot on a {video_options['camera']}... [Detailed visual description follows]\n"
+                            f"Negative: Blurry background figures, misaligned or awkward features, deformed limbs, distracting backgrounds, cluttered scenes\n"
                         )
 
                         # Call the model to generate the detailed video prompt
@@ -5324,8 +4329,8 @@ class MultimediaSuiteApp:
                     messagebox.showerror("Prompt Generation Error", f"Failed to generate a valid prompt after {max_retries} attempts for prompt {prompt_index}.")
                     return  # Exit the function if unable to generate valid prompts
 
+    # Non-Story Mode
         else:
-            # Non-Story Mode
             for prompt_index in range(1, num_prompts + 1):
                 retry_count = 0
                 max_retries = 12  # Set a maximum number of retries
@@ -5420,14 +4425,13 @@ class MultimediaSuiteApp:
 
                         # Construct the detailed prompt with system prompt and user instructions
                         detailed_prompt = (
-                            f" Take {prompt_index}:{scene_description} and create an extensive pg-13 friendly, long-form and extremely thorough visual description across a dozen sentences focusing on the visual scene for it including all specific details and aspects of the scene ensuring every thing is augmented with terms and keywords that further enforce that everything is set within {video_options['decade']} and specific extra words to guide the prompts towards conveying the idea it was shot on a {video_options['camera']} at all times as if describing it to a blind person. Avoid abstract or emotional descriptions. Every prompt must utilize terms to further show it is set in {video_options['decade']} decade. Always use traditional american names, characters, tones, settings, etc unless otherwise specified. DO NOT EVER USE VAGUE LANGUAGE LIKE 'of the era.' instead speak towards known tropes of {video_options['decade']}. DO NOT say stuff like 'capturing every detail of this mystical scene as if I'm describing it to a blind person.' You are only giving me the prompts and the positive prompt should be the visual scene itself in extremely thorough detail. Don't say stuff like 'with a bulky, difficult to transport camera,' instead speak towards how that effects the video itself, etc.\n"
-                            f"NEVER USE phrasing like 'Describe the visually striking...' INSTEAD you should actually give the full describption in visual detail. ALWAYS INCLUDE extensive details for each of the following within {prompt_index}:{scene_description} (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) in extensive detail and integrated seamlessly into the narrative, traditional exposition is not required, only visual description of the 6 second visual scene is required in the expected temporal order. NEVER PROVIDE SINGLE SENTENCES OR SMALL PARAGRAPHS. Always follow a character's name with their outfit and obvious behaviour. Always follow the name of a location with a description of it. NEVER DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE EXTREMELY DETAILED VISUAL PROMPTS. NO SHORT PARAGRAPHS OR SENTENCES EVER.\n"
-                            f"- To enhance a video generation agent with an expert awareness of real-world physics, it is essential to incorporate principles that simulate environmental interactions and physical dynamics with precision. Lighting and shadows should be rendered to reflect natural light sources, considering their angle, intensity, and spectral properties, while shadows must exhibit accurate occlusion and scattering effects. Material properties should respond realistically to light, with metals showcasing reflectivity and color-dependent sheen, and surfaces like water demonstrating specular reflections and refraction. Environmental dynamics such as wind and fluid interactions must be modeled to influence elements like vegetation, fabric, or smoke, creating a sense of movement that aligns with natural airflow and turbulence. Similarly, gravity and forces should govern object interactions, ensuring that falling leaves, for instance, tumble and accelerate naturally, responding to air resistance. By embedding these nuanced details, the video generation agent can create immersive and visually authentic environments that resonate with real-world physics. NO SHORT PARAGRAPHS OR SENTENCES EVER.n"
-                            f"- All content must be within PG-13 guidelines and always family-friendly. Nothing explicit should be considered and should be replaced with cleaner phrasing. Each prompt should be a three sentence description maximizing the token space for conveying the most information to the model as efficiently as possible.\n"
-                            f"Generate exactly one Positive Prompt and one Negative Prompt as a Prompt Set for [idx]\n"
-                            f"Positive: [ALWAYS START WITH THE DECADE AND CAMERA LIKE 'Positive: Set in ['decade'], shot on a ['camera']...'] DO NOT INCLUDE PROS AND CONS FOR THE CAMERA MODEL. This should be as detailed as possible. NO SHORT PARAGRAPHS OR SENTENCES EVER."
-                            f"Negative: [A masterfully crafted negative prompt to compliment {prompt_index}:{scene_description}.] ONLY PRESENT IN STRAIGHT-FORWARD LIST FORMAT LIKE 'Blurry background figures, misaligned or awkward features, deformed limbs, distracting backgrounds, cluttered scenes' without exposition or reasoning or explantion. Just provide an optimized list with commas between each, never use dashes or dots or anything else besides commas. YOU CAN NOT mention names, titles or any specific character information or give full english directions in any way. Do not express or write anything that should be. Make sure the list takes into account specifics to {prompt_index}:{scene_description}. Most women don't have facial hair for example, etc. DO NOT EVER PROVIDE IN BULLETED FORM.]\n"
-
+                            f"Take Prompt {prompt_index}: {input_concept} and create an extensive PG-13 friendly, long-form and extremely thorough visual description across a dozen sentences focusing on the visual scene for it including all specific details and aspects of the scene ensuring everything is augmented with terms and keywords that further enforce that everything is set within the {foundational_decade} decade and specific extra words to guide the prompts towards conveying the idea it was shot on a {video_options['camera']} at all times as if describing it to a blind person. Avoid abstract or emotional descriptions. Every prompt must utilize terms to further show it is set in the {foundational_decade} decade. DO NOT DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE EXTREMELY DETAILED VISUAL PROMPTS. You are focusing on the visual aspects of the scene as if describing it to a blind person. Avoid abstract or emotional descriptions. Every prompt must utilize terms to further show it is set in the {foundational_decade} decade. Sometimes the input concept will be about animals, objects, scenes, aliens or anything else that isn't human - IF it is then include specific descriptors to guide the subject towards the intended species and away from human charateristics where desired and always make sure those describing factors are always present in other subsequent prompts to retain coherency across them. DO NOT ever list the PROS or CONS for a camera so token space is always maximized towards the actual scene itself. DO NOT EVER USE VAGUE LANGUAGE LIKE 'of the era.' Instead, speak towards known tropes of the {foundational_decade} decade. DO NOT say stuff like 'capturing every detail of this mystical scene as if I'm describing it to a blind person.' You are only giving me the prompts, and the positive prompt should be the visual scene itself in extremely thorough detail. Don't say stuff like 'with a bulky, difficult to transport camera,' instead speak towards how that affects the video itself, etc. Ensure that each scene builds upon the previous one and that subjects remain consistent across scenes, you must include cohesive details for the subject across the scenes, maintaining a logical and engaging progression with setting and focus that aligns with the chosen story arc.\n"
+                            f"Don't say stuff like 'Describe the visually striking...' and just actually describe it in visual detail. ALWAYS INCLUDE extensive details for each of the following within Scene {prompt_index}: (Camera Language, Framing Angle, Lighting, Subject Description, Subject Movement, Scene Description, Atmosphere) in extensive detail and integrated seamlessly into the narrative. Traditional exposition is not required; only visual description of the scene is required in the expected temporal order. NEVER PROVIDE SINGLE SENTENCES OR SMALL PARAGRAPHS. Always follow a character's name with their outfit and obvious behavior if they're human. If they're non-human then describe they're physical features. Always follow the name of a location with a description of it. DO NOT DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE EXTREMELY DETAILED VISUAL PROMPTS. NO SHORT PARAGRAPHS OR SENTENCES EVER.\n"
+                            f"- To enhance a video generation agent with an expert awareness of real-world physics, it is essential to incorporate principles that simulate environmental interactions and physical dynamics with precision. Lighting and shadows should be rendered to reflect natural light sources, considering their angle, intensity, and spectral properties, while shadows must exhibit accurate occlusion and scattering effects. Material properties should respond realistically to light, with metals showcasing reflectivity and color-dependent sheen, and surfaces like water demonstrating specular reflections and refraction. Environmental dynamics such as wind and fluid interactions must be modeled to influence elements like vegetation, fabric, or smoke, creating a sense of movement that aligns with natural airflow and turbulence. Similarly, gravity and forces should govern object interactions, ensuring that falling leaves, for instance, tumble and accelerate naturally, responding to air resistance. By embedding these nuanced details, the video generation agent can create immersive and visually authentic environments that resonate with real-world physics. NO SHORT PARAGRAPHS OR SENTENCES EVER.\n"
+                            f"- All content must be within PG-13 guidelines and always family-friendly. Nothing explicit should be considered and should be replaced with cleaner phrasing. Each prompt should be a three-sentence description maximizing the token space for conveying the most information to the model as efficiently as possible.\n"
+                            f"Generate exactly one Positive Prompt and one Negative Prompt as a Prompt Set for Scene {prompt_index}\n"
+                            f"Positive: Set in {foundational_decade}, shot on a {video_options['camera']}... [Detailed visual description follows]\n"
+                            f"Negative: Blurry background figures, misaligned or awkward features, deformed limbs, distracting backgrounds, cluttered scenes\n"
                         )
 
                         # Call the model to generate the detailed video prompt
@@ -5509,6 +4513,7 @@ class MultimediaSuiteApp:
         except Exception as e:
             messagebox.showerror("Prompt Generation Error", f"Failed to save video prompts: {e}")
             print(f"Error saving video prompts: {e}")
+
 
     def extract_character_names(self, prompt):
         """
@@ -5795,428 +4800,6 @@ class MultimediaSuiteApp:
             else:
                 print("settings.json already contains 'huggingface_api_token'.")
             
-    def select_video_file(self, frame, index):
-        """
-        Allows the user to select a video file for a specific video prompt.
-
-        Args:
-            frame (ttk.LabelFrame): The frame containing the video prompt.
-            index (int): The index of the video prompt.
-        """
-        file_path = filedialog.askopenfilename(
-            title=f"Select Video File for Prompt Set {index}",
-            filetypes=[("Video Files", "*.mp4 *.avi *.mov *.mkv")]
-        )
-        if file_path:
-            frame.video_file_var.set(file_path)
-            
-    from playsound import playsound
-
-    def play_audio(self, audio_prompt):
-        """
-        Plays the given audio prompt. Assumes that audio prompts are stored as MP3 files in the audio folder.
-
-        Args:
-            audio_prompt (str): The audio prompt text to be played.
-        """
-        try:
-            # Map the audio prompt text to its corresponding MP3 file.
-            # This assumes that audio files are named uniquely based on the prompt.
-            # Adjust this mapping based on your actual audio file naming convention.
-            sanitized_prompt = re.sub(r'[^\w\s-]', '', audio_prompt).strip().replace(' ', '_')[:50]
-            audio_filename = f"{sanitized_prompt}.mp3"
-            audio_file_path = os.path.join(self.audio_save_folder, audio_filename)
-
-            if os.path.exists(audio_file_path):
-                playsound(audio_file_path)
-            else:
-                messagebox.showerror("Audio Playback Error", f"Audio file not found: {audio_file_path}")
-                print(f"Audio file not found: {audio_file_path}")
-        except Exception as e:
-            messagebox.showerror("Audio Playback Error", f"Failed to play audio prompt: {e}")
-            print(f"Error playing audio: {e}")
-
-    def associate_media(self):
-        """
-        Opens a popup window to associate video files with their respective audio prompts.
-        Allows users to preview and select audio prompts for each video prompt set.
-        """
-        if not self.video_prompts or not self.audio_prompts:
-            messagebox.showerror("Media Association Error", "Please generate both video and audio prompts before associating media.")
-            return
-
-        # Create the popup window
-        popup = tk.Toplevel(self.root)
-        popup.title("Associate Media")
-        popup.geometry("900x700")
-        popup.grab_set()  # Make the popup modal
-
-        # Instructions
-        instructions = tk.Label(
-            popup,
-            text="Associate each video prompt with its corresponding video file and select an audio prompt variant.",
-            wraplength=850,
-            justify="left",
-            bg='#0A2239',
-            fg='white',
-            font=('Helvetica', 12, 'bold')
-        )
-        instructions.pack(pady=10)
-
-        # Create a frame with a scrollbar to hold all associations
-        canvas = tk.Canvas(popup, bg='#0A2239')
-        scrollbar = ttk.Scrollbar(popup, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(
-                scrollregion=canvas.bbox("all")
-            )
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor='nw')
-
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        # List to store user selections
-        self.media_associations = []
-
-        # Iterate over each video prompt set
-        for idx, (video_prompt, audio_prompts) in enumerate(zip(
-            [p.strip() for p in self.video_prompts.split("--------------------") if p.strip()],
-            self.audio_prompts
-        ), start=1):
-            # Frame for each association
-            frame = ttk.LabelFrame(scrollable_frame, text=f"Prompt Set {idx}", padding=10)
-            frame.pack(fill="x", padx=10, pady=5)
-
-            # Display the video prompt
-            prompt_label = tk.Label(
-                frame,
-                text=f"Prompt:\n{video_prompt}",
-                wraplength=800,
-                justify="left",
-                bg='#0A2239',
-                fg='white',
-                font=('Helvetica', 10)
-            )
-            prompt_label.pack(anchor='w')
-
-            # Select Video File
-            select_video_btn = tk.Button(
-                frame,
-                text="Select Video File",
-                command=lambda f=frame, i=idx: self.select_video_file(f, i),
-                bg="#007bff",
-                fg='white',
-                font=('Helvetica', 10, 'bold'),
-                cursor="hand2"
-            )
-            select_video_btn.pack(anchor='w', pady=5)
-
-            # Label to show selected video file path
-            video_file_var = tk.StringVar()
-            video_file_label = tk.Label(
-                frame,
-                textvariable=video_file_var,
-                wraplength=800,
-                justify="left",
-                bg='#0A2239',
-                fg='light gray',
-                font=('Helvetica', 10, 'italic')
-            )
-            video_file_label.pack(anchor='w')
-
-            # Audio Prompt Selection
-            audio_selection_label = tk.Label(
-                frame,
-                text="Select Audio Prompt Variant:",
-                bg='#0A2239',
-                fg='white',
-                font=('Helvetica', 10, 'bold')
-            )
-            audio_selection_label.pack(anchor='w', pady=(10, 0))
-
-            audio_prompts_frame = ttk.Frame(frame)
-            audio_prompts_frame.pack(fill="x", padx=10, pady=5)
-
-            # Variable to store selected audio index
-            selected_audio_var = tk.IntVar()
-            selected_audio_var.set(-1)  # No selection by default
-
-            for a_idx, audio_prompt in enumerate(audio_prompts, start=1):
-                # Frame for each audio variant
-                audio_frame = tk.Frame(audio_prompts_frame, bg='#0A2239')
-                audio_frame.pack(fill="x", padx=5, pady=2)
-
-                # Radio button for selection
-                radio_btn = tk.Radiobutton(
-                    audio_frame,
-                    text=f"Variant {a_idx}",
-                    variable=selected_audio_var,
-                    value=a_idx-1,  # Zero-based index
-                    bg='#0A2239',
-                    fg='white',
-                    selectcolor='#0A2239',
-                    activebackground='#0A2239',
-                    activeforeground='white'
-                )
-                radio_btn.pack(side="left")
-
-                # Button to play audio (implements playback)
-                play_btn = tk.Button(
-                    audio_frame,
-                    text="Play",
-                    command=lambda ap=audio_prompt: self.play_audio(ap),
-                    bg="#28a745",
-                    fg='white',
-                    font=('Helvetica', 8, 'bold'),
-                    cursor="hand2"
-                )
-                play_btn.pack(side="left", padx=5)
-
-                # Display the audio prompt text
-                audio_text = tk.Label(
-                    audio_frame,
-                    text=f"{audio_prompt}",
-                    wraplength=600,
-                    justify="left",
-                    bg='#0A2239',
-                    fg='light gray',
-                    font=('Helvetica', 10)
-                )
-                audio_text.pack(side="left", padx=5)
-
-            # Store the selection variables in the frame for later access
-            frame.audio_var = selected_audio_var
-            frame.video_file_var = video_file_var
-
-        # Save Associations Button
-        save_btn = tk.Button(
-            popup,
-            text="Save Associations",
-            command=lambda: self.save_media_associations(popup),
-            bg="#28a745",
-            fg='white',
-            font=('Helvetica', 12, 'bold'),
-            cursor="hand2",
-            width=20,
-            height=2
-        )
-        save_btn.pack(pady=10)
-
-
-    def select_video_file(self, frame, index):
-        """
-        Allows the user to select a video file for a specific video prompt.
-
-        Args:
-            frame (ttk.LabelFrame): The frame containing the video prompt.
-            index (int): The index of the video prompt.
-        """
-        file_path = filedialog.askopenfilename(
-            title=f"Select Video File for Prompt {index}",
-            filetypes=[("Video Files", "*.mp4 *.avi *.mov *.mkv")]
-        )
-        if file_path:
-            frame.video_file_var.set(file_path)
-
-    def play_audio(self, audio_prompt):
-        """
-        Plays the given audio prompt. Placeholder implementation.
-        You need to implement actual audio playback based on your environment and requirements.
-
-        Args:
-            audio_prompt (str): The audio prompt text to be played.
-        """
-        # Placeholder: Print a message or implement actual audio playback if audio files are available
-        print(f"Playing audio prompt: {audio_prompt}")
-        # Example using simple text-to-speech (optional, requires additional packages)
-        # import pyttsx3
-        # engine = pyttsx3.init()
-        # engine.say(audio_prompt)
-        # engine.runAndWait()
-
-    def save_media_associations(self, popup):
-        """
-        Saves the user's media associations and closes the popup.
-
-        Args:
-            popup (tk.Toplevel): The popup window.
-        """
-        associations = []
-        for idx, (video_prompt, audio_prompts) in enumerate(zip(
-            [p.strip() for p in self.video_prompts.split("--------------------") if p.strip()],
-            self.audio_prompts
-        ), start=1):
-            frame = self.get_frame_by_index(popup, idx)
-            if not frame:
-                continue
-
-            video_file = frame.video_file_var.get()
-            selected_audio_idx = frame.audio_var.get()
-
-            if not video_file:
-                messagebox.showwarning("Association Incomplete", f"No video file selected for Prompt Set {idx}. Skipping.")
-                continue
-
-            if selected_audio_idx == -1 or selected_audio_idx >= len(audio_prompts):
-                messagebox.showwarning("Association Incomplete", f"No audio prompt selected for Prompt Set {idx}. Skipping.")
-                continue
-
-            selected_audio_prompt = audio_prompts[selected_audio_idx]
-
-            # Assume that audio files are named based on sanitized prompts
-            sanitized_audio_prompt = re.sub(r'[^\w\s-]', '', selected_audio_prompt).strip().replace(' ', '_')[:50]
-            audio_filename = f"{sanitized_audio_prompt}.mp3"
-            audio_file_path = os.path.join(self.audio_save_folder, audio_filename)
-
-            if not os.path.exists(audio_file_path):
-                messagebox.showwarning("Audio File Missing", f"Audio file not found for Prompt Set {idx}: {audio_file_path}. Skipping.")
-                continue
-
-            associations.append({
-                "video_prompt": video_prompt,
-                "video_file": video_file,
-                "audio_file": audio_file_path
-            })
-
-        if not associations:
-            messagebox.showwarning("No Associations", "No valid media associations were saved.")
-            popup.destroy()
-            return
-
-        self.media_associations = associations
-        messagebox.showinfo("Associations Saved", "Media associations have been saved successfully.")
-        popup.destroy()
-
-
-    def get_frame_by_index(self, popup, index):
-        """
-        Retrieves the frame associated with a given video prompt index within the popup.
-
-        Args:
-            popup (tk.Toplevel): The popup window.
-            index (int): The index of the video prompt.
-
-        Returns:
-            ttk.LabelFrame or None: The corresponding frame or None if not found.
-        """
-        # Iterate through the children of the scrollable_frame to find the matching frame
-        for child in popup.winfo_children():
-            if isinstance(child, tk.Canvas):
-                canvas_children = child.winfo_children()
-                for canvas_child in canvas_children:
-                    if isinstance(canvas_child, ttk.Frame):
-                        for label_frame in canvas_child.winfo_children():
-                            if isinstance(label_frame, ttk.LabelFrame) and label_frame.cget("text") == f"Prompt Set {index}":
-                                return label_frame
-        return None
-
-
-    def play_audio(self, audio_prompt):
-        """
-        Plays the given audio prompt. Placeholder implementation.
-        You need to implement actual audio playback based on your environment and requirements.
-
-        Args:
-            audio_prompt (str): The audio prompt text to be played.
-        """
-        # Placeholder: Print a message or implement actual audio playback if audio files are available
-        print(f"Playing audio prompt: {audio_prompt}")
-        # Example using simple text-to-speech (optional, requires additional packages)
-        # import pyttsx3
-        # engine = pyttsx3.init()
-        # engine.say(audio_prompt)
-        # engine.runAndWait()
-
-
-    def check_coherency_with_ollama(video_prompts, audio_prompts):
-        """
-        Checks the coherency between video and audio prompts using Ollama and returns a score between 0 and 1.
-
-        Args:
-            video_prompts (list of str): List of positive video prompts.
-            audio_prompts (list of str): List of generated audio prompts.
-
-        Returns:
-            float: Average coherency score between 0 and 1.
-        """
-        score = 0
-        count = min(len(video_prompts), len(audio_prompts))
-
-        for i in range(count):
-            try:
-                system_prompt = "You are an AI assistant that evaluates the coherency between a video prompt and an audio prompt. Rate the coherency on a scale from 0 to 1."
-                user_prompt = f"Video Prompt: {video_prompts[i]}\nAudio Prompt: {audio_prompts[i]}\n\nProvide a coherency score between 0 and 1."
-
-                full_prompt = f"{system_prompt}\n\n{user_prompt}"
-
-                # Execute Ollama command to get the coherency score using llama3.1
-                process = subprocess.Popen(
-                    ["ollama", "run", "llama3.2", "--prompt"],
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
-                )
-                stdout, stderr = process.communicate(input=full_prompt)
-
-                if process.returncode != 0:
-                    raise Exception(f"Ollama Error: {stderr.strip()}")
-
-                response = stdout.strip()
-
-                # Extract the float score from the response
-                coherency_score_match = re.search(r"(\d\.\d+)", response)
-                if coherency_score_match:
-                    coherency_score = float(coherency_score_match.group(1))
-                    score += coherency_score
-                else:
-                    raise ValueError("No valid coherency score found in the response.")
-
-            except Exception as e:
-                print(f"Error in coherency check with Ollama: {e}")
-                continue
-
-        average_score = score / count if count > 0 else 0
-        return average_score
-        
-    def invert_positive_negative(self, formatted_prompts):
-        """
-        Inverts the positive and negative prompts for Chaos Mode.
-
-        Args:
-            formatted_prompts (str): The concatenated prompts string.
-
-        Returns:
-            str: The inverted prompts string.
-        """
-        prompt_sets = formatted_prompts.split('--------------------')
-        inverted_prompts = ""
-
-        for prompt_set in prompt_sets:
-            prompt_set = prompt_set.strip()
-            if not prompt_set:
-                continue
-
-            positive_match = re.search(r"positive:\s*(.+)", prompt_set, re.IGNORECASE)
-            negative_match = re.search(r"negative:\s*(.+)", prompt_set, re.IGNORECASE)
-
-            if positive_match and negative_match:
-                positive_prompt = positive_match.group(1).strip()
-                negative_prompt = negative_match.group(1).strip()
-                # Swap positive and negative
-                inverted_prompts += f"positive: {negative_prompt}\nnegative: {positive_prompt}\n--------------------\n"
-            else:
-                continue
-
-        return inverted_prompts.strip()
-
     def enable_button(self, button):
         """
         Enables the given button widget.
@@ -6436,158 +5019,6 @@ class MultimediaSuiteApp:
             return ""
 
 
-    def ensure_audioldm2_installed(self):
-        """
-        Ensures that AudioLDM2 and torchaudio are installed as Python modules.
-        If not, attempts to install them. Also checks for system dependencies.
-        """
-        try:
-            import audioldm2
-            import torchaudio
-            print("AudioLDM2 and torchaudio are installed.")
-        except ImportError as e:
-            missing_package = str(e).split("'")[1]
-            response = messagebox.askyesno(
-                "Missing Dependency",
-                f"The package '{missing_package}' is not installed. Would you like to install it now?"
-            )
-            if response:
-                try:
-                    subprocess.check_call([sys.executable, '-m', 'pip', 'install', missing_package])
-                    messagebox.showinfo("Installation Complete", f"'{missing_package}' has been installed successfully.")
-                except subprocess.CalledProcessError as install_error:
-                    messagebox.showerror("Installation Error", f"Failed to install '{missing_package}':\n{install_error}")
-                    sys.exit(1)
-            else:
-                messagebox.showwarning("Dependency Required", f"'{missing_package}' is required to generate sound effects. Exiting...")
-                sys.exit(1)
-
-        # Ensure torchaudio is installed and matches torch version
-        try:
-            import torch
-            import torchaudio
-
-            # Check if torch and torchaudio versions are compatible
-            torch_version = torch.__version__.split('+')[0]
-            torchaudio_version = torchaudio.__version__.split('+')[0]
-
-            if not torchaudio_version.startswith(torch_version[:5]):
-                raise ImportError("torchaudio version does not match torch version.")
-
-            print(f"torch version: {torch_version}, torchaudio version: {torchaudio_version}")
-
-        except ImportError as e:
-            response = messagebox.askyesno(
-                "torchaudio Issue",
-                f"torchaudio is missing or incompatible: {e}\nWould you like to reinstall torchaudio now?"
-            )
-            if response:
-                try:
-                    # Determine if the system has CUDA support
-                    try:
-                        import torch
-                        cuda_available = torch.cuda.is_available()
-                    except:
-                        cuda_available = False
-
-                    if cuda_available:
-                        # Example for CUDA 11.8; adjust based on your system
-                        subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'torch', 'torchaudio', '--extra-index-url', 'https://download.pytorch.org/whl/cu118'])
-                    else:
-                        subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'torch', 'torchaudio', '--extra-index-url', 'https://download.pytorch.org/whl/cpu'])
-
-                    messagebox.showinfo("Reinstallation Complete", "torchaudio has been reinstalled successfully.")
-
-                    # Re-import to verify
-                    import torchaudio
-                    print(f"Reinstalled torchaudio version: {torchaudio.__version__}")
-
-                except subprocess.CalledProcessError as e:
-                    messagebox.showerror("Reinstallation Error", f"Failed to reinstall torchaudio:\n{e}")
-                    sys.exit(1)
-            else:
-                messagebox.showwarning("torchaudio Required", "torchaudio is required for AudioLDM2. Exiting...")
-                sys.exit(1)
-
-        # Check for Microsoft Visual C++ Redistributable
-        if not self.check_visual_cplusplus_installed():
-            response = messagebox.askyesno(
-                "Missing Dependency",
-                "Microsoft Visual C++ Redistributable is not installed. It's required for torchaudio.\nWould you like to download it now?"
-            )
-            if response:
-                try:
-                    webbrowser.open_new("https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170")
-                    messagebox.showinfo("Install Visual C++", "Please install the Microsoft Visual C++ Redistributable from your browser and restart the application.")
-                    sys.exit(1)
-                except Exception as e:
-                    messagebox.showerror("Download Error", f"Failed to open the browser for downloading Visual C++ Redistributable:\n{e}")
-                    sys.exit(1)
-            else:
-                messagebox.showwarning("Dependency Required", "Microsoft Visual C++ Redistributable is required for torchaudio. Exiting...")
-                sys.exit(1)
-
-    def check_visual_cplusplus_installed(self):
-        """
-        Checks if the Microsoft Visual C++ Redistributable is installed.
-        This is a basic check by looking for common registry entries.
-        """
-        import winreg
-
-        try:
-            registry = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
-            key = winreg.OpenKey(registry, r"SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64")
-            value, regtype = winreg.QueryValueEx(key, "Installed")
-            winreg.CloseKey(key)
-            return value == 1
-        except FileNotFoundError:
-            return False
-        except Exception as e:
-            print(f"Error checking Visual C++ Redistributable: {e}")
-            return False
-
-            
-    def run_audioldm2(self, prompt_text, output_filename, index):
-        try:
-            # Determine device
-            device = "cuda" if self.detect_gpu() else "cpu"
-            
-            # Construct the AudioLDM2 command
-            command = [
-                sys.executable, '-m', 'audioldm2',
-                '-t', prompt_text,
-                '-s', output_filename,
-                '--model_name', self.audio_model_name_var.get(),
-                '--device', device,  # Correctly set device
-                '--ddim_steps', str(self.audio_ddim_steps_var.get()),
-                '--guidance_scale', str(self.audio_guidance_scale_var.get()),
-                '--duration', str(self.duration),
-                '--n_candidate_gen_per_text', str(self.audio_n_candidate_var.get()),
-                '--seed', str(self.audio_seed_var.get()),
-                '--mode', 'generation'
-            ]
-
-            print(f"[AudioLDM2] Executing command: {' '.join(command)}")
-            result = subprocess.run(
-                command,
-                check=True,
-                capture_output=True,
-                text=True,
-                env=os.environ.copy()  # Inherit environment variables
-            )
-            print(f"[AudioLDM2] Generated sound effect for prompt {index}: {prompt_text}")
-        except subprocess.CalledProcessError as e:
-            print(f"[AudioLDM2 Error] Failed to generate sound effect for prompt {index}: {e.stderr}")
-            messagebox.showerror("AudioLDM2 Error", f"Failed to generate sound effect for prompt {index}.\nError: {e.stderr}")
-        except Exception as e:
-            print(f"[AudioLDM2 Error] Unexpected error for prompt {index}: {e}")
-            messagebox.showerror("AudioLDM2 Error", f"Failed to generate sound effect for prompt {index}.\nError: {e}")
-        finally:
-            # Update progress bar
-            self.progress_bar['value'] = index
-            self.progress_window.update_idletasks()
-
-
     def ask_for_prompt_list(self, prompt_type='video'):
         """
         Opens a file dialog to select a prompt list based on the prompt type.
@@ -6709,8 +5140,6 @@ class MultimediaSuiteApp:
 
         number_of_prompts = total_sounds
         logging.info(f"Generating {number_of_prompts} unique sound effects.")
-
-        self.ensure_audioldm2_installed()
 
         try:
             repo_id = "cvssp/audioldm2-large"
@@ -6863,32 +5292,6 @@ class MultimediaSuiteApp:
             return None, None
 
 
-        
-    def generate_dynamic_audio_prompts(self, prompts, num_variations=3):
-        """
-        Generate unique audio prompts by introducing slight variations in the sound descriptions
-        to avoid repeating the same prompts across different audio sets.
-        """
-        soundscape_variations = [
-            "the gentle rustling of alien foliage",
-            "the distant hum of geothermal activity",
-            "the soft chirping of insectoid creatures",
-            "subtle water droplets on rocky terrain",
-            "faint wind brushing against bioluminescent structures"
-        ]
-        
-        dynamic_prompts = []
-        
-        for prompt in prompts:
-            for _ in range(num_variations):
-                variation = random.choice(soundscape_variations)
-                # Add the variation to the original prompt
-                new_prompt = f"{prompt.strip()} with ambient sounds of {variation}."
-                dynamic_prompts.append(new_prompt)
-        
-        return dynamic_prompts
-
-
     def load_settings(self):
         """
         Loads settings from the SETTINGS_FILE and assigns them to the respective variables.
@@ -6977,18 +5380,10 @@ class MultimediaSuiteApp:
         """
         Combines video files with generated sound effects from respective Video_X folders.
         Dynamically layers sound effects based on the original video prompts and optimizes the audio mix.
+        Applies frequency filtering and volume normalization to ensure clarity and prevent overwhelming audio.
         Outputs individual combined video-audio files and combines all into FINAL_VIDEO.mp4.
         """
         
-        import os
-        import re
-        from pydub import AudioSegment
-        from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
-        import tkinter as tk
-        from tkinter import filedialog, messagebox
-        import numpy as np
-        from scipy.signal import welch
-
         # Helper function for natural sorting without external libraries
         def natural_sort_key(s):
             return [int(text) if text.isdigit() else text.lower() for text in re.split('(\d+)', s)]
@@ -7078,7 +5473,7 @@ class MultimediaSuiteApp:
                 return False
 
             # Normalize samples
-            samples = samples / np.max(np.abs(samples))
+            samples = samples / np.max(np.abs(samples)) if np.max(np.abs(samples)) != 0 else samples
 
             # Calculate spectral flatness
             def spectral_flatness(waveform, fs, nperseg=1024):
@@ -7107,7 +5502,21 @@ class MultimediaSuiteApp:
                 return False
             else:
                 return True
-
+        
+        # Function to apply low-pass filter to remove high-pitched artifacts
+        def apply_low_pass_filter(sound, cutoff_freq=5000):
+            """
+            Applies a low-pass filter to the audio segment to remove high-pitched artifacts.
+            
+            Parameters:
+            - sound: pydub.AudioSegment object.
+            - cutoff_freq: Frequency in Hz above which sounds will be attenuated.
+            
+            Returns:
+            - Filtered pydub.AudioSegment object.
+            """
+            return sound.low_pass_filter(cutoff_freq)
+        
         # Function to combine all audio layers (WAV files) from a Video_X folder into a single soundscape
         def combine_sound_effects_layers(video_folder, 
                                          dbfs_threshold=-60, 
@@ -7142,7 +5551,7 @@ class MultimediaSuiteApp:
 
             # Define keywords to prioritize
             if prompt_keywords is None:
-                prompt_keywords = ['chant', 'crowd', 'murmur', 'protest', 'applause', 'cheer']
+                prompt_keywords = ['chant', 'crowd', 'murmur', 'protest', 'applause', 'cheer', 'speech', 'debate', 'assembly']
 
             # Process each sound file
             for sound_file in sound_effect_files:
@@ -7168,6 +5577,10 @@ class MultimediaSuiteApp:
                     messagebox.showwarning("Audio Load Error", f"Failed to load audio file: '{sound_file_path}'\nError: {e}\nSkipping this file.")
                     excluded_files += 1
                     continue
+
+                # Apply low-pass filter to remove high-pitched artifacts
+                sound = apply_low_pass_filter(sound, cutoff_freq=5000)
+                print(f"Applied low-pass filter to '{sound_file_path}' to remove high-pitched artifacts.")
 
                 # Determine volume adjustment based on keywords
                 # If the file name contains priority keywords, increase its volume
@@ -7203,9 +5616,9 @@ class MultimediaSuiteApp:
                     messagebox.showwarning("No Valid Audio Files", f"No valid sound effects found in '{video_folder}'. Skipping this folder.")
                     return None
 
-            # Apply master gain to prevent overall loudness
-            master_gain = -6  # Reduce overall volume by 6 dB
-            combined_audio = combined_audio + master_gain
+            # Normalize the combined audio to prevent clipping and maintain consistent loudness
+            combined_audio = effects.normalize(combined_audio)
+            print("Normalized combined audio to prevent clipping and ensure consistent loudness.")
 
             # Export the combined soundscape
             combined_audio_path = os.path.join(video_folder, "combined_soundscape.wav")
@@ -7220,14 +5633,14 @@ class MultimediaSuiteApp:
             return combined_audio_path
 
         # Ensure video and audio folders are valid
-        if not hasattr(self, 'video_save_folder') or not self.video_save_folder or not os.path.exists(self.video_save_folder):
+        if not self.video_save_folder or not os.path.exists(self.video_save_folder):
             messagebox.showwarning("No Video Folder Selected", "Please select a valid Video folder.")
             self.video_save_folder = filedialog.askdirectory(title="Select Video Save Folder")
             if not self.video_save_folder:
                 messagebox.showerror("Operation Cancelled", "No Video folder selected. Operation cancelled.")
                 return  # Exit if no folder is selected
 
-        if not hasattr(self, 'audio_save_folder') or not self.audio_save_folder or not os.path.exists(self.audio_save_folder):
+        if not self.audio_save_folder or not os.path.exists(self.audio_save_folder):
             messagebox.showwarning("No Audio Folder Selected", "Please select a valid Audio folder.")
             self.audio_save_folder = filedialog.askdirectory(title="Select Audio Save Folder")
             if not self.audio_save_folder:
@@ -7261,7 +5674,7 @@ class MultimediaSuiteApp:
             # Extract the prompt text for the current video
             prompt_text = extract_prompt(video_file)
             # Identify important keywords from the prompt
-            prompt_keywords = ['chant', 'crowd', 'murmur', 'protest', 'applause', 'cheer', 'speech', 'debate', 'assembly']
+            prompt_keywords = ['chant', 'crowd', 'murmur', 'protest', 'applause', 'cheer', 'speech', 'debate', 'assembly', 'chanting']
 
             # Combine sound effects layers into a soundscape for this video
             soundscape_path = combine_sound_effects_layers(video_folder, 
@@ -7322,46 +5735,6 @@ class MultimediaSuiteApp:
             messagebox.showinfo("Combine Successful", "The videos and audio have been successfully combined.")
         else:
             messagebox.showinfo("Combine Completed", "The combine process has finished, but no videos were processed.")
-
-
-    def select_audio_for_video(self, video_file, matching_audio_files):
-        """
-        Displays a popup for selecting an audio file if multiple matching audio files are found.
-        Allows the user to preview the audio before selection.
-        """
-        root = tk.Tk()
-        root.withdraw()  # Hide the main window
-        selected_audio_file = [None]
-
-        def play_audio(audio_path):
-            audio_clip = AudioFileClip(audio_path)
-            audio_clip.preview()
-
-        audio_selection_window = tk.Toplevel(root)
-        audio_selection_window.title(f"Select Audio for Video: {os.path.basename(video_file)}")
-        tk.Label(audio_selection_window, text=f"Select an audio file for {os.path.basename(video_file)}").pack()
-
-        audio_file_var = tk.StringVar()
-        audio_file_var.set(matching_audio_files[0])
-
-        for audio_file in matching_audio_files:
-            audio_button = tk.Button(
-                audio_selection_window,
-                text=os.path.basename(audio_file),
-                command=lambda af=audio_file: play_audio(af)
-            )
-            audio_button.pack()
-
-        def select_audio():
-            selected_audio_file[0] = audio_file_var.get()
-            audio_selection_window.destroy()
-
-        select_button = tk.Button(audio_selection_window, text="Select", command=select_audio)
-        select_button.pack()
-
-        root.wait_window(audio_selection_window)
-
-        return selected_audio_file[0] if selected_audio_file[0] else None
 
 
     def create_srt_file(video_file_path, subtitle_text, duration):
