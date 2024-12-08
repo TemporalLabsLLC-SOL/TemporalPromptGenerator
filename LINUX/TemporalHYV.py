@@ -12,6 +12,14 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from PIL import ExifTags, Image
+from datetime import datetime
+from pathlib import Path
+from loguru import logger
+
+# --------------------- Imported from previous code sections ---------------------
+from hyvideo.utils.file_utils import save_videos_grid
+from hyvideo.config import parse_args
+from hyvideo.inference import HunyuanVideoSampler
 
 # --------------------- Configuration ---------------------
 
@@ -140,54 +148,6 @@ def create_srt_file(video_path: str, subtitle_text: str, duration: float):
     except Exception as e:
         print(f"Error creating SRT file: {e}")
         messagebox.showerror("SRT Generation Error", f"Error creating SRT file:\n{e}")
-
-def generate_video(
-    prompt: str,
-    negative_prompt: str,
-    output_path: str,
-    video_size=(720, 1280),
-    video_length=129,
-    infer_steps=50,
-    embedded_cfg_scale=6.0,
-    flow_shift=7.0,
-    flow_reverse=True,
-    use_cpu_offload=True,
-    seed=None,
-):
-    os.makedirs(output_path, exist_ok=True)
-
-    cmd = [
-        "python3", "sample_video.py",
-        "--video-size", str(video_size[0]), str(video_size[1]),
-        "--video-length", str(video_length),
-        "--infer-steps", str(infer_steps),
-        "--embedded-cfg-scale", str(embedded_cfg_scale),
-        "--flow-shift", str(flow_shift),
-        "--prompt", prompt,
-        "--save-path", output_path
-    ]
-    if flow_reverse:
-        cmd.append("--flow-reverse")
-    if use_cpu_offload:
-        cmd.append("--use-cpu-offload")
-    if seed is not None:
-        cmd.extend(["--seed", str(seed)])
-
-    # If sample_video.py supports a negative prompt argument, add it here:
-    # For example:
-    # cmd.extend(["--neg-prompt", negative_prompt])
-
-    subprocess.run(cmd, check=True, text=True)
-
-    # Assume fps=8
-    fps = 8
-    duration_seconds = video_length / fps
-
-    for filename in os.listdir(output_path):
-        if filename.endswith(".mp4"):
-            video_file_path = os.path.join(output_path, filename)
-            create_srt_file(video_file_path, prompt, duration_seconds)
-            break
 
 class ResolutionDialog(tk.Toplevel):
     def __init__(self, master, default_seed, *args, **kwargs):
@@ -326,6 +286,35 @@ def main():
     use_cpu_offload = video_config["use_cpu_offload"]
     seed = video_config["seed"]
 
+    # -----------------------------------
+    # Load HunyuanVideoSampler
+    # The args can be constructed to point to model_base, etc.
+    # Adjust these as per your environment or pass CLI arguments if parse_args is needed.
+    # If you need to provide certain arguments (like model_base, save_path etc.) you may specify them here:
+    class SimpleArgs:
+        # Provide any necessary defaults here or integrate parse_args if you have a config file
+        model_base = "ckpts"   # Adjust this path as needed
+        save_path = output_dir
+        save_path_suffix = ""
+        prompt = ""  # Will be replaced per prompt below
+        neg_prompt = None
+        cfg_scale = 1.0
+        num_videos = 1
+        batch_size = 1
+
+    args = SimpleArgs()
+
+    models_root_path = Path(args.model_base)
+    if not models_root_path.exists():
+        messagebox.showerror("Error", f"`models_root` not exists: {models_root_path}")
+        root.destroy()
+        return
+
+    # Initialize sampler once
+    hunyuan_video_sampler = HunyuanVideoSampler.from_pretrained(models_root_path, args=args)
+    # get updated args
+    args = hunyuan_video_sampler.args
+
     for idx, prompt_data in enumerate(prompts, start=1):
         positive_prompt = prompt_data.get("positive")
         negative_prompt = prompt_data.get("negative")
@@ -334,7 +323,6 @@ def main():
             print(f"Skipping prompt {idx}: Incomplete 'positive' or 'negative' sections.")
             continue
 
-        # Use full prompts as-is
         five_word_summary = ' '.join(positive_prompt.split()[:5]) if positive_prompt else "summary"
         safe_summary = sanitize_filename(five_word_summary)[:20]
         if not safe_summary:
@@ -349,19 +337,38 @@ def main():
         os.makedirs(video_output_dir, exist_ok=True)
 
         try:
-            generate_video(
+            # Generate the video frames using hunyuan_video_sampler
+            outputs = hunyuan_video_sampler.predict(
                 prompt=positive_prompt,
-                negative_prompt=negative_prompt,
-                output_path=video_output_dir,
-                video_size=video_size,
+                height=video_size[0],
+                width=video_size[1],
                 video_length=video_length,
+                seed=seed,
+                negative_prompt=negative_prompt,
                 infer_steps=infer_steps,
-                embedded_cfg_scale=embedded_cfg_scale,
+                guidance_scale=args.cfg_scale,   # You can adjust or add UI control for cfg_scale if needed
+                num_videos_per_prompt=args.num_videos,
                 flow_shift=flow_shift,
-                flow_reverse=flow_reverse,
-                use_cpu_offload=use_cpu_offload,
-                seed=seed
+                batch_size=args.batch_size,
+                embedded_guidance_scale=embedded_cfg_scale
             )
+            samples = outputs['samples']
+
+            # Save samples
+            for i, sample in enumerate(samples):
+                sample = samples[i].unsqueeze(0)
+                time_flag = datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d-%H:%M:%S")
+                video_filename = f"{time_flag}_seed{outputs['seeds'][i]}_{outputs['prompts'][i][:100].replace('/','')}.mp4"
+                out_path = os.path.join(video_output_dir, video_filename)
+                save_videos_grid(sample, out_path, fps=24)
+                logger.info(f'Sample save to: {out_path}')
+
+                # Create SRT
+                # Assume fps=8 as mentioned previously for durations
+                fps = 8
+                duration_seconds = video_length / fps
+                create_srt_file(out_path, positive_prompt, duration_seconds)
+
         except Exception as e:
             print(f"Error generating video for prompt '{positive_prompt}': {e}")
             messagebox.showerror("Video Generation Error", f"Error generating video:\n{e}")
