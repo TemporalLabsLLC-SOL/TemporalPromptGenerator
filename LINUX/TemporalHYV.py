@@ -9,19 +9,11 @@ import torch
 from transformers import AutoTokenizer, pipeline
 
 import tkinter as tk
-from tkinter import filedialog, messagebox, simpledialog, ttk
+from tkinter import filedialog, messagebox, ttk
 
 from PIL import ExifTags, Image
 
 # --------------------- Configuration ---------------------
-
-# Summarization settings
-TOKENIZER_NAME = "gpt2"
-SUMMARIZATION_MODEL = "facebook/bart-large-cnn"
-POSITIVE_MAX_TOKENS = 210
-NEGATIVE_MAX_TOKENS = 60
-POSITIVE_MIN_TOKENS = 80
-NEGATIVE_MIN_TOKENS = 30
 
 # Default parameters for new video generation approach (HunyuanVideo)
 DEFAULT_INFER_STEPS = 50
@@ -32,9 +24,7 @@ DEFAULT_USE_CPU_OFFLOAD = True
 DEFAULT_SEED = 1990
 
 # Expanded resolution presets including "official" and additional cinematic/history-inspired ones
-# Format: "Name": ((height, width), video_length, "description")
 RESOLUTION_PRESETS = {
-    # Official given examples
     "720p 9:16": ((720, 1280), 129, "9:16 (vertical)"),
     "720p 16:9": ((1280, 720), 129, "16:9 (widescreen)"),
     "720p 4:3": ((1104, 832), 129, "4:3"),
@@ -47,60 +37,25 @@ RESOLUTION_PRESETS = {
     "540p 3:4": ((832, 624), 129, "3:4"),
     "540p 1:1": ((720, 720), 129, "1:1"),
 
-    # Additional resolutions outside the official ones
+    # Additional resolutions
     "480p 16:9": ((480, 854), 129, "16:9"),
     "1080p 16:9": ((1080, 1920), 129, "16:9"),
     "1080p 9:16": ((1080, 1920), 129, "9:16 vertical"),
     "1080p 4:3": ((1080, 1440), 129, "4:3"),
     "1080p 1:1": ((1080, 1080), 129, "1:1"),
 
-    # 4K resolutions
+    # 4K
     "4K 16:9": ((2160, 3840), 129, "16:9"),
     "4K 9:16": ((2160, 3840), 129, "9:16"),
     "4K 4:3": ((2160, 2880), 129, "4:3"),
     "4K 1:1": ((2160, 2160), 129, "1:1"),
 
-    # Cinematic aspect ratios (e.g., Cinemascope ~2.39:1)
+    # Cinematic aspect ratios
     "1080p Cinemascope(2.39:1)": ((1080, 2582), 129, "2.39:1 Cinemascope"),
     "720p Cinemascope(2.39:1)": ((720, 1720), 129, "2.39:1 Cinemascope"),
 }
 
-# --------------------- Initialization ---------------------
-
-try:
-    tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_NAME)
-except Exception as e:
-    print(f"Error loading tokenizer '{TOKENIZER_NAME}': {e}")
-    tokenizer = None
-
-try:
-    summarizer = pipeline(
-        "summarization",
-        model=SUMMARIZATION_MODEL,
-        device=0 if torch.cuda.is_available() else -1
-    )
-except Exception as e:
-    print(f"Error loading summarization model '{SUMMARIZATION_MODEL}': {e}")
-    summarizer = None
-
 # --------------------- Helper Functions ---------------------
-
-def summarize_text(text: str, max_tokens: int = 220, min_tokens: int = 30) -> str:
-    if not tokenizer:
-        print("Tokenizer not initialized. Returning original text.")
-        return text
-    try:
-        summary = summarizer(
-            text,
-            max_length=max_tokens,
-            min_length=min_tokens,
-            do_sample=False,
-            truncation=True,
-        )[0]['summary_text']
-        return summary
-    except Exception as e:
-        print(f"Error during summarization: {e}")
-        return text[:max_tokens]
 
 def sanitize_filename(filename: str) -> str:
     keepcharacters = (" ", ".", "_", "-")
@@ -199,7 +154,6 @@ def generate_video(
     use_cpu_offload=True,
     seed=None,
 ):
-    full_prompt = prompt
     os.makedirs(output_path, exist_ok=True)
 
     cmd = [
@@ -209,7 +163,7 @@ def generate_video(
         "--infer-steps", str(infer_steps),
         "--embedded-cfg-scale", str(embedded_cfg_scale),
         "--flow-shift", str(flow_shift),
-        "--prompt", full_prompt,
+        "--prompt", prompt,
         "--save-path", output_path
     ]
     if flow_reverse:
@@ -218,6 +172,10 @@ def generate_video(
         cmd.append("--use-cpu-offload")
     if seed is not None:
         cmd.extend(["--seed", str(seed)])
+
+    # If sample_video.py supports a negative prompt argument, add it here:
+    # For example:
+    # cmd.extend(["--neg-prompt", negative_prompt])
 
     subprocess.run(cmd, check=True, text=True)
 
@@ -358,7 +316,7 @@ def main():
     if not output_dir:
         output_dir = os.getcwd()
 
-    # Extract parameters from video_config
+    # Extract parameters
     video_size = video_config["video_size"]
     video_length = video_config["video_length"]
     infer_steps = video_config["infer_steps"]
@@ -376,22 +334,15 @@ def main():
             print(f"Skipping prompt {idx}: Incomplete 'positive' or 'negative' sections.")
             continue
 
-        summarized_positive = summarize_text(positive_prompt, max_tokens=POSITIVE_MAX_TOKENS, min_tokens=POSITIVE_MIN_TOKENS)
-        summarized_negative = summarize_text(negative_prompt, max_tokens=NEGATIVE_MAX_TOKENS, min_tokens=NEGATIVE_MIN_TOKENS)
-
-        if summarized_positive != positive_prompt:
-            print("Positive prompt was too long and has been summarized.")
-        if summarized_negative != negative_prompt:
-            print("Negative prompt was too long and has been summarized.")
-
-        five_word_summary = ' '.join(summarized_positive.split()[:5]) if summarized_positive else "summary"
+        # Use full prompts as-is
+        five_word_summary = ' '.join(positive_prompt.split()[:5]) if positive_prompt else "summary"
         safe_summary = sanitize_filename(five_word_summary)[:20]
         if not safe_summary:
             safe_summary = f"summary_{idx}"
 
         print(f"\nGenerating video for prompt {idx}/{len(prompts)}:")
-        print(f"Positive Prompt: {summarized_positive}")
-        print(f"Negative Prompt: {summarized_negative}")
+        print(f"Positive Prompt: {positive_prompt}")
+        print(f"Negative Prompt: {negative_prompt}")
         print(f"5-Word Summary: {five_word_summary}")
 
         video_output_dir = os.path.join(output_dir, f"Video_{idx}_{safe_summary}")
@@ -399,8 +350,8 @@ def main():
 
         try:
             generate_video(
-                prompt=summarized_positive,
-                negative_prompt=summarized_negative,
+                prompt=positive_prompt,
+                negative_prompt=negative_prompt,
                 output_path=video_output_dir,
                 video_size=video_size,
                 video_length=video_length,
@@ -412,7 +363,7 @@ def main():
                 seed=seed
             )
         except Exception as e:
-            print(f"Error generating video for prompt '{summarized_positive}': {e}")
+            print(f"Error generating video for prompt '{positive_prompt}': {e}")
             messagebox.showerror("Video Generation Error", f"Error generating video:\n{e}")
             continue
 
