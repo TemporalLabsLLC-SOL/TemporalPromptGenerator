@@ -1,4 +1,10 @@
-# Temporal Prompt Engine: Local, Open-Source, Intuitive, Cinematic Prompt Engine + Video and Audio Generation Suite for Nvidia GPUs
+Temporal Prompt Engine: Local, Open-Source, Intuitive, Cinematic Prompt Engine + Video and Audio Generation Suite for Nvidia GPUs
+
+#NOW FEATURING 12b HunYuanVideo version with Incorporated MMAudio for 80gb cards.
+
+#MASSIVE UPDATE TO INSTRUCTIONS BELOW COMING VERY SOON (12/11/2024)
+
+I am looking for a volunteer assistant if you're interested reach out at Sol@TemporalLab.com - This is going to a webapp version VERY soon.
 
 ## Table of Contents
 1. [Introduction](#1-introduction)
