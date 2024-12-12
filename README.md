@@ -1,8 +1,7 @@
 Temporal Prompt Engine: Local, Open-Source, Intuitive, Cinematic Prompt Engine + Video and Audio Generation Suite for Nvidia GPUs
 
 #NOW FEATURING custom 12b HunYuanVideo script with Incorporated MMAudio for 80gb cards.
-
-<a href="https://ibb.co/k8Rx5wk"><img src="https://i.ibb.co/k8Rx5wk/Screenshot-1060.png" alt="Screenshot-1060" border="0"></a> <a href="https://ibb.co/ZGtzSL6"><img src="https://i.ibb.co/ZGtzSL6/Screenshot-1061.png" alt="Screenshot-1061" border="0"></a> <a href="https://ibb.co/ynzxCBj"><img src="https://i.ibb.co/ynzxCBj/Screenshot-1062.png" alt="Screenshot-1062" border="0"></a> <a href="https://ibb.co/1vg5Lqp"><img src="https://i.ibb.co/1vg5Lqp/Screenshot-1063.png" alt="Screenshot-1063" border="0"></a> <a href="https://ibb.co/MBDNgpH"><img src="https://i.ibb.co/MBDNgpH/Screenshot-1064.png" alt="Screenshot-1064" border="0"></a>
+<a href="https://ibb.co/PrRwywr"><img src="https://i.ibb.co/PrRwywr/Screenshot-1050.png" alt="Screenshot-1050" border="0"></a> <a href="https://ibb.co/xgsmcbh"><img src="https://i.ibb.co/xgsmcbh/Screenshot-1049.png" alt="Screenshot-1049" border="0"></a> <a href="https://ibb.co/xGxNTcV"><img src="https://i.ibb.co/xGxNTcV/Screenshot-1048.png" alt="Screenshot-1048" border="0"></a> <a href="https://ibb.co/k8Rx5wk"><img src="https://i.ibb.co/k8Rx5wk/Screenshot-1060.png" alt="Screenshot-1060" border="0"></a> <a href="https://ibb.co/ZGtzSL6"><img src="https://i.ibb.co/ZGtzSL6/Screenshot-1061.png" alt="Screenshot-1061" border="0"></a> <a href="https://ibb.co/ynzxCBj"><img src="https://i.ibb.co/ynzxCBj/Screenshot-1062.png" alt="Screenshot-1062" border="0"></a> <a href="https://ibb.co/1vg5Lqp"><img src="https://i.ibb.co/1vg5Lqp/Screenshot-1063.png" alt="Screenshot-1063" border="0"></a> <a href="https://ibb.co/MBDNgpH"><img src="https://i.ibb.co/MBDNgpH/Screenshot-1064.png" alt="Screenshot-1064" border="0"></a>
 
 #MASSIVE UPDATE TO INSTRUCTIONS BELOW COMING VERY SOON (12/11/2024)
 
