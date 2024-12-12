@@ -8,22 +8,29 @@ import torch
 from transformers import AutoTokenizer, pipeline
 
 import tkinter as tk
-from tkinter import filedialog, messagebox, simpledialog, ttk
+from tkinter import filedialog, messagebox, ttk
 
 from PIL import ExifTags, Image
 import subprocess
 import re
+import logging
 
 # --------------------- Configuration ---------------------
 TOKENIZER_NAME = "gpt2"
 SUMMARIZATION_MODEL = "facebook/bart-large-cnn"
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s | %(message)s"
+)
 
 # Default values for all parameters
 DEFAULTS = {
     "model": "HYVideo-T/2-cfgdistill",
     "precision": "bf16",
     "vae_tiling": True,
-    "flow_shift": 7.0,
+    "flow_shift": 7,
     "flow_reverse": True,
     "flow_solver": "euler",
     "batch_size": 1,
@@ -36,13 +43,15 @@ DEFAULTS = {
     "video_length": 129,
     "seed": 1990,
     "neg_prompt": "",
-    "cfg_scale": 1.0,
-    "embedded_cfg_scale": 6.0,
+    "cfg_scale": 1,
+    "embedded_cfg_scale": 6,
     "reproduce": False,
     "ulysses_degree": 1,
     "ring_degree": 1,
-    "no_music_mode": False,
-    "music_prompt": ""
+    "audio_prompt": "",
+    "audio_neg_prompt": "",
+    "mmaudio_steps": 50,
+    "cfg_strength": 4.5
 }
 
 FIELDS_INFO = {
@@ -65,10 +74,12 @@ FIELDS_INFO = {
     "cfg_scale": "CFG scale for guidance.",
     "embedded_cfg_scale": "Embedded CFG scale.",
     "reproduce": "Try to reproduce deterministic results.",
-    "ulysses_degree": "Ulysses degree setting.",
-    "ring_degree": "Ring degree setting.",
-    "no_music_mode": "Disable music in audio generation.",
-    "music_prompt": "Additional music prompts to include in audio generation."
+    "ulysses_degree": "Ulysses degree setting (integer).",
+    "ring_degree": "Ring degree setting (integer).",
+    "audio_prompt": "Audio prompt to include in MMAudio.",
+    "audio_neg_prompt": "Negative audio prompt to exclude in MMAudio.",
+    "mmaudio_steps": "Number of MMAudio steps.",
+    "cfg_strength": "MMAudio CFG Strength."
 }
 
 VIDEO_RESOLUTIONS = [
@@ -371,13 +382,13 @@ def parse_prompt_file(lines: list) -> list:
 
         if stripped_line.startswith("positive:"):
             if "positive" in current_prompt:
-                print(f"Warning: New 'positive:' found before completing previous prompt at line {idx}. Skipping previous prompt.")
+                logging.warning(f"New 'positive:' found before completing previous prompt at line {idx}. Skipping previous prompt.")
                 current_prompt = {}
             current_prompt["positive"] = stripped_line[len("positive:"):].strip()
             current_section = "positive"
         elif stripped_line.startswith("negative:"):
             if "positive" not in current_prompt:
-                print(f"Warning: 'negative:' section without a preceding 'positive:' at line {idx}. Skipping.")
+                logging.warning(f"'negative:' section without a preceding 'positive:' at line {idx}. Skipping.")
                 current_section = None
                 continue
             current_prompt["negative"] = stripped_line[len("negative:"):].strip()
@@ -387,23 +398,21 @@ def parse_prompt_file(lines: list) -> list:
                 prompts.append(current_prompt)
             else:
                 if "positive" in current_prompt:
-                    print(f"Warning: 'negative:' section missing. Skipping.")
+                    logging.warning(f"'negative:' section missing. Skipping.")
             current_prompt = {}
             current_section = None
         else:
             if current_section and current_section in current_prompt:
                 current_prompt[current_section] += " " + stripped_line
             else:
-                print(f"Warning: Unrecognized line at {idx}: '{stripped_line}'. Skipping.")
+                logging.warning(f"Unrecognized line at {idx}: '{stripped_line}'. Skipping.")
     if "positive" in current_prompt and "negative" in current_prompt:
         prompts.append(current_prompt)
     elif "positive" in current_prompt:
-        print("Warning: Last prompt missing 'negative:' section. Skipping.")
+        logging.warning("Last prompt missing 'negative:' section. Skipping.")
     return prompts
 
 def select_prompt_file() -> Optional[str]:
-    root = tk.Tk()
-    root.withdraw()
     file_path = filedialog.askopenfilename(
         title="Select Prompt List File",
         filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
@@ -430,18 +439,14 @@ def create_srt_file(video_path: str, subtitle_text: str, duration: float):
 """
         with open(srt_path, "w", encoding="utf-8") as srt_file:
             srt_file.write(srt_content)
-        print(f"SRT file saved to: {srt_path}")
+        logging.info(f"SRT file saved to: {srt_path}")
     except Exception as e:
-        print(f"Error creating SRT file: {e}")
+        logging.error(f"Error creating SRT file: {e}")
         messagebox.showerror("SRT Generation Error", f"Error creating SRT file:\n{e}")
 
 def get_selected_args():
-    root = tk.Tk()
-    root.withdraw()
-    dialog = LimitedArgDialog(root)
+    dialog = ArgsDialog()
     args = dialog.result
-    root.destroy()
-
     if not args:
         args = DEFAULTS.copy()
     else:
@@ -457,14 +462,18 @@ def get_decade_from_prompt(prompt: str) -> str:
         decade = (year // 10) * 10
         for d in DECADES:
             if d.endswith('s'):
-                d_year = int(d[:-1]) if d[:-1].isdigit() else None
-                if d_year == decade:
-                    return d
+                try:
+                    d_year = int(d[:-1])
+                    if d_year == decade:
+                        return d
+                except ValueError:
+                    continue
         if decade < 1900:
             return "Experimental and Proto (Pre-1900s)"
         elif decade >= 2020:
             return "2020s"
         else:
+            # Default to "1960s" if no exact match found
             return "1960s"
     else:
         return "1960s"
@@ -494,10 +503,16 @@ def generate_video(args: dict, prompt: str, negative_prompt: str):
     enriched_prompt = inject_resolution_terms(prompt)
     enriched_prompt = inject_camera_terms(enriched_prompt)
 
+    logging.debug(f"Enriched Positive Prompt: {enriched_prompt}")
+    logging.debug(f"Negative Prompt: {negative_prompt}")
+
+    # Use the passed 'negative_prompt' instead of 'args["neg_prompt"]'
     full_neg_prompt = (
-        args["neg_prompt"] +
-        ", Camera, Lens, Tripod, Clutter, deformed limbs, Bad Focus, Bad Framing, Missing limbs, Glitching, Watermark, Transforming, distortion, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, sketch, duplicate, ugly, mutation, disgusting, bad anatomy, bad proportions, bad quality, deformed, disconnected limbs, out of frame, out of focus, dehydrated, disfigured, extra arms, extra limbs, extra hands, fused fingers, gross proportions, long neck, jpeg, malformed limbs, mutated, mutated hands, mutated limbs, missing arms, missing fingers, picture frame, poorly drawn hands, poorly drawn face, collage, pixel, amputee, autograph, bad illustration, beyond the borders, blank background, body out of frame, boring background, branding, cut off, dismembered, disproportioned, distorted, draft, duplicated features, extra fingers, extra legs, fault, flaw, grains, hazy, identifying mark, improper scale, incorrect physiology, incorrect ratio, indistinct, kitsch, low resolution, macabre, malformed, mark, misshapen, missing hands, missing legs, mistake, morbid, mutilated, off-screen, outside the picture, poorly drawn feet, printed words, render, repellent, replicate, reproduce, revolting dimensions, script, shortened, sign, split image, squint, storyboard, tiling, trimmed, unfocused, unattractive, unnatural pose, unreal engine, unsightly, written language, transition"
+        negative_prompt +
+        ", Camera, Lens, Tripod, deformed limbs, Bad Focus, Bad Framing, Missing limbs, Glitching, Watermark, Transforming, distortion, text, watermark, logo, banner, extra digits, cropped, jpeg artifacts, signature, username, error, sketch, duplicate, ugly, mutation, disgusting, bad anatomy, bad proportions, bad quality, deformed, disconnected limbs, out of frame, out of focus, dehydrated, disfigured, extra arms, extra limbs, extra hands, fused fingers, gross proportions, long neck, jpeg, malformed limbs, mutated, mutated hands, mutated limbs, missing arms, missing fingers, picture frame, poorly drawn hands, poorly drawn face, collage, pixel, amputee, autograph, bad illustration, beyond the borders, blank background, body out of frame, boring background, branding, cut off, dismembered, disproportioned, distorted, draft, duplicated features, extra fingers, extra legs, fault, flaw, grains, hazy, identifying mark, improper scale, incorrect physiology, incorrect ratio, indistinct, kitsch, low resolution, macabre, malformed, mark, misshapen, missing hands, missing legs, mistake, morbid, mutilated, off-screen, outside the picture, poorly drawn feet, printed words, render, repellent, replicate, reproduce, revolting dimensions, script, shortened, sign, split image, squint, storyboard, tiling, trimmed, unfocused, unattractive, unnatural pose, unreal engine, unsightly, written language, transition"
     )
+
+    logging.info(f"Constructed full_neg_prompt: {full_neg_prompt}")
 
     cmd = [
         "python3", "sample_video.py",
@@ -531,101 +546,278 @@ def generate_video(args: dict, prompt: str, negative_prompt: str):
     if args["reproduce"]:
         cmd.append("--reproduce")
 
+    logging.info(f"Executing command: {' '.join(cmd)}")
     subprocess.run(cmd, check=True, text=True)
 
     generated_files = [f for f in os.listdir(args["save_path"]) if f.endswith(".mp4")]
+    logging.info(f"Generated files: {generated_files}")
     return generated_files
 
-class LimitedArgDialog(simpledialog.Dialog):
-    PARAMS = [
-        "model", "precision", "vae_tiling",
-        "flow_shift", "flow_reverse", "flow_solver", "batch_size",
-        "infer_steps", "save_path", "save_path_suffix", "name_suffix",
-        "num_videos", "video_size", "video_length", "seed", "neg_prompt",
-        "cfg_scale", "embedded_cfg_scale", "reproduce", "ulysses_degree",
-        "ring_degree", "no_music_mode", "music_prompt"
-    ]
+class ArgsDialog:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.withdraw()
+        self.result = None
+        self.create_dialog()
+    
+    def create_dialog(self):
+        dialog = MainDialog(self.root)
+        self.result = dialog.result
 
-    def body(self, master):
-        self.title("Configure Selected Arguments")
-        self.entries = {}
-        row = 0
-        for key in self.PARAMS:
-            default_val = DEFAULTS[key]
-            desc = FIELDS_INFO[key]
+class MainDialog(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("Configure Video and Audio Generation")
+        self.resizable(True, True)
+        self.grab_set()
+        self.result = None
+        self.create_widgets()
+        self.protocol("WM_DELETE_WINDOW", self.on_cancel)
+        self.wait_window()
+    
+    def create_widgets(self):
+        notebook = ttk.Notebook(self)
+        notebook.pack(expand=True, fill='both', padx=10, pady=10)
 
-            tk.Label(master, text=f"{key} (default: {default_val})\n{desc}", justify=tk.LEFT).grid(row=row, column=0, sticky="w")
+        # Video Settings Tab
+        video_frame = ttk.Frame(notebook)
+        notebook.add(video_frame, text="Video Settings")
+        self.create_video_settings(video_frame)
 
-            if key == "video_size":
-                combo = ttk.Combobox(master, values=VIDEO_RESOLUTIONS, state="readonly")
-                combo.set(default_val)
-                combo.grid(row=row, column=1, sticky="w")
-                self.entries[key] = combo
-            elif key == "no_music_mode":
-                var = tk.BooleanVar(value=default_val)
-                chk = tk.Checkbutton(master, text="NO MUSIC MODE", variable=var, command=lambda: self.toggle_music_prompt(row))
-                chk.grid(row=row, column=1, sticky="w")
-                self.entries[key] = var
-            elif key == "music_prompt":
-                self.music_prompt_entry = tk.Entry(master, width=40)
-                self.music_prompt_entry.insert(0, default_val)
-                self.music_prompt_entry.grid(row=row, column=1, sticky="w")
-                self.entries[key] = self.music_prompt_entry
-                # Initially disable if no_music_mode is checked
-                if self.entries["no_music_mode"].get():
-                    self.music_prompt_entry.configure(state='disabled')
-            elif isinstance(default_val, bool):
-                var = tk.BooleanVar(value=default_val)
-                chk = tk.Checkbutton(master, variable=var)
-                chk.grid(row=row, column=1, sticky="w")
-                self.entries[key] = var
-            else:
-                entry = tk.Entry(master)
-                if isinstance(default_val, list):
-                    entry.insert(0, " ".join(map(str, default_val)))
-                else:
-                    entry.insert(0, str(default_val))
-                entry.grid(row=row, column=1, sticky="w")
-                self.entries[key] = entry
+        # Audio Settings Tab
+        audio_frame = ttk.Frame(notebook)
+        notebook.add(audio_frame, text="Audio Settings")
+        self.create_audio_settings(audio_frame)
 
-            row += 1
-        return list(self.entries.values())[0]
+        # Output Settings Tab
+        output_frame = ttk.Frame(notebook)
+        notebook.add(output_frame, text="Output Settings")
+        self.create_output_settings(output_frame)
 
-    def toggle_music_prompt(self, row):
-        if self.entries["no_music_mode"].get():
-            self.music_prompt_entry.configure(state='disabled')
-        else:
-            self.music_prompt_entry.configure(state='normal')
+        # Advanced Settings Tab
+        advanced_frame = ttk.Frame(notebook)
+        notebook.add(advanced_frame, text="Advanced Settings")
+        self.create_advanced_settings(advanced_frame)
 
-    def apply(self):
-        result = {}
-        for key, widget in self.entries.items():
-            default_val = DEFAULTS[key]
-            if key == "video_size":
-                val_str = widget.get().strip()
-                val = val_str
-            elif key == "no_music_mode":
-                val = widget.get()
-            elif key == "music_prompt":
-                if self.entries["no_music_mode"].get():
-                    val = ""
-                else:
-                    val_str = widget.get().strip()
-                    val = val_str
-            elif isinstance(widget, tk.BooleanVar):
-                val = widget.get()
-            else:
-                val_str = widget.get().strip()
-                if isinstance(default_val, bool):
-                    val = val_str.lower() in ("true", "1", "yes")
-                elif isinstance(default_val, int):
-                    val = int(val_str)
-                elif isinstance(default_val, float):
-                    val = float(val_str)
-                else:
-                    val = val_str
-            result[key] = val
-        self.result = result
+        # Buttons
+        button_frame = ttk.Frame(self)
+        button_frame.pack(fill='x', padx=10, pady=10)
+        ttk.Button(button_frame, text="OK", command=self.on_ok).pack(side='right', padx=5)
+        ttk.Button(button_frame, text="Cancel", command=self.on_cancel).pack(side='right')
+
+    def create_video_settings(self, frame):
+        # Video Size
+        ttk.Label(frame, text="Video Size:", anchor='w').grid(row=0, column=0, sticky='w', padx=5, pady=5)
+        self.video_size = ttk.Combobox(frame, values=VIDEO_RESOLUTIONS, state="readonly")
+        self.video_size.set(DEFAULTS["video_size"])
+        self.video_size.grid(row=0, column=1, sticky='ew', padx=5, pady=5)
+
+        # Video Length
+        ttk.Label(frame, text="Video Length (frames):", anchor='w').grid(row=1, column=0, sticky='w', padx=5, pady=5)
+        self.video_length = ttk.Entry(frame)
+        self.video_length.insert(0, str(DEFAULTS["video_length"]))
+        self.video_length.grid(row=1, column=1, sticky='ew', padx=5, pady=5)
+
+        # Number of Videos
+        ttk.Label(frame, text="Number of Videos:", anchor='w').grid(row=2, column=0, sticky='w', padx=5, pady=5)
+        self.num_videos = ttk.Entry(frame)
+        self.num_videos.insert(0, str(DEFAULTS["num_videos"]))
+        self.num_videos.grid(row=2, column=1, sticky='ew', padx=5, pady=5)
+
+        # Seed
+        ttk.Label(frame, text="Random Seed:", anchor='w').grid(row=3, column=0, sticky='w', padx=5, pady=5)
+        self.seed = ttk.Entry(frame)
+        self.seed.insert(0, str(DEFAULTS["seed"]))
+        self.seed.grid(row=3, column=1, sticky='ew', padx=5, pady=5)
+
+        # Negative Prompt
+        ttk.Label(frame, text="Negative Prompt:", anchor='w').grid(row=4, column=0, sticky='nw', padx=5, pady=5)
+        self.neg_prompt = tk.Text(frame, height=4, width=40)
+        self.neg_prompt.insert(tk.END, DEFAULTS["neg_prompt"])
+        self.neg_prompt.grid(row=4, column=1, sticky='ew', padx=5, pady=5)
+
+        # Grid configuration
+        frame.columnconfigure(1, weight=1)
+
+    def create_audio_settings(self, frame):
+        # Audio Prompt
+        ttk.Label(frame, text="Audio Prompt:", anchor='w').grid(row=0, column=0, sticky='w', padx=5, pady=5)
+        self.audio_prompt = ttk.Entry(frame, width=50)
+        self.audio_prompt.insert(0, DEFAULTS["audio_prompt"])
+        self.audio_prompt.grid(row=0, column=1, sticky='ew', padx=5, pady=5)
+
+        # Audio Negative Prompt
+        ttk.Label(frame, text="Audio Negative Prompt:", anchor='w').grid(row=1, column=0, sticky='w', padx=5, pady=5)
+        self.audio_neg_prompt = ttk.Entry(frame, width=50)
+        self.audio_neg_prompt.insert(0, DEFAULTS["audio_neg_prompt"])
+        self.audio_neg_prompt.grid(row=1, column=1, sticky='ew', padx=5, pady=5)
+
+        # Grid configuration
+        frame.columnconfigure(1, weight=1)
+
+    def create_output_settings(self, frame):
+        # Save Path
+        ttk.Label(frame, text="Save Path:", anchor='w').grid(row=0, column=0, sticky='w', padx=5, pady=5)
+        self.save_path = ttk.Entry(frame, width=50)
+        self.save_path.insert(0, DEFAULTS["save_path"])
+        self.save_path.grid(row=0, column=1, sticky='ew', padx=5, pady=5)
+        ttk.Button(frame, text="Browse", command=self.browse_save_path).grid(row=0, column=2, sticky='w', padx=5, pady=5)
+
+        # Save Path Suffix
+        ttk.Label(frame, text="Save Path Suffix:", anchor='w').grid(row=1, column=0, sticky='w', padx=5, pady=5)
+        self.save_path_suffix = ttk.Entry(frame)
+        self.save_path_suffix.insert(0, DEFAULTS["save_path_suffix"])
+        self.save_path_suffix.grid(row=1, column=1, sticky='ew', padx=5, pady=5)
+
+        # Name Suffix
+        ttk.Label(frame, text="Name Suffix:", anchor='w').grid(row=2, column=0, sticky='w', padx=5, pady=5)
+        self.name_suffix = ttk.Entry(frame)
+        self.name_suffix.insert(0, DEFAULTS["name_suffix"])
+        self.name_suffix.grid(row=2, column=1, sticky='ew', padx=5, pady=5)
+
+        # Grid configuration
+        frame.columnconfigure(1, weight=1)
+
+    def create_advanced_settings(self, frame):
+        # Model
+        ttk.Label(frame, text="Model:", anchor='w').grid(row=0, column=0, sticky='w', padx=5, pady=5)
+        self.model = ttk.Entry(frame)
+        self.model.insert(0, DEFAULTS["model"])
+        self.model.grid(row=0, column=1, sticky='ew', padx=5, pady=5)
+
+        # Precision
+        ttk.Label(frame, text="Precision:", anchor='w').grid(row=1, column=0, sticky='w', padx=5, pady=5)
+        self.precision = ttk.Combobox(frame, values=["bf16", "fp16", "fp32"], state="readonly")
+        self.precision.set(DEFAULTS["precision"])
+        self.precision.grid(row=1, column=1, sticky='ew', padx=5, pady=5)
+
+        # CFG Scale
+        ttk.Label(frame, text="CFG Scale:", anchor='w').grid(row=2, column=0, sticky='w', padx=5, pady=5)
+        self.cfg_scale = ttk.Entry(frame)
+        self.cfg_scale.insert(0, str(DEFAULTS["cfg_scale"]))
+        self.cfg_scale.grid(row=2, column=1, sticky='ew', padx=5, pady=5)
+
+        # Embedded CFG Scale
+        ttk.Label(frame, text="Embedded CFG Scale:", anchor='w').grid(row=3, column=0, sticky='w', padx=5, pady=5)
+        self.embedded_cfg_scale = ttk.Entry(frame)
+        self.embedded_cfg_scale.insert(0, str(DEFAULTS["embedded_cfg_scale"]))
+        self.embedded_cfg_scale.grid(row=3, column=1, sticky='ew', padx=5, pady=5)
+
+        # Reproduce
+        self.reproduce = tk.BooleanVar(value=DEFAULTS["reproduce"])
+        ttk.Checkbutton(frame, text="Reproduce Results", variable=self.reproduce).grid(row=4, column=1, sticky='w', padx=5, pady=5)
+
+        # Ulysses Degree
+        ttk.Label(frame, text="Ulysses Degree (int):", anchor='w').grid(row=5, column=0, sticky='w', padx=5, pady=5)
+        self.ulysses_degree = ttk.Entry(frame)
+        self.ulysses_degree.insert(0, str(DEFAULTS["ulysses_degree"]))
+        self.ulysses_degree.grid(row=5, column=1, sticky='ew', padx=5, pady=5)
+
+        # Ring Degree
+        ttk.Label(frame, text="Ring Degree (int):", anchor='w').grid(row=6, column=0, sticky='w', padx=5, pady=5)
+        self.ring_degree = ttk.Entry(frame)
+        self.ring_degree.insert(0, str(DEFAULTS["ring_degree"]))
+        self.ring_degree.grid(row=6, column=1, sticky='ew', padx=5, pady=5)
+
+        # MMAudio Steps
+        ttk.Label(frame, text="MMAudio Steps:", anchor='w').grid(row=7, column=0, sticky='w', padx=5, pady=5)
+        self.mmaudio_steps = ttk.Entry(frame)
+        self.mmaudio_steps.insert(0, str(DEFAULTS["mmaudio_steps"]))
+        self.mmaudio_steps.grid(row=7, column=1, sticky='ew', padx=5, pady=5)
+
+        # MMAudio CFG Strength
+        ttk.Label(frame, text="MMAudio CFG Strength:", anchor='w').grid(row=8, column=0, sticky='w', padx=5, pady=5)
+        self.cfg_strength = ttk.Entry(frame)
+        self.cfg_strength.insert(0, str(DEFAULTS["cfg_strength"]))
+        self.cfg_strength.grid(row=8, column=1, sticky='ew', padx=5, pady=5)
+
+        # VAE Tiling
+        self.vae_tiling = tk.BooleanVar(value=DEFAULTS["vae_tiling"])
+        ttk.Checkbutton(frame, text="Enable VAE Tiling", variable=self.vae_tiling).grid(row=9, column=1, sticky='w', padx=5, pady=5)
+
+        # Flow Reverse
+        self.flow_reverse = tk.BooleanVar(value=DEFAULTS["flow_reverse"])
+        ttk.Checkbutton(frame, text="Enable Flow Reverse", variable=self.flow_reverse).grid(row=10, column=1, sticky='w', padx=5, pady=5)
+
+        # Flow Solver
+        ttk.Label(frame, text="Flow Solver:", anchor='w').grid(row=11, column=0, sticky='w', padx=5, pady=5)
+        self.flow_solver = ttk.Combobox(frame, values=["euler", "other_solver"], state="readonly")
+        self.flow_solver.set(DEFAULTS["flow_solver"])
+        self.flow_solver.grid(row=11, column=1, sticky='ew', padx=5, pady=5)
+
+        # Flow Shift
+        ttk.Label(frame, text="Flow Shift:", anchor='w').grid(row=12, column=0, sticky='w', padx=5, pady=5)
+        self.flow_shift = ttk.Entry(frame)
+        self.flow_shift.insert(0, str(DEFAULTS["flow_shift"]))
+        self.flow_shift.grid(row=12, column=1, sticky='ew', padx=5, pady=5)
+
+        # Batch Size
+        ttk.Label(frame, text="Batch Size:", anchor='w').grid(row=13, column=0, sticky='w', padx=5, pady=5)
+        self.batch_size = ttk.Entry(frame)
+        self.batch_size.insert(0, str(DEFAULTS["batch_size"]))
+        self.batch_size.grid(row=13, column=1, sticky='ew', padx=5, pady=5)
+
+        # Infer Steps
+        ttk.Label(frame, text="Inference Steps:", anchor='w').grid(row=14, column=0, sticky='w', padx=5, pady=5)
+        self.infer_steps = ttk.Entry(frame)
+        self.infer_steps.insert(0, str(DEFAULTS["infer_steps"]))
+        self.infer_steps.grid(row=14, column=1, sticky='ew', padx=5, pady=5)
+
+        # Grid configuration
+        frame.columnconfigure(1, weight=1)
+
+    def browse_save_path(self):
+        path = filedialog.askdirectory(title="Select Save Path")
+        if path:
+            self.save_path.delete(0, tk.END)
+            self.save_path.insert(0, path)
+
+    def on_ok(self):
+        try:
+            # Validate and collect all inputs
+            data = {}
+
+            # Video Settings
+            data["video_size"] = self.video_size.get()
+            data["video_length"] = int(self.video_length.get())
+            data["num_videos"] = int(self.num_videos.get())
+            data["seed"] = int(self.seed.get())
+            data["neg_prompt"] = self.neg_prompt.get("1.0", tk.END).strip()
+
+            # Audio Settings
+            data["audio_prompt"] = self.audio_prompt.get().strip()
+            data["audio_neg_prompt"] = self.audio_neg_prompt.get().strip()
+
+            # Output Settings
+            data["save_path"] = self.save_path.get().strip()
+            data["save_path_suffix"] = self.save_path_suffix.get().strip()
+            data["name_suffix"] = self.name_suffix.get().strip()
+
+            # Advanced Settings
+            data["model"] = self.model.get().strip()
+            data["precision"] = self.precision.get().strip()
+            data["cfg_scale"] = int(float(self.cfg_scale.get()))  # Assuming cfg_scale should be integer
+            data["embedded_cfg_scale"] = int(float(self.embedded_cfg_scale.get()))  # Assuming integer
+            data["reproduce"] = self.reproduce.get()
+            data["ulysses_degree"] = int(float(self.ulysses_degree.get()))
+            data["ring_degree"] = int(float(self.ring_degree.get()))
+            data["mmaudio_steps"] = int(self.mmaudio_steps.get())
+            data["cfg_strength"] = float(self.cfg_strength.get())
+            data["vae_tiling"] = self.vae_tiling.get()
+            data["flow_reverse"] = self.flow_reverse.get()
+            data["flow_solver"] = self.flow_solver.get()
+            data["flow_shift"] = int(float(self.flow_shift.get()))
+            data["batch_size"] = int(self.batch_size.get())
+            data["infer_steps"] = int(self.infer_steps.get())
+
+            self.result = data
+            self.destroy()
+        except ValueError as ve:
+            logging.error(f"Invalid input: {ve}")
+            messagebox.showerror("Invalid Input", f"Please ensure all inputs are correct.\nError: {ve}")
+
+    def on_cancel(self):
+        self.destroy()
 
 def main():
     root = tk.Tk()
@@ -644,24 +836,26 @@ def main():
     args = get_selected_args()
     args["save_path"] = prompt_dir
 
+    logging.info(f"Configuration Arguments: {args}")
+
     try:
         with open(prompt_file, "r", encoding="utf-8") as f:
             lines = f.readlines()
         prompts = parse_prompt_file(lines)
 
     except Exception as e:
-        print(f"Error reading prompt files: {e}")
+        logging.error(f"Error reading prompt files: {e}")
         messagebox.showerror("File Read Error", f"Error reading prompt files:\n{e}")
         root.destroy()
         return
 
     if not prompts:
-        print("No valid video prompts found in the selected file.")
+        logging.info("No valid video prompts found in the selected file.")
         messagebox.showinfo("No Prompts", "No valid video prompts found.")
         root.destroy()
         return
 
-    print(f"Using seed value: {args['seed']}")
+    logging.info(f"Using seed value: {args['seed']}")
 
     os.makedirs(args["save_path"], exist_ok=True)
 
@@ -670,25 +864,18 @@ def main():
         negative_prompt = prompt_data.get("negative")
 
         if not positive_prompt or not negative_prompt:
-            print(f"Skipping prompt {idx}: Incomplete 'positive' or 'negative' sections in video prompts.")
+            logging.warning(f"Skipping prompt {idx}: Incomplete 'positive' or 'negative' sections in video prompts.")
             continue
 
         final_positive = positive_prompt
         final_negative = negative_prompt
 
-        # Handle NO MUSIC MODE
-        if args["no_music_mode"]:
-            # Include "music, musical" in the negative prompt
-            final_negative += ", music, musical"
-            music_prompt = ""
-        else:
-            # Include user-provided music prompt plus "music" in the positive prompt
-            music_input = args.get("music_prompt", "").strip()
-            if music_input:
-                final_positive += f", {music_input}, music"
-            else:
-                final_positive += ", music"
-            music_prompt = music_input
+        # Handle Audio Prompts
+        audio_prompt = args.get("audio_prompt", "").strip()
+        audio_neg_prompt = args.get("audio_neg_prompt", "").strip()
+
+        logging.info(f"Prompt {idx}: Audio Prompt: '{audio_prompt}'")
+        logging.info(f"Prompt {idx}: Audio Negative Prompt: '{audio_neg_prompt}'")
 
         five_word_summary = ' '.join(final_positive.split()[:5]) if final_positive else "summary"
         safe_summary = sanitize_filename(five_word_summary)[:20]
@@ -697,11 +884,11 @@ def main():
 
         final_mp4_name = f"video_{idx}_5b_{args['cfg_scale']}gs_{args['infer_steps']}steps_{safe_summary}.mp4"
 
-        print(f"\nGenerating video for prompt {idx}/{len(prompts)}:")
-        print(f"Video Positive Prompt: {final_positive}")
-        print(f"Video Negative Prompt: {final_negative}")
-        print(f"5-Word Summary: {five_word_summary}")
-        print(f"Final Intended Filename: {final_mp4_name}")
+        logging.info(f"\nGenerating video for prompt {idx}/{len(prompts)}:")
+        logging.info(f"Video Positive Prompt: {final_positive}")
+        logging.info(f"Video Negative Prompt: {final_negative}")
+        logging.info(f"5-Word Summary: {five_word_summary}")
+        logging.info(f"Final Intended Filename: {final_mp4_name}")
 
         generated_files_before = set(os.listdir(args["save_path"]))
         try:
@@ -716,7 +903,7 @@ def main():
                 if all_mp4_paths:
                     all_mp4_paths.sort(key=os.path.getmtime, reverse=True)
                     mp4_files = [os.path.basename(all_mp4_paths[0])]
-            
+
             if not mp4_files:
                 raise FileNotFoundError("No generated .mp4 file found.")
 
@@ -724,7 +911,7 @@ def main():
             final_mp4_name = sanitize_filename(final_mp4_name)
             new_mp4_path = os.path.join(args["save_path"], final_mp4_name)
             os.rename(old_mp4_path, new_mp4_path)
-            print(f"Renamed '{mp4_files[0]}' to '{final_mp4_name}'")
+            logging.info(f"Renamed '{mp4_files[0]}' to '{final_mp4_name}'")
 
             fps = 8
             duration_seconds = args["video_length"] / fps
@@ -738,22 +925,26 @@ def main():
             try:
                 os.chdir(mmaudio_dir)
                 # Prepare prompts for MMAudio
-                if args["no_music_mode"]:
-                    mmaudio_prompt = ""
-                    mmaudio_neg_prompt = "music, musical"
-                else:
-                    mmaudio_prompt = music_prompt + ", music" if music_prompt else "music"
-                    mmaudio_neg_prompt = ""
-                
+                # Use user-provided audio prompts directly
+                logging.info(f"MMAudio Prompt: '{audio_prompt}'")
+                logging.info(f"MMAudio Negative Prompt: '{audio_neg_prompt}'")
+
                 cmd = [
                     "conda", "run", "-n", "mmaudio", "python", "demo.py",
                     "--duration", "8",
                     "--video", absolute_video_path,
-                    "--prompt", mmaudio_prompt,
-                    "--negative_prompt", mmaudio_neg_prompt,
-                    "--output", os.path.join(args["save_path"], "audio_output")
+                    "--prompt", audio_prompt,
+                    "--negative_prompt", audio_neg_prompt,
+                    "--output", os.path.join(args["save_path"], "audio_output"),
+                    "--cfg_strength", str(args["cfg_strength"]),
+                    "--num_steps", str(args["mmaudio_steps"])
                 ]
+                logging.info(f"Executing MMAudio command: {' '.join(cmd)}")
                 subprocess.run(cmd, check=True, text=True)
+            except subprocess.CalledProcessError as e:
+                logging.error(f"MMAudio command failed: {e}")
+                messagebox.showerror("MMAudio Error", f"Error during MMAudio processing:\n{e}")
+                continue
             finally:
                 os.chdir(original_dir)
 
@@ -775,46 +966,41 @@ def main():
                 sound_audio = None
 
             # Create a txt directory if it doesn't exist
-            txt_dir = os.path.join(args["save_path"], "txt")
-            os.makedirs(txt_dir, exist_ok=True)
+            final_txt_dir = os.path.dirname(prompt_file)
 
             final_base_name = f"Video{idx}_FINAL"
 
             if sound_video:
-                final_sound_video_path = os.path.join(txt_dir, f"{final_base_name}.mp4")
+                final_sound_video_path = os.path.join(final_txt_dir, f"{final_base_name}.mp4")
                 os.rename(os.path.join(output_dir, sound_video), final_sound_video_path)
-                print(f"Moved final video with sound to: {final_sound_video_path}")
-            else:
-                final_sound_video_path = "No final video found"
+                logging.info(f"Moved final video to: {final_sound_video_path}")
 
             if sound_audio:
-                final_sound_audio_path = os.path.join(txt_dir, f"{final_base_name}.flac")
-                os.rename(os.path.join(output_dir, sound_audio), final_sound_audio_path)
-                print(f"Moved final audio track to: {final_sound_audio_path}")
-            else:
-                final_sound_audio_path = "No final audio found"
+                final_audio_path = os.path.join(final_txt_dir, f"{final_base_name}.flac")
+                os.rename(os.path.join(output_dir, sound_audio), final_audio_path)
+                logging.info(f"Moved final audio to: {final_audio_path}")
 
-            # Write a text file describing final prompt and paths
-            final_text_path = os.path.join(txt_dir, f"{final_base_name}.txt")
+            final_text_path = os.path.join(final_txt_dir, f"{final_base_name}.txt")
             with open(final_text_path, "w", encoding="utf-8") as txt_file:
-                txt_file.write(f"Video Positive Prompt:\n{final_positive}\n\nVideo Negative Prompt:\n{final_negative}\n\nMusic Prompt:\n{mmaudio_prompt}\n\nFinal Video Path:\n{final_sound_video_path}\nAudio Path:\n{final_sound_audio_path}\n")
-
-            print(f"Text info saved to: {final_text_path}")
+                txt_file.write(f"Video Positive Prompt:\n{final_positive}\n\nVideo Negative Prompt:\n{final_negative}\n\nAudio Prompt:\n{audio_prompt}\n\nAudio Negative Prompt:\n{audio_neg_prompt}\n\nFinal Video Path:\n{final_sound_video_path}\n")
+            logging.info(f"Text info saved to: {final_text_path}")
 
         except Exception as e:
-            print(f"Error generating video for prompt '{final_positive}': {e}")
+            logging.error(f"Error generating video for prompt '{final_positive}': {e}")
             messagebox.showerror("Video Generation Error", f"Error generating video:\n{e}")
             continue
 
+        # Clear GPU memory
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         gc.collect()
 
+    # Final cleanup
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     gc.collect()
 
-    print("\nAll videos have been generated successfully.")
+    logging.info("\nAll videos have been generated successfully.")
     messagebox.showinfo("Generation Complete", "All videos have been generated successfully.")
     root.destroy()
 
