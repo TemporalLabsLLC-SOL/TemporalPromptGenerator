@@ -2,7 +2,7 @@ Temporal Prompt Engine: Local, Open-Source, Intuitive, Cinematic Prompt Engine +
 
 #NOW FEATURING custom 12b HunYuanVideo script with Incorporated MMAudio for 80gb cards.
 
-
+<a href="https://ibb.co/k8Rx5wk"><img src="https://i.ibb.co/k8Rx5wk/Screenshot-1060.png" alt="Screenshot-1060" border="0"></a> <a href="https://ibb.co/ZGtzSL6"><img src="https://i.ibb.co/ZGtzSL6/Screenshot-1061.png" alt="Screenshot-1061" border="0"></a> <a href="https://ibb.co/ynzxCBj"><img src="https://i.ibb.co/ynzxCBj/Screenshot-1062.png" alt="Screenshot-1062" border="0"></a> <a href="https://ibb.co/1vg5Lqp"><img src="https://i.ibb.co/1vg5Lqp/Screenshot-1063.png" alt="Screenshot-1063" border="0"></a> <a href="https://ibb.co/MBDNgpH"><img src="https://i.ibb.co/MBDNgpH/Screenshot-1064.png" alt="Screenshot-1064" border="0"></a>
 
 #MASSIVE UPDATE TO INSTRUCTIONS BELOW COMING VERY SOON (12/11/2024)
 
