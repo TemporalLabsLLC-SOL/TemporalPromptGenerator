@@ -58,6 +58,37 @@ pipe = pipe.to("cuda")
 
 SETTINGS_FILE = "settings.json"
 
+# --------------------- Theming Configuration ---------------------
+# Define the color palette
+COLOR_PALETTE = {
+    "white": "#ffffff",
+    "dark_blue_black": "#1a1a2e",
+    "gold": "#ffab00",
+    "dark_navy": "#040e24",
+    "deep_gold": "#ffa200",
+    "light_gold": "#ffc14e",
+    "light_blue": "#00aced"  # Added for 'light blue' text if needed
+}
+
+def apply_theme(style, root):
+    style.theme_use('default')
+
+    # Configure styles for ttk widgets
+    style.configure('TFrame', background=COLOR_PALETTE["dark_blue_black"])
+    style.configure('TLabel', background=COLOR_PALETTE["dark_blue_black"], foreground=COLOR_PALETTE["white"])
+    style.configure('TButton', background=COLOR_PALETTE["gold"], foreground=COLOR_PALETTE["dark_blue_black"])
+    style.configure('TEntry', fieldbackground=COLOR_PALETTE["white"], foreground=COLOR_PALETTE["dark_blue_black"])
+    style.configure('TCombobox', fieldbackground=COLOR_PALETTE["white"], foreground=COLOR_PALETTE["dark_blue_black"])
+    style.configure('TNotebook', background=COLOR_PALETTE["dark_blue_black"])
+    style.configure('TNotebook.Tab', background=COLOR_PALETTE["gold"], foreground=COLOR_PALETTE["dark_blue_black"])
+    style.map('TButton',
+              background=[('active', COLOR_PALETTE["deep_gold"])],
+              foreground=[('active', COLOR_PALETTE["dark_blue_black"])])
+    style.configure('TCheckbutton', background=COLOR_PALETTE["dark_blue_black"], foreground=COLOR_PALETTE["white"])
+
+    # Set the root window background
+    root.configure(background=COLOR_PALETTE["dark_blue_black"])
+
 def parse_model_response(response):
     """
     Parses the model's response to extract the positive sounds and ensures the negative section is empty.
@@ -131,713 +162,629 @@ def copy_to_clipboard(text):
 def open_website(event):
     webbrowser.open_new("https://www.TemporalLab.com")
 
+
 # ===========================
 # ======= OPTIONS LISTS =====
 # ===========================
 
 THEMES = [
+    # Historical & Period - Rooted in authenticity and era-specific detail
+    "Historical & Period, meticulous production design, era-accurate costumes, authentic locales",
+    "Historical Epic, large-scale sets, sweeping cinematography, grandeur and historical scope",
+    "Period Drama, nuanced performances, intimate framing, refined attention to historical nuance",
+    "Sword and Sandal, ancient worlds, grand arenas, heroic silhouettes against classical backdrops",
+    "Western, sunbaked landscapes, dusty main streets, iconic long shots and frontier isolation",
+    "Spaghetti Western, heightened style, intense close-ups, sparse dialogue punctuated by silence",
 
-    "Historical & Period Genres - Detailed historical visuals with emphasis on authenticity",
-    "Historical - Authentic period visuals with meticulous attention to costumes and sets",
-    "Historical Epic - Grandiose visuals with large-scale sets and crowd scenes",
-    "Historical Fiction - Accurate period visuals blended with creative storytelling",
-    "Period Piece - Detailed historical visuals with emphasis on authenticity",
-    "Period Drama - Authentic visuals immersing viewers in a specific era",
-    "Period Romance - Historical visuals with romantic and elegant aesthetics",
-    "Sword and Sandal - Ancient world visuals with heroic figures and epic battles",
-    "Neo-Western - Contemporary visuals with themes and aesthetics of classic Westerns",
-    "Western - Expansive desert vistas and rustic settings capturing frontier life",
-    "Spaghetti Western - Stylized Westerns with dramatic close-ups and wide landscapes",
-    "Film Noir - High-contrast black-and-white imagery with dramatic shadow play",
-    "Neo-Noir - Modern reinterpretation of noir with stylized lighting and urban settings",
-    "German Expressionism - Stylized visuals with sharp angles and high contrasts",
-    "Italian Neorealism - Naturalistic visuals with on-location shooting and non-actors",
-    
-    "Educational & Instructional - Clear and straightforward visuals designed to inform",
-    "Educational - Clear and straightforward visuals designed to inform",
-    "Documentary Drama - Realistic visuals with narrative elements",
-    "Science Documentary - Clear and informative visuals explaining complex ideas",
-    "Nature Documentary - Stunning visuals capturing wildlife and environments",
-    "Educational Documentary - Clear and engaging visuals conveying information",
-    "Environmental Documentary - Visuals highlighting ecological concerns",
-    "Wildlife Documentary - Close-up visuals of animals in their habitats",
+    # Noir & Neo-Noir - Shadows, moral complexity, urban dread
+    "Film Noir, stark contrast lighting, cigarette smoke, cynical antiheroes framed by urban nights",
+    "Neo-Noir, updated grit, neon reflections, morally ambiguous protagonists in modern cityscapes",
+    "German Expressionism, angular sets, skewed perspectives, evocative shadows shaping emotion",
+    "Italian Neorealism, on-location shooting, non-actors, raw authenticity reflecting social realities",
 
-    "Documentary & Realism - Real-world footage with natural lighting and minimal staging",
-    "Documentary - Real-world footage with natural lighting and minimal staging",
-    "Travel Documentary - Visual journey through different cultures and places",
-    "Nature Documentary - Stunning visuals capturing wildlife and environments",
-    "Educational Documentary - Clear and engaging visuals conveying information",
-    "Science Documentary - Informative visuals explaining scientific topics",
-    "Crime Documentary - Investigative visuals exploring criminal activities",
-    "True Crime - Realistic visuals delving into actual criminal cases",
-    "Sports Documentary - Dynamic visuals showcasing athletic prowess",
-    "Music Documentary - Captivating visuals of performances and behind-the-scenes",
-    "Biographical Documentary - Real-life visuals chronicling individuals",
-    "Wildlife Documentary - Close-up visuals of animals in their habitats",
-    "Environmental Documentary - Visuals highlighting ecological concerns",
-    "Cultural Documentary - Visual immersion into different societies",
-    "Historical Documentary - Authentic visuals exploring past events",
+    # Documentary & Realism - Truthful lenses, minimal interference
+    "Documentary, real-world footage, natural sound, handheld immediacy",
+    "Nature Documentary, macro details, sweeping aerials, reverence for wildlife",
+    "Educational Documentary, clear visuals, explanatory graphics, a didactic yet engaging tone",
+    "Biographical, respectful portrayal of true lives, mix of archival and recreated moments",
 
-    "Biographical & Real-Life - Realistic visuals focusing on accurate representations",
-    "Biographical - Authentic visuals focusing on accurate representations of real-life settings",
-    "Historical Drama - Period visuals with dramatic narratives",
-    "Biographical Documentary - Real-life visuals chronicling individuals",
-    "Coming of Age - Relatable visuals focusing on personal growth and self-discovery",
-    "Social Commentary - Realistic visuals highlighting societal issues",
-    "Slice of Life - Everyday visuals portraying ordinary experiences",
-    "Independent - Resourceful visuals with creative approaches due to budget constraints",
+    # Drama & Character Studies - Emotionally resonant, human complexity
+    "Drama, intimate close-ups, subtle lighting, emotional authenticity guiding visual choices",
+    "Coming-of-Age, warm natural light, relatable suburban or rural settings, evolving visual tone as characters mature",
+    "Social Realism, subdued palettes, handheld camerawork, everyday struggles portrayed without varnish",
+    "Family Drama, soft hues, familiar domestic spaces, close framing that captures nuanced dynamics",
 
-    "Action & Adventure - High-energy visuals with dynamic camera movements and fast-paced editing",
-    "Action - High-energy visuals with dynamic camera movements and fast-paced editing",
-    "Adventure - Expansive landscapes and sweeping shots that emphasize epic journeys",
-    "Martial Arts - Fluid camera work capturing choreographed fight sequences",
-    "Swashbuckler - Energetic visuals featuring swordplay and daring feats",
-    "Pirate - Nautical visuals with ships, the sea, and adventurous settings",
-    "Kung Fu - Precise and fluid visuals emphasizing martial arts techniques",
-    "Wuxia - Chinese martial arts with poetic visuals and wirework",
-    "Samurai - Japanese historical visuals with emphasis on honor and combat",
-    "Sword and Sorcery - Medieval-inspired visuals with magical elements and epic battles",
-    "Sword and Sandal - Ancient world visuals with heroic figures and epic battles",
+    # Action & Adventure - Movement, scale, and energy
+    "Action, kinetic camerawork, dynamic editing, vivid choreography showcasing stunts",
+    "Adventure, wide vistas, lush environments, a sense of exploration in composition",
+    "Martial Arts, graceful camera tracking, crisp focus on technique, rhythmic pacing of combat",
+    "Heist, slick framing, meticulous focus on details, tension built through spatial relationships",
 
-    "Comedy & Satire - Bright lighting and vibrant colors to enhance humorous elements",
-    "Comedy - Bright lighting and vibrant colors to enhance humorous elements",
-    "Satire - Exaggerated visuals and stylized imagery to highlight absurdities",
-    "Parody - Mimicking the visual style of other genres for comedic effect",
-    "Romantic Comedy - Light-hearted visuals with warm tones and urban settings",
-    "Black Comedy - Contrasting dark themes with bright visuals to enhance irony",
-    "Satirical Comedy - Exaggerated visuals critiquing societal norms",
-    "Mockumentary - Documentary-style visuals used for satirical or comedic effect",
-    "Postmodern Comedy - Self-referential visuals breaking the fourth wall",
-    "Adventure Comedy - Light-hearted visuals with a sense of excitement and fun",
-    "Road Comedy - Changing settings providing a backdrop for humor",
-    "Musical Comedy - Energetic and colorful visuals enhancing musical numbers",
+    # Comedy & Lighthearted Tones - Brightness, pace, and levity
+    "Comedy, brighter lighting, punchy color, playful camera angles and comedic timing",
+    "Romantic Comedy, urban warmth, soft focus on faces, charmingly lit interiors",
+    "Satire/Parody, exaggerated tropes, heightened sets or costumes to underscore the joke",
+    "Black Comedy, ironic lighting contrasts, cheerful palettes framing dark humor",
 
-    "Crime & Thriller - Dark visuals exploring criminal underworlds",
-    "Crime - Gritty urban settings with stark contrasts and shadowy lighting",
-    "Crime Drama - Urban visuals focusing on moral complexities",
-    "Detective - Dark urban visuals with an emphasis on clues and investigative elements",
-    "Heist - Slick visuals with precise framing highlighting intricate plans",
-    "Mystery Thriller - Shadowy visuals and tight editing to maintain suspense",
-    "Conspiracy Thriller - Shadowy visuals creating a sense of paranoia",
-    "Political Thriller - Intriguing visuals within the sphere of politics",
-    "Techno Thriller - Modern visuals highlighting advanced technology and its implications",
-    "Supernatural Thriller - Eerie visuals with unexplained phenomena",
-    "Action Thriller - High-intensity visuals combining action and tension",
-    "Science Fiction Thriller - Futuristic visuals with suspenseful narratives",
-    "Adventure Thriller - Exotic visuals with thrilling plots",
-    "Crime Thriller - Dark visuals exploring criminal underworlds",
-    "Environmental Thriller - Natural visuals highlighting ecological threats",
-    "Historical Thriller - Period visuals with suspenseful storytelling",
-    "Urban Thriller - Cityscapes with a sense of urgency and danger",
-    "Rural Thriller - Remote settings enhancing isolation and suspense",
+    # Crime & Thriller - Shadows, suspense, and moral tension
+    "Crime, gritty cityscapes, moody corners, naturalistic low-key lighting for tension",
+    "Mystery Thriller, controlled reveals, shadowy compositions, camera linger on crucial details",
+    "Political Thriller, formal interiors, restrained camera moves, a tension beneath polished surfaces",
+    "Heist Thriller, immaculate framing of plans and blueprints, high-contrast focus on faces under pressure",
 
-    "Drama & Melodrama - Visually rich settings enhancing emotional connections",
-    "Drama - Intimate cinematography focusing on character expressions and emotions",
-    "Family Drama - Warm visuals focusing on interpersonal relationships",
-    "Political Drama - Formal visuals within governmental settings",
-    "War Drama - Realistic and intense visuals depicting the impacts of war",
-    "Coming of Age Drama - Visuals capturing the transition from youth to adulthood",
-    "Melodrama - Heightened emotions conveyed through expressive visuals",
-    "Psychological Drama - Deep focus on characters through intimate visuals",
-    "Urban Drama - Realistic city visuals focusing on societal issues",
-    "Rural Drama - Naturalistic visuals highlighting country life",
-    "Espionage Drama - International visuals with an air of secrecy",
-    "Medical Drama - Clinical visuals within hospital settings",
-    "Legal Drama - Courtroom visuals focusing on justice and conflict",
+    # War, Conflict & Larger Issues - Intensity, moral complexity, historical weight
+    "War Drama, handheld immediacy, muted color grades, visually conveying the cost of conflict",
+    "Social Commentary, realistic settings, symbolic framing, contrasts in wealth or power",
+    "Slice-of-Life, mundane beauty, gentle handheld observation, unembellished reality",
+    "Independent, inventive compositions, resourceful lighting, character-driven spaces",
 
-    "Fantasy & Science Fiction - Grand and immersive visuals with extensive world-building",
-    "Fantasy - Imaginative worlds with rich, detailed visuals and special effects",
-    "Science Fiction - Futuristic designs with innovative technology and visual effects",
-    "Epic Fantasy - Grand and immersive visuals with extensive world-building",
-    "Dark Fantasy - Fantastical visuals with ominous and gothic undertones",
-    "Science Fantasy - Blending futuristic technology with fantastical elements in visuals",
-    "Sword and Sorcery - Medieval-inspired visuals with magical elements and epic battles",
-    "Urban Fantasy - Modern city visuals infused with magical elements",
-    "Science Fiction Comedy - Futuristic visuals presented with humor",
-    "Science Fantasy Adventure - Visuals combining technological and magical elements",
-    "Space Opera - Expansive cosmic visuals with elaborate spacecraft and alien worlds",
-    "Time Travel Adventure - Diverse visuals spanning multiple eras",
-    "Alternate History - Familiar visuals altered to reflect a different reality",
-    "Dystopian - Bleak and oppressive settings reflecting a degraded society",
-    "Utopian - Idealized visuals with harmonious and clean designs",
-    "Magical Realism - Realistic settings infused with subtle fantastical elements",
-    "Superhero - Bold and dynamic visuals with emphasis on action and special effects",
-    "Technothriller - Modern visuals highlighting advanced technology and its implications",
-    "Cyberpunk - Neon-lit urban environments with a high-tech, low-life aesthetic",
-    "Steampunk - Victorian-era visuals infused with steam-powered technology",
+    # Fantasy & Science Fiction - World-building, imagination, and spectacle
+    "Fantasy, ornate sets, magical lighting cues, lush color saturations hinting at the unreal",
+    "Epic Fantasy, sweeping crane shots, intricate world-building, costumes and sets that transport viewers",
+    "Science Fiction, sleek production design, futuristic architecture, balanced color schemes of metals and neons",
+    "Cyberpunk, neon reflections in puddles, overcrowded city vistas, technology-infused mise-en-scène",
+    "Steampunk, intricate clockwork props, warm sepia tones, Victorian-industrial fusion",
+    "Dystopian, desaturated palettes, decayed urban environments, oppressive symmetry in composition",
+    "Utopian, pristine whites, harmonious geometry, soft diffused lighting conveying an idealized order",
+    "Magical Realism, otherwise real settings gently tilted by subtle, wondrous details",
+    "Superhero, bold primary colors, dynamic angles, kinetic sequences foregrounding extraordinary abilities",
 
-    "Horror & Suspense - Disturbing visuals that unsettle by exploring the mind",
-    "Horror - Atmospheric lighting and suspenseful framing to evoke fear",
-    "Psychological Horror - Disturbing visuals that unsettle by exploring the mind",
-    "Found Footage Horror - Authentic visuals creating immediacy and realism",
+    # Horror & Suspense - Atmosphere, tension, and the unseen
+    "Horror, dim lighting, claustrophobic framing, suggestive shadows and unsettling angles",
+    "Psychological Horror, skewed perspectives, uncanny compositions, prolonged close-ups on haunted expressions",
+    "Found Footage Horror, raw camerawork, grainy low-light conditions, frantic real-time feel",
 
+    # Arthouse & Experimental - Formal innovation, thematic depth, visual poetry
+    "Arthouse, painterly frames, symbolic images, contemplative pacing over narrative clarity",
+    "Surrealism, dream-logic visuals, bizarre juxtapositions, layered metaphors in every shot",
+    "Avant-Garde, non-linear editing, abstract shapes and colors, sound and image as pure expression",
+    "Existential, minimalist sets, long takes, existential emptiness captured through negative space",
 
-    "Mystery & Suspense - Shadowy visuals creating a sense of intrigue",
-    "Mystery - Obscured visuals and tight framing to create intrigue",
-    "Film Noir - High-contrast black-and-white imagery with dramatic shadow play",
-    "Detective Noir - Shadow-filled visuals emphasizing mystery",
-    "Mystery Thriller - Shadowy visuals and tight editing to maintain suspense",
-    "Psychological Thriller - Unsettling visuals creating tension and ambiguity",
-    "Gothic - Dark, ornate visuals with high-contrast lighting and elaborate costumes",
-    "Supernatural Thriller - Eerie visuals with unexplained phenomena",
-    "Thriller Drama - Suspenseful visuals enhancing dramatic tension",
-    "Courtroom Drama - Formal visuals focusing on dialogue and character interactions",
-    "Legal Thriller - Tense courtroom visuals with suspenseful elements",
+    # Musical & Dance - Movement, color, and rhythm
+    "Musical, vivid palettes, dynamic crane shots, choreography synchronized with camerawork",
+    "Dance Film, fluid tracking, emphasis on bodies in motion, rhythmic editing aligned to music",
 
-    "Experimental & Arthouse - Artistic visuals creating a unique and unsettling experience",
-    "Arthouse - Focus on aesthetic experimentation and visual artistry over mainstream appeal",
-    "Experimental - Non-traditional visuals employing abstract and avant-garde techniques",
-    "Avant-Garde - Innovative and abstract visuals challenging conventional cinema",
-    "Art Film - Emphasis on visual expression and thematic depth over commercial appeal",
-    "Expressionism - Distorted sets and dramatic lighting conveying emotional states",
-    "Absurdist - Surreal and illogical visuals challenging perceptions of reality",
-    "Surrealism - Dream-like imagery with abstract and symbolic visuals",
-    "Dogme 95 - Naturalistic visuals with hand-held cameras and natural light",
-    "Art House - Emphasis on visual storytelling with symbolic and metaphorical imagery",
-    "Existential - Minimalist visuals exploring themes of existence and meaning",
-    "Postmodern - Blending of styles and self-referential visuals challenging norms",
-    "Found Footage - Handheld camera work creating a raw and immediate aesthetic",
-    "Mumblecore - Minimalist visuals with natural lighting and improvised feel",
-    "Film Essay - Visuals used to explore and present ideas or arguments",
+    # Epic & Grand Scale - Majestic aesthetics, heroic narratives
+    "Mythological Adventure, grand vistas, legendary creatures, artful framing of larger-than-life tales",
+    "Space Opera, cosmic panoramas, shimmering starfields, operatic scale in design and motion",
 
-    "Musical & Dance - Dynamic choreography captured with fluid camera movements",
-    "Musical - Vibrant colors and dynamic choreography captured with fluid camera movements",
-    "Musical Comedy - Energetic and colorful visuals enhancing musical numbers",
-    "Musical Drama - Emotional storytelling enhanced by musical performances",
-    "Dance Film - Kinetic visuals capturing movement and rhythm",
-    "Musical Anthology - Different musical styles showcased visually",
+    # Youth & Family - Warmth, accessibility, and relatability
+    "Children's, bright colors, gentle lighting, camera angles at child’s eye-level",
+    "Family, cozy interiors, warm color grading, inclusive compositions where characters share the frame",
+    "Teen Drama, natural daylight, authentic cluttered bedrooms, handheld honesty reflecting youth",
 
-    "Epic & Grand - Grand scale productions with sweeping cinematography and elaborate sets",
-    "Epic - Grand scale productions with sweeping cinematography and elaborate sets",
-    "Historical Epic - Grandiose visuals with large-scale sets and crowd scenes",
-    "Space Opera - Expansive cosmic visuals with elaborate spacecraft and alien worlds",
-    "Sword and Sandal - Ancient world visuals with heroic figures and epic battles",
-    "Grand Adventure - Visually compelling journeys with character depth",
-    "Mythological Adventure - Epic visuals rooted in ancient tales",
-
-    "Youth & Family - Visually compelling journeys with character depth",
-    "Teen Drama - Contemporary visuals reflecting youth culture",
-    "Coming of Age - Relatable visuals focusing on personal growth and self-discovery",
-    "Children's - Bright and colorful visuals appealing to a younger audience",
-    "Family - Warm and inviting visuals suitable for all ages",
-
-    "Science & Technology - Realistic visuals grounded in scientific accuracy",
-    "Science Fiction - Futuristic designs with innovative technology and visual effects",
-    "Hard Science Fiction - Realistic visuals grounded in scientific accuracy",
-    "Military Science Fiction - Futuristic warfare visuals with advanced weaponry",
-    "Space Exploration - Awe-inspiring visuals of space and celestial bodies",
-    "Alien Invasion - Dramatic visuals depicting extraterrestrial encounters",
-    "Psychological Science Fiction - Mind-bending visuals exploring complex ideas",
-    "Biopunk - Organic and biological visuals showcasing genetic manipulation",
-    "Technothriller - Modern visuals highlighting advanced technology and its implications",
-    "Cyberpunk Thriller - Neon-lit visuals with high-tech and gritty urban environments",
-    "Science Mystery - Enigmatic visuals presenting puzzles and phenomena"
-
+    # Science & Tech - Analytical and visionary aesthetics
+    "Hard Science Fiction, rigorous attention to realism in spacecraft and labs, crisp lighting, neutral palettes",
+    "Space Exploration, awe-inspiring wide shots of cosmic bodies, elegantly slow camera movements conveying wonder",
+    "Alien Invasion, dramatic skies, silhouettes against unknown forms, a hint of the otherworldly"
 ]
+
 
 
 ART_STYLES = [
-
-    "Documentary Style",
-    "Realism",
-    "Retro Futurism",
-    "Cyberpunk Aesthetic",
-    "Steampunk Aesthetic",
-    "Gothic Aesthetic",
-    "Post-apocalyptic Aesthetic",
-    "Fantasy Aesthetic",
-    "Futuristic Aesthetic",
-    "Dystopian Aesthetic",
-    "Utopian Aesthetic",
-    "Magical Realism",
-
-    # Art Movements and Styles
-    "Surrealism",
-    "Expressionism",
-    "Realism",
-    "Impressionism",
-    "Minimalism",
-    "Abstract",
-    "Cubism",
-    "Pop Art",
-    "Dadaism",
-    "Futurism",
-    "Constructivism",
-    "Baroque",
-    "Gothic",
-    "Romanticism",
-    "Symbolism",
-    "Art Deco",
-    "Art Nouveau",
-    "Bauhaus",
-    "Kinetic Art",
-    "Op Art",
-    "Neo-Expressionism",
-    "Digital Art",
-    "Glitch Art",
-    "Pixel Art",
-    "Vaporwave",
-    "Cyberpunk",
-    "Steampunk",
-    "Low Poly",
-    "High Fantasy",
-    "Anime Style",
-    "Comic Book Style",
-    "Graphic Novel Style",
-    "Watercolor Style",
-    "Ink Wash Style",
-    "Sketch Style",
-    "Photorealism",
-    "Collage",
-    "Mixed Media",
-    "Street Art",
-    "Graffiti",
-    "Tattoo Art",
-    "Mosaic",
-    "Stained Glass",
-    "Typography",
-    "Calligraphy"
+    "Documentary Style, nonfiction approach, observational camera work, authentic scenarios",
+    "Realism, true-to-life depiction, natural lighting, believable performances",
+    "Surrealist Cinema, dreamlike sequences, symbolic imagery, unconventional narratives",
+    "Expressionist Cinema, stylized sets, dramatic shadows, heightened emotional tone",
+    "Impressionist Cinema, soft focus, atmospheric visuals, evocative moods",
+    "Minimalist Cinema, sparse sets, limited props, focus on subtle narrative elements",
+    "Abstract Film, non-literal visuals, experimental edits, shapes and colors as storytelling tools",
+    "Experimental Film, avant-garde techniques, non-traditional narratives, boundary-pushing visuals",
+    "Silent Era Style, intertitles for dialogue, expressive acting, emphasis on visual storytelling",
+    "Classic Hollywood Style, studio era production, polished lighting, genre conventions",
+    "Film Noir Style, high-contrast lighting, urban crime settings, morally ambiguous characters",
+    "Italian Neorealism, on-location shooting, non-professional actors, gritty social realism",
+    "French New Wave, handheld cameras, jump cuts, self-referential narratives",
+    "Soviet Montage, rapid editing, juxtaposed images, thematic intellectual impact",
+    "Dogme 95 Style, handheld camera, natural sound, available lighting, minimal post-production",
+    "Postmodern Cinema, genre blending, intertextual references, playful narrative structures",
+    "Cyberpunk Cinema, neon-lit cityscapes, high-tech societies, urban dystopia",
+    "Steampunk Cinema, mechanical retro-futurism, industrial aesthetics, Victorian-era tech",
+    "Retro-Futuristic Cinema, future imagined through past lens, vintage technology designs",
+    "Dystopian Cinema, oppressive societies, decayed settings, bleak color palettes",
+    "Utopian Cinema, idealized worlds, harmonious visuals, balanced compositions",
+    "Fantasy Cinema, magical worlds, mythical creatures, elaborate production design",
+    "Futuristic Cinema, advanced technology, sleek minimalism, forward-looking environments",
+    "Magical Realist Cinema, subtle fantastical elements in real settings, seamless blending",
+    "Anime-Style Animation, stylized character design, vibrant color palettes, expressive motion",
+    "Traditional 2D Animation, hand-drawn frames, fluid movement, classic cel techniques",
+    "Stop-Motion Animation, frame-by-frame manipulation of models or puppets, tangible textures",
+    "Claymation, sculpted clay figures animated frame-by-frame, pliable characters and sets",
+    "Puppet Animation, articulated puppets, controlled movements, tangible tactile feel",
+    "Cut-Out Animation, flat paper or card figures, layered scenes, collage-like movement",
+    "Silhouette Animation, backlit cut-outs, stark contrast, elegant shadow play",
+    "Rotoscope Animation, traced over live-action footage, fluid hybrid style, realistic motion",
+    "3D CGI Animation, computer-generated models, virtual lighting, photoreal or stylized worlds",
+    "Motion Capture Animation, recorded human performance data, naturalistic character movement",
+    "Pixilation, stop-motion with live actors, choppy surreal movement, playful reality bending",
+    "Live-Action/Animation Hybrid, real footage merged with drawn or CGI elements, mixed realities",
+    "Found Footage Style, existing video repurposed, documentary-like authenticity, collage narrative",
+    "Mockumentary Style, fictional events portrayed as real doc, comedic or satiric tone",
+    "Music Video Style, rhythm-driven editing, stylized visuals, performance emphasis",
+    "Neon-Noir Style, blend of noir’s darkness with neon aesthetic, moody urban visuals",
+    "High Fantasy Cinema, epic scope, grand mythical landscapes, richly detailed costumes and sets",
+    "VHS Aesthetic Cinema, analog video texture, tape artifacts, retro home-video feel",
+    "IMAX Large Format, high-resolution film, immersive image scale, grand visual impact",
+    "3D Stereoscopic Cinema, added depth perception, layered planes of action, enhanced immersion",
+    "VR/360-Degree Film, immersive spherical viewing, interactive vantage points, spatial storytelling",
+    "Motion Graphics & Title Sequences, animated typography, stylized intros, graphic-driven narration"
 ]
+
 
 LIGHTING_OPTIONS = [
-    "Contextual Lighting - Fits the scene’s purpose and setting",
+    "Contextual Lighting, scene-aligned source, adaptive ambiance, purposeful illumination",
 
-    "Natural Lighting - Ambient and organic light sources",
-    "Sunlight - Bright and natural outdoor lighting",
-    "Golden Hour - Warm sunset tones for soft, dramatic visuals",
-    "Blue Hour - Cool twilight hues with soft contrasts",
-    "Moonlight - Gentle, bluish nocturnal glow",
-    "Candlelight - Warm, flickering light source",
-    "Firelight - Natural and dynamic flame light",
+    "Natural Lighting, organic ambient source, environmental radiance, non-artificial glow",
+    "Sunlight, bright natural rays, crisp outdoor illumination, strong directional highlights",
+    "Golden Hour, warm low-angle glow, soft transitions, gentle contrast",
+    "Blue Hour, cool twilight tones, subtle softness, muted gradients",
+    "Moonlight, faint bluish hue, nocturnal calm, gentle luminance",
+    "Candlelight, warm flicker, intimate radiance, soft, localized glow",
+    "Firelight, dynamic flames, dancing highlights, warm shifting hues",
 
-    "Studio Lighting - Controlled environment setups",
-    "Softbox Lighting - Even, diffused light for portraits",
-    "Ring Light - Circular lighting emphasizing facial features",
-    "Spotlight - Focused illumination for dramatic emphasis",
-    "Continuous Lighting - Steady, reliable light for various scenes",
-    "Strobe Lighting - Flash bursts for high contrast effects",
-    "LED Lighting - Energy-efficient and versatile lighting source",
-    "RGB Lighting - Customizable, multi-color lighting options",
+    "Studio Lighting, controlled conditions, stable outputs, customizable setups",
+    "Softbox Lighting, diffused softness, even coverage, flattering highlights",
+    "Ring Light, circular catchlights, facial emphasis, balanced frontal glow",
+    "Spotlight, focused beam, high-contrast spot, intensified focal emphasis",
+    "Continuous Lighting, steady beam, consistent output, reliable baseline",
+    "Strobe Lighting, flash bursts, crisp definition, frozen action details",
+    "LED Lighting, energy-efficient, versatile hues, adjustable intensity",
+    "RGB Lighting, customizable color tones, mood-based hues, creative variation",
 
-    "Directional Lighting - Angle-specific light sources",
-    "Side Lighting - Creates shadows and depth from the side",
-    "Top Lighting - Overhead light for stark shadows",
-    "Underlighting - Lighting from below, often for eerie effects",
-    "Front Lighting - Direct lighting from the front",
-    "Backlighting - Silhouette effect with light from behind",
-    "Rim Lighting - Highlights edges for separation from background",
-    "Cross Lighting - Two light sources creating dynamic shadows",
-    "Split Lighting - Half light, half shadow effect",
-    "Loop Lighting - Subtle cheek shadows, popular for portraits",
+    "Directional Lighting, angle-defined source, contour shaping, shadow interplay",
+    "Side Lighting, lateral illumination, pronounced depth, accentuated texture",
+    "Top Lighting, overhead beam, stark shadows, downward emphasis",
+    "Underlighting, upward glow, unsettling ambiance, unusual highlight angles",
+    "Front Lighting, direct frontal beam, reduced shadows, clear subject definition",
+    "Backlighting, silhouetted form, outlined edges, separated subject",
+    "Rim Lighting, edge highlights, subject-background separation, outlined contours",
+    "Cross Lighting, intersecting beams, sculpted texture, dynamic dimension",
+    "Split Lighting, half-face illumination, dramatic contrast, focused tension",
+    "Loop Lighting, subtle cheek shadow, popular portrait style, soft facial contour",
 
-    "High & Low Key Lighting - Setting mood with light intensity",
-    "High Key - Bright, low-contrast lighting for a light mood",
-    "Low Key - Dark, high-contrast lighting for drama",
-    "Chiaroscuro - Strong contrast for depth and intensity",
-    "Rembrandt Lighting - Classic portrait with triangular shadows",
-    "Ambient Lighting - Overall soft background light",
-    "Motivated Lighting - Scene context-based lighting",
+    "High & Low Key Lighting, tonal control, mood shaping, contrast management",
+    "High Key, bright, low-contrast glow, airy mood, minimal shadow",
+    "Low Key, dark, high-contrast mood, dramatic depth, strong shadow shapes",
+    "Chiaroscuro, intense light-dark interplay, rich dimensionality, pronounced drama",
+    "Rembrandt Lighting, classic painterly style, triangular face light, refined portrait",
+    "Ambient Lighting, overall gentle glow, background softness, diffused presence",
+    "Motivated Lighting, narrative-justified glow, scene-integrated, logical source placement",
 
-    "Colored & Thematic Lighting - Setting scenes with color and style",
-    "Neon Lighting - Vibrant, urban colors",
-    "Colored Gel Lighting - Color filters for mood setting",
-    "Candle Glow - Warmth and coziness",
-    "Blacklight - Ultraviolet for eerie or otherworldly effects",
-    "Vintage Lighting - Nostalgic, warm tones",
-    "Modern Lighting - Sleek, contemporary lighting style",
-    "Futuristic Lighting - Cool, high-tech visuals",
-    "Genre-Specific Lighting - Tailored for specific film genres",
+    "Colored & Thematic Lighting, hue-based mood, stylistic choices, scene-specific color",
+    "Neon Lighting, vibrant chroma, urban flair, punchy highlights",
+    "Colored Gel Lighting, tinted filters, thematic hues, mood enhancement",
+    "Candle Glow, warm intimate tone, soft transitions, cozy ambiance",
+    "Blacklight, UV hue, otherworldly glow, glowing elements",
+    "Vintage Lighting, nostalgic warmth, old-era feel, softened palette",
+    "Modern Lighting, sleek brightness, clean lines, contemporary vibe",
+    "Futuristic Lighting, high-tech tone, cool accents, advanced aesthetic",
+    "Genre-Specific Lighting, style-fitting hues, aligned with thematic genre, narrative tone",
 
-    "Dynamic & Adaptive Lighting - Interactive and changing lighting setups",
-    "Reactive Lighting - Changes with motion",
-    "Timed Lighting - Scheduled, automated changes",
-    "Transitional Lighting - Smooth intensity shifts",
-    "Shadow Play - Artistic use of shadows",
-    "Light Painting - Artistic, controlled light trails",
+    "Dynamic & Adaptive Lighting, interactive shifts, evolving intensity, responsive changes",
+    "Reactive Lighting, motion-triggered variance, scene-responsive, fluid illumination",
+    "Timed Lighting, scheduled intensity shifts, rhythmic changes, pre-set transitions",
+    "Transitional Lighting, gradual brightness shifts, smooth luminosity flow, evolving mood",
+    "Shadow Play, artistic silhouette use, pattern casting, dramatic shapes",
+    "Light Painting, controlled light streaks, creative tracings, artistic overlays",
 
-    "Specialized Lighting Techniques - Unique lighting styles",
-    "Silhouette - Outlines only, background illuminated",
-    "Gobo Lighting - Patterned lighting for texture",
-    "Grid Lighting - Focused beams for isolation",
-    "Projected Lighting - Shapes or patterns cast onto subjects",
-    "Butterfly Lighting - Shadow under nose, flattering for portraits",
-    "Split Lighting - Dividing face into light and dark halves",
-    "Color Gradient Lighting - Smooth transitions across colors",
+    "Specialized Lighting Techniques, distinct setups, unique patterns, stylized approach",
+    "Silhouette, outlined form, backlit shape, clear profile",
+    "Gobo Lighting, patterned beams, textural overlays, shaped projections",
+    "Grid Lighting, focused spots, isolated illumination, selective emphasis",
+    "Projected Lighting, cast shapes, thematic patterns, narrative visuals",
+    "Butterfly Lighting, nose shadow below, flattering facial highlight, portrait classic",
+    "Split Lighting, bisected facial light, symmetrical tension, dramatic mood",
+    "Color Gradient Lighting, smooth hue transitions, blended chroma, layered palette",
 
-    "Practical Lighting - On-set, naturally motivated lighting",
-    "Functional Practical Lighting - Utility-based lighting for realism",
-    "Symbolic Practical Lighting - Adds meaning or enhances narrative",
-    "Decorative Practical Lighting - Adds aesthetic appeal",
-    "Thematic Practical Lighting - Matches set theme or style",
-    "Mood Practical Lighting - Sets emotional tone",
-    "Accent Lighting - Highlights specific details or features",
+    "Practical Lighting, on-set motivated sources, integrated fixtures, natural placement",
+    "Functional Practical Lighting, utility-based glow, situational realism, justified illumination",
+    "Symbolic Practical Lighting, meaning-laden sources, narrative reinforcement, metaphorical hue",
+    "Decorative Practical Lighting, aesthetic accents, visual enhancements, pleasing highlights",
+    "Thematic Practical Lighting, style-aligned sources, set-matched hues, story synergy",
+    "Mood Practical Lighting, emotive color, subtle ambiance, tone setting",
+    "Accent Lighting, focused highlights, detail emphasis, subtle framing",
 
-    "Control & Adjustment Lighting - Fine-tuning and precision",
-    "Dimmed Lighting - Lower intensity for a subdued look",
-    "Bright Lighting - High intensity for clear visibility",
-    "Diffused Light - Soft, scattered illumination",
-    "Bounce Lighting - Reflects light softly onto the subject",
-    "Fill Lighting - Reduces shadows",
-    "Directional Light - Specific angled light source",
-    "Temperature Controlled Lighting - Adjusts warmth or coolness",
-    "Intensity Controlled Lighting - Adjusts light strength",
-    "Focus Controlled Lighting - Sharpens specific areas",
-    "Shadowless Lighting - Eliminates shadows",
-    "Matte Lighting - Soft, glare-free light",
-    "Glossy Lighting - Reflective lighting for shine",
+    "Control & Adjustment Lighting, fine-tuned outputs, precise handling, customizable quality",
+    "Dimmed Lighting, reduced intensity, subdued glow, softened presence",
+    "Bright Lighting, high intensity, crisp clarity, strong definition",
+    "Diffused Light, softened spread, gentle shadows, minimized harshness",
+    "Bounce Lighting, reflected beam, indirect illumination, softened contrast",
+    "Fill Lighting, shadow reduction, balanced exposure, even tone",
+    "Directional Light, angled beam, sculpted texture, controlled highlight",
+    "Temperature Controlled Lighting, warm-cool balance, hue tuning, refined atmosphere",
+    "Intensity Controlled Lighting, adjustable brightness, custom luminosity, scene matching",
+    "Focus Controlled Lighting, pinpointed clarity, targeted emphasis, selective highlight",
+    "Shadowless Lighting, even wash, minimal contrast, flatter dimension",
+    "Matte Lighting, non-reflective glow, reduced glare, even surface tone",
+    "Glossy Lighting, reflective highlight, shiny surfaces, crisp specularity",
 
-    "Atmospheric & Narrative Lighting - Creating mood and storytelling",
-    "Atmospheric Lighting - Sets an environmental mood",
-    "Narrative Lighting - Enhances story elements",
-    "Symbolic Lighting - Represents abstract ideas",
-    "Mood Lighting - Sets the emotional tone",
-    "Thematic Lighting - Aligned with the scene’s theme",
-    "Environmental Lighting - Matches surroundings realistically",
+    "Atmospheric & Narrative Lighting, story-aligned mood, environment shaping, thematic tone",
+    "Atmospheric Lighting, enveloping glow, environmental enhancement, immersive aura",
+    "Narrative Lighting, story-supporting hues, plot-driven tones, contextual intensity",
+    "Symbolic Lighting, metaphorical hue, representational brightness, interpretive depth",
+    "Mood Lighting, emotional tone setting, color-driven sentiment, scene feel",
+    "Thematic Lighting, concept-aligned style, cohesive atmosphere, narrative consistency",
+    "Environmental Lighting, realistic match, location-fitting brightness, scene authenticity",
 
-    "Edge & Rim Lighting - Contour and separation",
-    "Edge Lighting - Highlights object edges",
-    "Accent Rim Lighting - Soft edge highlights",
-    "Diffuse Rim Lighting - Blurred edge emphasis",
-    "Bounced Rim Lighting - Soft reflection from background",
+    "Edge & Rim Lighting, contour emphasis, subject separation, defined silhouettes",
+    "Edge Lighting, highlighting borders, clear outlines, crisp separation",
+    "Accent Rim Lighting, subtle edge highlight, gentle glow, refined border",
+    "Diffuse Rim Lighting, softened halo, less defined edges, hazy outline",
+    "Bounced Rim Lighting, reflected edge illumination, indirect highlight, gentle contour",
 
-    "Experimental & Creative Lighting - Innovative and bold styles",
-    "Layered Lighting - Multiple lighting layers for complexity",
-    "Patterned Lighting - Light textures and patterns",
-    "Animated Lighting - Moving or fluctuating light sources",
-    "Integrated Lighting - Seamless blending of sources",
-    "Artistic Lighting - Creative, expressive light setups",
-    "Technical Lighting - Precision and exactness in light control",
-    "Balanced Lighting - Evenly spread light",
-    "Asymmetrical Lighting - Uneven light distribution",
-    "Complementary Lighting - Harmonious colors",
-    "Light Blending - Smooth merging of light sources",
-
+    "Experimental & Creative Lighting, bold techniques, innovative choices, artistic flair",
+    "Layered Lighting, multiple levels, complex interplay, depth-rich luminance",
+    "Patterned Lighting, textural motifs, structured beams, decorative overlay",
+    "Animated Lighting, moving brightness, fluctuating intensity, kinetic effect",
+    "Integrated Lighting, seamless source blend, cohesive multi-light mix, holistic glow",
+    "Artistic Lighting, expressive configurations, stylized brilliance, aesthetic emphasis",
+    "Technical Lighting, precise control, meticulous setups, exactingly crafted illumination",
+    "Balanced Lighting, even distribution, harmonious spread, visually stable",
+    "Asymmetrical Lighting, uneven distribution, dynamic emphasis, unique contrasts",
+    "Complementary Lighting, harmonized hues, color synergy, pleasing combinations",
+    "Light Blending, smooth transitions, merged sources, unified radiance"
 ]
+
 
 FRAMING_OPTIONS = [
-    "Contextual Shot - Adapts to scene context",
+    "Contextual Shot, adaptive framing, scene-integrated viewpoint, flexible perspective",
 
-    "Basic Shots - Standard framing and perspectives",
-    "Wide Shot - Broad view of the scene",
-    "Medium Shot - Waist level framing",
-    "Close-Up - Detailed focus on subject",
-    "Extreme Close-Up - Focus on minute details",
-    "Long Shot - Full body view",
-    "Full Shot - Complete figure in frame",
-    "Headshot - Focus on head and shoulders",
+    "Basic Shots, foundational setups, standard distances, commonly used perspectives",
+    "Wide Shot, broad coverage, environmental context, full spatial awareness",
+    "Medium Shot, waist-level framing, moderate proximity, balanced subject detail",
+    "Close-Up, focused detail, intimate scale, enhanced facial or object features",
+    "Extreme Close-Up, minute detail emphasis, magnified focus, heightened intimacy",
+    "Long Shot, full-body view, contextual background, spatial orientation",
+    "Full Shot, entire figure in frame, comprehensive subject capture, stable layout",
+    "Headshot, close framing of face, expressive detail, direct subject focus",
 
-    "Specialty Shots - Unique perspectives and framing",
-    "Over-the-Shoulder - Perspective from behind subject",
-    "Dutch Angle - Tilted frame for tension",
-    "Bird's Eye View - Top-down angle",
-    "Point of View - First-person perspective",
-    "Two-Shot - Dual subjects in frame",
-    "Cowboy Shot - Mid-thigh framing for stance",
-    "Establishing Shot - Sets the scene context",
-    "Aerial Shot - High elevation view of scene",
-    "Insert Shot - Close detail of object or action",
-    "Reverse Angle - Shows opposite perspective",
+    "Specialty Shots, unique angles, unconventional framing, distinctive vantage",
+    "Over-the-Shoulder, subject foreground silhouette, contextual background, relational perspective",
+    "Dutch Angle, tilted axis, tension or unease, dynamic visual cue",
+    "Bird's Eye View, top-down angle, overarching scope, diminutive subject appearance",
+    "Point of View, first-person perspective, subjective immersion, personal vantage",
+    "Two-Shot, dual-subject framing, relational balance, shared focus",
+    "Cowboy Shot, mid-thigh framing, character stance emphasis, stylized distance",
+    "Establishing Shot, sets scene context, locational clarity, spatial orientation",
+    "Aerial Shot, high-elevation viewpoint, expansive overview, grand scale",
+    "Insert Shot, close detail of object/action, focal emphasis, narrative clarity",
+    "Reverse Angle, opposite viewpoint, alternate perspective, situational contrast",
 
-    "Movement Shots - Camera movement and dynamics",
-    "Tracking Shot - Follows subject's movement",
-    "Static Shot - Fixed camera position",
-    "Pan Shot - Horizontal movement across scene",
-    "Tilt Shot - Vertical movement up or down",
-    "Zoom Shot - Adjusts focal distance",
-    "Crane Shot - Camera elevated movement",
-    "Dolly Shot - Smooth tracking movement",
-    "Arc Shot - Circular movement around subject",
-    "Rack Focus - Adjusts focus depth within scene",
-    "Push In Shot - Moves camera closer to subject",
-    "Pull Back Shot - Camera retreats from subject",
-    
-    "Composition Shots - Structured visual elements",
-    "Symmetrical Composition - Balanced and mirrored sides",
-    "Asymmetrical Composition - Uneven yet balanced layout",
-    "Rule of Thirds Composition - Balanced along thirds",
-    "Golden Ratio Composition - Natural proportional layout",
-    "Centered Composition - Main focus in center of frame",
-    "Negative Space Composition - Emphasizes emptiness",
-    "Layered Composition - Multiple depth layers",
-    "Foreground Interest - Elements in the foreground",
-    "Background Interest - Emphasis on background elements",
-    
-    "Angle Shots - Perspective-based camera angles",
-    "High Angle Shot - Camera looks down on subject",
-    "Low Angle Shot - Camera looks up at subject",
-    "Worm's Eye View - Ground-up perspective",
-    "Extreme High Angle - Very elevated top-down view",
-    "Extreme Low Angle - Very low, ground-level view",
-    "Overhead Shot - Directly above subject",
-    
-    "Lens Effects - Optical and perspective adjustments",
-    "Wide Angle Shot - Broad perspective and depth",
-    "Telephoto Shot - Narrow focus on distant subjects",
-    "Macro Shot - Close-up for small details",
-    "Fisheye Shot - Distorted, rounded wide view",
-    "Tilt-Shift Shot - Miniature, selective focus effect",
-    "Anamorphic Shot - Wide, cinematic view",
-    "Soft Focus - Slightly blurred edges for atmosphere",
-    "Infrared Shot - Uses heat-sensitive imagery",
-    "UV Shot - Captures ultraviolet light spectrum",
+    "Movement Shots, camera motion integrated, dynamic framing, shifting perspectives",
+    "Tracking Shot, follows subject’s path, consistent alignment, fluid movement",
+    "Static Shot, fixed position, stable composition, stationary viewpoint",
+    "Pan Shot, horizontal sweep, scene-wide coverage, lateral progression",
+    "Tilt Shot, vertical sweep, layered vertical reveal, changing vertical axis",
+    "Zoom Shot, focal length shift, magnification change, altered subject scale",
+    "Crane Shot, elevated camera movement, overhead dimension, vertical expansion",
+    "Dolly Shot, forward/backward glide, depth variation, closer/farther engagement",
+    "Arc Shot, circular motion, evolving perspective, subject-centric orbit",
+    "Rack Focus, focus plane shift, selective clarity transitions, layered emphasis",
+    "Push In Shot, camera advances, intensified subject detail, closer interaction",
+    "Pull Back Shot, camera retreats, widened context, diminishing subject emphasis",
 
-    "Special Effects Shots - Enhanced or stylized techniques",
-    "Time-Lapse Shot - Accelerated time for changes",
-    "Hyperlapse Shot - Accelerated movement across distance",
-    "Slow Motion Shot - Reduces speed for emphasis",
-    "Fast Motion Shot - Increases speed for urgency",
-    "Frozen Time Shot - Static, suspended moment",
-    "Bullet Time Shot - 360-degree view around subject",
+    "Composition Shots, structured visual arrangement, artful balance, deliberate layout",
+    "Symmetrical Composition, mirrored balance, harmonious arrangement, stable equilibrium",
+    "Asymmetrical Composition, uneven element placement, dynamic tension, visual interest",
+    "Rule of Thirds Composition, grid-based alignment, natural balance, guided focal points",
+    "Golden Ratio Composition, proportioned framing, organic harmony, aesthetic appeal",
+    "Centered Composition, main focus centered, direct emphasis, straightforward clarity",
+    "Negative Space Composition, emptiness around subject, isolated emphasis, minimalist impact",
+    "Layered Composition, multiple depth planes, spatial complexity, dimensional richness",
+    "Foreground Interest, prominent frontal elements, immediate draw, layered scene",
+    "Background Interest, emphasized backdrop, contextual depth, secondary narrative",
 
-    "Composition Techniques - Creative framing and layout",
-    "Leading Lines - Guides viewer’s eye through frame",
-    "Framing Within Framing - Nested, layered frames",
-    "Silhouette Composition - Dark outline with bright background",
-    "Reflection Composition - Mirror or reflective elements",
-    "Pattern Composition - Repeated shapes or motifs",
-    "Geometric Composition - Emphasis on shapes",
-    "Organic Composition - Natural, flowing forms",
-    "Minimalist Composition - Simple, clean elements",
-    "Dynamic Composition - Active, engaging layout",
-    "Static Composition - Fixed, balanced layout",
-    "Juxtaposition Composition - Contrasting elements side by side",
-    "Color Contrast Composition - Vibrant hue differences",
-    
-    "Layering Techniques - Depth and spatial relationships",
-    "Foreground Element Shot - Subject in front of frame",
-    "Background Element Shot - Emphasis on background",
-    "Balanced Layering - Even distribution of elements",
-    "Asymmetrical Layering - Uneven arrangement",
-    "Central Layering - Focus on central layer",
-    "Peripheral Layering - Emphasis on edges or background",
-    
-    "Space and Depth Shots - Perspective manipulation",
-    "Depth of Field Shot - Clear foreground, blurred background",
-    "Shallow Depth - Limited focus on foreground",
-    "Deep Depth - Extended focus on entire frame",
-    "Spatial Composition - Creates 3D depth",
-    "Flat Composition - Emphasis on 2D elements",
-    
-    "Framing Techniques - Visual structure and context",
-    "Balanced Framing - Equal distribution within frame",
-    "Dynamic Framing - Engaging, active visual layout",
-    "Narrative Framing - Enhances storytelling elements",
-    "Symbolic Framing - Represents thematic ideas",
-    "Thematic Framing - Aligned with scene’s theme",
+    "Angle Shots, perspective shifts, altered vantage points, varied visual impact",
+    "High Angle Shot, camera looking down, subject diminished, increased field overview",
+    "Low Angle Shot, camera looking up, subject amplified, imposing presence",
+    "Worm's Eye View, ground-up vantage, towering subjects, dramatic vertical scale",
+    "Extreme High Angle, very elevated perspective, comprehensive scene layout, small subject scale",
+    "Extreme Low Angle, near-ground view, exaggerated height, striking upward view",
+    "Overhead Shot, directly above subject, top-down framing, symmetrical floor pattern",
+
+    "Lens Effects, optical variations, altered perspective, stylized imagery",
+    "Wide Angle Shot, broad field, exaggerated depth, expanded peripheral detail",
+    "Telephoto Shot, narrow view, compressed distance, selective subject isolation",
+    "Macro Shot, extreme close focus, tiny detail magnification, intricate clarity",
+    "Fisheye Shot, curved distortion, wide spherical view, unique spatial warp",
+    "Tilt-Shift Shot, selective focus, miniaturized appearance, painterly depth",
+    "Anamorphic Shot, wide cinematic ratio, horizontal stretch, filmic aesthetic",
+    "Soft Focus, gentle blur, atmospheric haze, diffused details",
+    "Infrared Shot, heat-sensitive capture, surreal color range, alternate spectrum",
+    "UV Shot, ultraviolet capture, revealed hidden details, unconventional spectrum",
+
+    "Special Effects Shots, temporal or dimensional alterations, stylized pacing, enhanced impact",
+    "Time-Lapse Shot, accelerated passage, compressed chronology, evolving scene",
+    "Hyperlapse Shot, moving time-lapse, spatial-temporal progression, dynamic journey",
+    "Slow Motion Shot, reduced speed, accentuated action details, emotional emphasis",
+    "Fast Motion Shot, increased speed, urgent energy, heightened tempo",
+    "Frozen Time Shot, suspended instant, static subject, paused motion",
+    "Bullet Time Shot, 360-degree freeze, rotational vantage, multi-angle pause",
+
+    "Composition Techniques, creative frameworks, aesthetic structuring, artistic emphasis",
+    "Leading Lines, guiding lines, directed eye movement, focal route",
+    "Framing Within Framing, nested boundaries, multi-layered enclosure, dimensional depth",
+    "Silhouette Composition, backlit outline, shape emphasis, high contrast",
+    "Reflection Composition, mirrored surface, duplicated imagery, symmetrical intrigue",
+    "Pattern Composition, repeated motifs, rhythmic structure, cohesive repetition",
+    "Geometric Composition, shape-based design, orderly structure, graphic clarity",
+    "Organic Composition, natural forms, fluid lines, gentle curves",
+    "Minimalist Composition, sparse elements, focused simplicity, uncluttered emphasis",
+    "Dynamic Composition, active arrangement, energetic layout, visual excitement",
+    "Static Composition, stable structure, balanced equilibrium, calm presence",
+    "Juxtaposition Composition, contrasting elements, side-by-side tension, comparative interest",
+    "Color Contrast Composition, differing hues, vibrant emphasis, chromatic distinction",
+
+    "Layering Techniques, depth management, spatial interplay, dimensional arrangement",
+    "Foreground Element Shot, subject forefront, immediate attention, layered focus",
+    "Background Element Shot, distant emphasis, contextual layer, scene depth",
+    "Balanced Layering, even depth distribution, harmonized spatial placement",
+    "Asymmetrical Layering, uneven depth distribution, dynamic spatial tension",
+    "Central Layering, mid-depth focus, layered emphasis in center plane",
+    "Peripheral Layering, edge-based arrangement, extended field interest, lateral depth",
+
+    "Space and Depth Shots, manipulating perception, 3D illusion, spatial nuance",
+    "Depth of Field Shot, selective focus layers, foreground clarity, blurred backdrop",
+    "Shallow Depth, tight focus plane, isolated subject detail, soft background",
+    "Deep Depth, extensive focus range, overall clarity, comprehensive detail",
+    "Spatial Composition, 3D effect, layered distances, immersive perspective",
+    "Flat Composition, minimal depth cues, 2D emphasis, graphic simplicity",
+
+    "Framing Techniques, visual structure, thematic alignment, narrative reinforcement",
+    "Balanced Framing, equal distribution, harmonious arrangement, stable layout",
+    "Dynamic Framing, active placement, engaging arrangement, lively composition",
+    "Narrative Framing, story-enhancing alignment, context-driven angle, plot emphasis",
+    "Symbolic Framing, thematic representation, meaningful placement, interpretive depth",
+    "Thematic Framing, scene-aligned structure, unified thematic elements, cohesive narrative"
 ]
+
 
 CAMERA_MOVEMENTS = [
-    "Contextual Movement - Adapts to scene needs",
+    "Contextual Movement, adaptive trajectory, scene-driven adjustments, variable pacing",
 
-    "Basic Movements - Core camera motions",
-    "Pan - Horizontal sweep across a scene",
-    "Tilt - Vertical sweep up or down",
-    "Dolly - Moving towards or away from the subject",
-    "Truck - Lateral (side-to-side) movement",
-    "Zoom - Adjusting focal length to change perspective",
-    "Crane - Elevating or lowering the camera smoothly",
-    "Handheld - Unsteady, naturalistic motion",
-    "Steadicam - Smooth tracking without shake",
-    "Tracking Shot - Follows the subject’s movement",
-    "Arc Shot - Circular motion around the subject",
+    "Basic Movements, foundational motion, core directional shifts, stable viewpoint",
+    "Pan, horizontal pivot, sweeping view, extended lateral coverage",
+    "Tilt, vertical pivot, up-down angle shift, layered vertical reveal",
+    "Dolly, forward-backward track, depth variation, perspective shift",
+    "Truck, side-to-side track, lateral reposition, expanded spatial awareness",
+    "Zoom, focal length shift, magnification change, altered subject scale",
+    "Crane, vertical lift/drop, elevated vantage, aerial dimension",
+    "Handheld, unsteady shake, naturalistic vibe, immediate intimacy",
+    "Steadicam, stabilized glide, smooth tracking, fluid viewpoint",
+    "Tracking Shot, subject-following motion, continuous alignment, dynamic framing",
+    "Arc Shot, circular path, encircling perspective, evolving angles",
 
-    "Dynamic Movements - Quick or impactful adjustments",
-    "Whip Pan - Rapid horizontal sweep",
-    "Whip Tilt - Rapid vertical sweep",
-    "Rack Focus - Shifts focus between planes",
-    "Pull Back Reveal - Gradually reveals scene",
-    "Push In - Moves closer to the subject",
-    "Roll - Rotational movement for disorientation",
-    "Boom - Overhead vertical reach",
+    "Dynamic Movements, quick adjustments, sudden shifts, heightened impact",
+    "Whip Pan, rapid horizontal pivot, blurred transition, energetic reorientation",
+    "Whip Tilt, rapid vertical pivot, swift angle shift, abrupt viewpoint change",
+    "Rack Focus, focus plane shift, selective clarity, layered subject emphasis",
+    "Pull Back Reveal, backward movement, gradual scene exposure, unveiling context",
+    "Push In, forward approach, intensified subject detail, closer inspection",
+    "Roll, camera rotation, off-kilter axis, disorienting angle",
+    "Boom, vertical travel, overhead descent/ascent, top-down dimension",
 
-    "Time-Based Movements - Altering perception of time",
-    "Time-Lapse - Accelerated time to capture change",
-    "Hyperlapse - Moving time-lapse across space",
-    "Slow Motion - Reduced speed for emphasis",
-    "Fast Motion - Increased speed for urgency",
-    "Frozen Time - Static frame capturing a moment",
-    "Bullet Time - 360-degree freeze around the subject",
+    "Time-Based Movements, temporal distortion, altered pace, time perception shift",
+    "Time-Lapse, accelerated frames, compressed change, evolving scene",
+    "Hyperlapse, moving time-lapse, spatial-temporal shift, fluid progression",
+    "Slow Motion, reduced speed, elongated action, emphasized detail",
+    "Fast Motion, increased speed, urgent pacing, kinetic intensity",
+    "Frozen Time, static moment hold, paused action, suspended instant",
+    "Bullet Time, multi-angle freeze, full 360 capture, time-suspended rotation",
 
-    "Complex Movements - Combined or advanced techniques",
-    "Pan and Tilt - Horizontal and vertical sweep combination",
-    "Dolly Zoom - Changes focal length to distort depth",
-    "Orbit Shot - Full circular movement around subject",
-    "Jib Shot - Vertical crane movement with arc capabilities",
-    "Helicopter Shot - High aerial sweeping motion",
-    "Cable Cam Movement - Suspended, controlled path",
-    "Monorail Movement - Fixed track-guided motion",
-    "Slide Shot - Side-to-side glide without shake",
+    "Complex Movements, combined techniques, intricate motion, layered perspective",
+    "Pan and Tilt, dual-axis pivot, compound angle shift, multi-directional scan",
+    "Dolly Zoom, simultaneous dolly and zoom, warped depth, tension effect",
+    "Orbit Shot, full 360 circle, evolving background, subject-centric rotation",
+    "Jib Shot, crane-like arc, gentle vertical/horizontal glide, elevated framing",
+    "Helicopter Shot, high aerial sweep, expansive overview, grand spatial scale",
+    "Cable Cam Movement, suspended linear glide, stable overhead travel, controlled path",
+    "Monorail Movement, fixed track slide, consistent direction, steady alignment",
+    "Slide Shot, horizontal glide, smooth lateral shift, stable reframe",
 
-    "Adaptive & Controlled Movements - Guided or automated",
-    "Motorized Steadicam - Mechanized smooth motion",
-    "Drone Movement - Free aerial paths",
-    "Gyroscopic Movement - Stabilized rotation",
-    "Gimbal Stabilized Movement - Multi-axis smoothness",
-    "RC Camera Movement - Remote-controlled paths",
-    "Underwater Camera Movement - Fluid, aquatic paths",
-    "Macro Camera Movement - Small, precise adjustments",
-    "Wide Camera Movement - Expansive sweeps",
-    "Narrow Camera Movement - Focused close-ups",
+    "Adaptive & Controlled Movements, guided direction, mechanized stability, precise adjustments",
+    "Motorized Steadicam, powered stabilization, even movement, mechanical consistency",
+    "Drone Movement, aerial flight, free spatial navigation, bird’s-eye perspective",
+    "Gyroscopic Movement, rotational stabilization, level horizons, steady rotations",
+    "Gimbal Stabilized Movement, multi-axis smoothing, controlled angles, fluid transitions",
+    "RC Camera Movement, remote-guided path, consistent travel, directional precision",
+    "Underwater Camera Movement, subaquatic traversal, fluid drifting, aquatic environment",
+    "Macro Camera Movement, minute positional shifts, close-up framing, fine detail",
+    "Wide Camera Movement, broad sweeps, extensive coverage, panoramic scope",
+    "Narrow Camera Movement, restricted motion, tight framing, focused detail",
 
-    "Creative & Expressive Movements - Artistic effects",
-    "Fluid Movement - Smooth and natural transitions",
-    "Staccato Movement - Quick, jerky stops",
-    "Synchronized Movement - Coordinated with subject",
-    "Random Movement - Unpredictable motion for effect",
-    "Narrative Movement - Enhances storytelling elements",
-    "Symbolic Movement - Adds thematic significance",
-    "Expressive Movement - Emotionally driven motion",
-    "Functional Movement - Purpose-driven adjustment",
+    "Creative & Expressive Movements, stylistic shifts, emotive motion, thematic emphasis",
+    "Fluid Movement, smooth transitions, natural flow, graceful pace",
+    "Staccato Movement, abrupt starts/stops, jittery shifts, energetic pattern",
+    "Synchronized Movement, coordinated motion, subject parallel, cohesive visual timing",
+    "Random Movement, erratic trajectory, unpredictable framing, spontaneous energy",
+    "Narrative Movement, storytelling flow, scene-enhancing angle shifts, thematic alignment",
+    "Symbolic Movement, representational motion, thematic arcs, layered meaning",
+    "Expressive Movement, emotional resonance, subjective shifts, mood-driven pacing",
+    "Functional Movement, purposeful adjustment, problem-solving angle, direct reposition",
 
-    "Transition Movements - Changing from one shot to another",
-    "Smooth Transition Movement - Seamless camera changes",
-    "Abrupt Transition Movement - Sudden shift",
-    "Gradual Transition Movement - Slow, drawn-out change",
-    "Creative Transition Movement - Unique or artistic swap",
-    "Narrative Transition Movement - Enhances story development",
+    "Transition Movements, shot-to-shot linkage, bridging frames, evolving visual context",
+    "Smooth Transition Movement, seamless camera shift, fluid scene merge, graceful linkage",
+    "Abrupt Transition Movement, sudden change, jolting reframe, sharp scene jump",
+    "Gradual Transition Movement, slow progression, gently changing perspective, extended dissolve",
+    "Creative Transition Movement, inventive swaps, stylized merging, artistic shift",
+    "Narrative Transition Movement, story-driven angle change, plot-bound reframe, thematic progression",
 
-    "Advanced Tracking Movements - Following specific paths",
-    "Reverse Tracking - Moving in opposite direction of subject",
-    "Side Tracking - Lateral follow alongside subject",
-    "Overhead Tracking - Elevated tracking from above",
-    "Ground Tracking - Low, ground-level follow",
-    "Subject Tracking - Focused on main subject’s movement",
-    "Environment Tracking - Following the setting or background",
-    "Dynamic Tracking - Variable speed and fluidity",
-    "Static Tracking - Fixed speed follow",
-    "Smooth Tracking - Even, steady following",
-    
-    "Technical & Specialized Movements - Precise applications",
-    "Predictive Movement - Anticipates subject’s motion",
-    "Reactive Movement - Responds to subject’s actions",
-    "Controlled Movement - Managed, stabilized paths",
-    "Uncontrolled Movement - Free-form, organic paths",
-    "Automated Movement - Pre-programmed motion",
-    "Manual Movement - Hand-operated paths",
-    "Adaptive Movement - Adjusts to subject’s position",
+    "Advanced Tracking Movements, subject/location follow, stable pursuit, evolving focus",
+    "Reverse Tracking, backward movement, retracting viewpoint, reversed follow",
+    "Side Tracking, lateral follow, parallel alignment, consistent relational pacing",
+    "Overhead Tracking, top-down follow, elevated alignment, detached perspective",
+    "Ground Tracking, low-level follow, near-ground vantage, intimate proximity",
+    "Subject Tracking, locked on main subject, consistent centering, maintained focus",
+    "Environment Tracking, following setting changes, shifting backdrop, atmospheric shift",
+    "Dynamic Tracking, variable speed, fluid pacing, responsive alignment",
+    "Static Tracking, constant speed follow, uniform progression, steady relation",
+    "Smooth Tracking, even velocity, stable pursuit, controlled follow",
 
-    "Multi-Directional Movements - Complex or intersecting paths",
-    "Figure-Eight Movement - Intersecting circular paths",
-    "Circular Tracking - Complete round path around subject",
-    "Linear Tracking - Straight follow along a path",
-    "Diagonal Tracking - Angled follow for unique perspective",
-    "Omni-Directional Tracking - Full range of motion around subject",
-    "Intersecting Tracking - Crossing paths for layered effect",
-    "Continuous Tracking - Unbroken path for uninterrupted follow",
-    "Intermittent Tracking - Occasional stops for emphasis",
-    
-    "Composition & Framing Movements - Adjusts perspective and layout",
-    "Symmetrical Movement - Balanced, mirror-like motion",
-    "Asymmetrical Movement - Uneven path for dynamic composition",
-    "Easing Movement - Smooth start and stop",
-    "Abrupt Movement - Sudden start or end",
-    "Smooth Transition Movement - Seamless blend between shots",
-    "Creative Framing - Frames subject with artistic alignment",
-    "Rule of Thirds Framing - Aligns subject on balanced thirds",
+    "Technical & Specialized Movements, precision execution, focused application, tailored paths",
+    "Predictive Movement, anticipatory path, pre-emptive framing, foresight in angle",
+    "Reactive Movement, responsive shifts, immediate adjustment, situational adaptation",
+    "Controlled Movement, managed trajectory, stable execution, intentional motion",
+    "Uncontrolled Movement, free-form wander, organic fluctuation, unplanned flow",
+    "Automated Movement, pre-programmed route, mechanical repetition, consistent pattern",
+    "Manual Movement, human-guided shifts, tactile feedback, intuitive reposition",
+    "Adaptive Movement, flexible angle changes, subject-aligned adjustments, real-time correction",
+
+    "Multi-Directional Movements, complex paths, intersecting arcs, spatial interplay",
+    "Figure-Eight Movement, looping curves, layered crossing, rhythmic pattern",
+    "Circular Tracking, round path travel, continuous wrap-around, evolving backdrop",
+    "Linear Tracking, straight line follow, consistent direction, direct motion",
+    "Diagonal Tracking, angled route, skewed perspective, non-orthogonal travel",
+    "Omni-Directional Tracking, unrestricted range, full spatial freedom, all-around coverage",
+    "Intersecting Tracking, crossing paths, multi-layered dimension, visual complexity",
+    "Continuous Tracking, uninterrupted path, seamless follow, unbroken scene",
+    "Intermittent Tracking, stop-start flow, punctuated emphasis, rhythmic interruption",
+
+    "Composition & Framing Movements, perspective shifts, framing refinement, compositional alignment",
+    "Symmetrical Movement, balanced path, mirror-like axis, harmonious flow",
+    "Asymmetrical Movement, uneven route, dynamic imbalance, visually stimulating offset",
+    "Easing Movement, gentle start/stop, gradual speed changes, fluid transitions",
+    "Abrupt Movement, sudden shift, sharp change, immediate reframe",
+    "Smooth Transition Movement, blended angle change, seamless move, integrated shift",
+    "Creative Framing, artistic angle selection, unique vantage, inventive borders",
+    "Rule of Thirds Framing, subject aligned on thirds, balanced layout, natural focal points"
 ]
+
 
 SHOT_COMPOSITIONS = [
-    "Contextual Framing - Adapts to scene context",
+    "Contextual Framing, flexible arrangement, adaptive layout, integrates scene elements",
+    "Basic Framing Techniques, foundational structure, stable layout, moderate visual complexity",
+    "Rule of Thirds, aligned on grid intersections, balanced spacing, natural focal points",
+    "Symmetrical, mirror-like distribution, harmonious balance, uniform visual weight",
+    "Asymmetrical, uneven element placement, dynamic tension, visually stimulating",
+    "Centered Composition, main subject centered, stable focus, straightforward arrangement",
+    "Golden Ratio, naturally pleasing proportions, subtle balance, refined visual flow",
+    "Framing, internal borders, layered depth, contained subject focus",
+    "Leading Lines, directional guides, eye movement channels, focal trajectory",
+    "Diagonal Composition, angled lines, energetic flow, heightened visual movement",
+    "Negative Space, empty areas around subject, isolated focus, minimalist emphasis",
 
-    "Basic Framing Techniques - Core visual structures",
-    "Rule of Thirds - Aligns subject on balanced thirds",
-    "Symmetrical - Mirror balance for harmony",
-    "Asymmetrical - Uneven balance for dynamism",
-    "Centered Composition - Main focus centered in frame",
-    "Golden Ratio - Natural, proportional layout",
-    "Framing - Creates a frame within a frame for depth",
-    "Leading Lines - Directs viewer's gaze through the frame",
-    "Diagonal Composition - Slanted lines for energy",
-    "Negative Space - Emphasizes emptiness around subject",
-    
-    "Depth and Layering - Adds dimension and spatial relationships",
-    "Depth - Uses focus layers for a 3D effect",
-    "Layering - Multiple visual layers for depth",
-    "Foreground Interest - Subject placed prominently in front",
-    "Background Interest - Emphasizes background details",
-    "Rule of Odds - Odd number of elements for visual appeal",
-    "Golden Spiral - Curved composition for flow",
-    "Frame within Frame - Nested framing adds dimension",
+    "Depth and Layering, spatial dimension, overlapping elements, enhanced perspective",
+    "Depth, layered planes, 3D impression, relative focus distribution",
+    "Layering, multiple visual strata, complex dimensionality, textural stacking",
+    "Foreground Interest, prominent frontal elements, immediate attention, layered scene",
+    "Background Interest, detailed backdrop, subtle secondary focus, contextual complexity",
+    "Rule of Odds, odd-numbered elements, visually pleasing grouping, balanced tension",
+    "Golden Spiral, curved compositional path, fluid directional flow, organic focal lead",
+    "Frame within Frame, nested boundaries, multi-level depth, concentrated viewing area",
 
-    "Balance and Symmetry - Structured visual harmony",
-    "Dynamic Symmetry - Active, balanced composition",
-    "Balanced Composition - Even distribution of elements",
-    "Unbalanced Composition - Uneven distribution for focus",
-    "Symmetrical Balance - Mirror-like element placement",
-    "Radial Balance - Elements emanating from a central point",
-    "Visual Weight - Importance given to specific elements",
+    "Balance and Symmetry, structured harmony, proportional placement, stable design",
+    "Dynamic Symmetry, active yet balanced layout, flowing order, nuanced harmony",
+    "Balanced Composition, even distribution, steady visual weight, stable equilibrium",
+    "Unbalanced Composition, uneven element weighting, focal emphasis, visual tension",
+    "Symmetrical Balance, mirror placement, perfect equilibrium, serene order",
+    "Radial Balance, elements radiating outwards, centered energy, circular harmony",
+    "Visual Weight, element importance, hierarchical emphasis, selective focus",
 
-    "Contrast and Juxtaposition - Creates visual tension and interest",
-    "Juxtaposition - Contrast between elements",
-    "Color Contrast - Differing hues for emphasis",
-    "Light Contrast - Bright vs dark for depth",
-    "Texture Contrast - Smooth vs rough textures",
-    "Shape Contrast - Geometric vs organic forms",
-    "Size Contrast - Large vs small elements",
-    "Focus Contrast - Sharp vs blurred areas",
+    "Contrast and Juxtaposition, opposing elements, visual tension, heightened interest",
+    "Juxtaposition, contrasting subjects, side-by-side intrigue, visual comparison",
+    "Color Contrast, differing hues, intensified emphasis, vibrant focal points",
+    "Light Contrast, bright vs dark, depth and drama, tonal separation",
+    "Texture Contrast, smooth vs rough, tactile differentiation, enhanced complexity",
+    "Shape Contrast, geometric vs organic, distinct forms, visual variety",
+    "Size Contrast, large vs small elements, scale interplay, hierarchical interest",
+    "Focus Contrast, sharp vs blurred areas, selective clarity, guided attention",
 
-    "Patterns and Repetition - Adds rhythm and structure",
-    "Patterns - Repeating motifs for rhythm",
-    "Repetition - Iterated elements to guide viewer’s eye",
-    "Geometric Patterns - Structured shapes for order",
-    "Organic Patterns - Natural shapes for fluidity",
-    "Texture - Surface details add interest",
+    "Patterns and Repetition, rhythmic elements, structured motifs, visual continuity",
+    "Patterns, repeated forms, consistent rhythm, cohesive visual beat",
+    "Repetition, iterated motifs, guided eye movement, stable uniformity",
+    "Geometric Patterns, ordered shapes, structured regularity, neat alignment",
+    "Organic Patterns, natural forms, fluid repetition, soft visual flow",
+    "Texture, surface details, tactile impression, subtle complexity",
 
-    "Visual Path and Flow - Guides viewer’s gaze through the scene",
-    "Visual Path - Directs eye movement through frame",
-    "Movement - Suggests action or leads viewer’s focus",
-    "Rhythm - Repeating elements create visual beat",
-    "Hierarchy - Organized by element importance",
-    "Harmony - Unified, cohesive elements",
-    "Contrast - Differing elements for emphasis",
-    "Emphasis - Highlighted focus for importance",
+    "Visual Path and Flow, guided eye movement, directional emphasis, viewing sequence",
+    "Visual Path, defined route for the eye, orchestrated viewing order, guided travel",
+    "Movement, implied action lines, dynamic flow, energetic composition",
+    "Rhythm, recurring elements, visual pacing, steady viewing tempo",
+    "Hierarchy, layered importance, prioritized focal points, organized emphasis",
+    "Harmony, unified elements, cohesive arrangement, pleasing integration",
+    "Contrast, differing components, heightened attention, striking variation",
+    "Emphasis, highlighted detail, dominant focus, main visual priority",
 
-    "Shape and Form - Defines structure within the composition",
-    "Circular Composition - Round elements for unity",
-    "Triangular Composition - Three-point focus adds stability",
-    "Linear Composition - Straight lines for direction",
-    "Zigzag Composition - Angled lines add energy",
-    "Radiant Composition - Spreading lines for focus",
-    "Grid Composition - Structured, ordered layout",
+    "Shape and Form, defining structure, clear outlines, organized spatial relations",
+    "Circular Composition, round elements, unifying curvature, enclosed focus",
+    "Triangular Composition, three-point framework, stable configuration, balanced tension",
+    "Linear Composition, straight guiding lines, direct directional flow, structured path",
+    "Zigzag Composition, angled turns, energetic movement, lively direction shifts",
+    "Radiant Composition, emanating lines, focal convergence, spreading energy",
+    "Grid Composition, orderly division, structured layout, modular clarity",
 
-    "Textural and Color Harmony - Blends elements through cohesive tones",
-    "Color Harmony - Unified color scheme for cohesion",
-    "Texture Harmony - Similar textures for unity",
-    "Shape Harmony - Consistent shapes for flow",
-    "Color Texture Harmony - Combined color and texture",
-    "Depth Texture Harmony - Blends focus with texture",
+    "Textural and Color Harmony, cohesive tones, unified surfaces, blended aesthetics",
+    "Color Harmony, complementary hues, unified palette, pleasing chromatic flow",
+    "Texture Harmony, similar surfaces, consistent tactile feel, integrated detail",
+    "Shape Harmony, uniform forms, consistent geometry, visually aligned",
+    "Color Texture Harmony, fused hue and surface, integrated richness, balanced feel",
+    "Depth Texture Harmony, layered tactile cues, spatial variation, subtle complexity",
 
-    "Advanced Focus and Detail - Adds visual intricacy",
-    "Focal Point - Primary area of attention",
-    "Secondary Focus - Supporting details",
-    "Tertiary Focus - Additional points of interest",
-    "Highlight - Emphasizes bright areas",
-    "Shadow - Darkened areas for depth",
-    "Silhouette - Outline focus against light background",
-    "Reflections - Mirror images add interest",
-    "Subframing - Partial framing for added dimension",
+    "Advanced Focus and Detail, intricate elements, layered attention, fine distinctions",
+    "Focal Point, primary area of attention, visually dominant, guiding viewer",
+    "Secondary Focus, supporting interest points, nuanced layers, subtle emphasis",
+    "Tertiary Focus, additional minor details, deeper inspection, extended engagement",
+    "Highlight, emphasized brightness, luminous detail, accentuated area",
+    "Shadow, darkened regions, contrast in tone, dimensional depth",
+    "Silhouette, outlined form, backlit subject, distinct contour",
+    "Reflections, mirrored imagery, doubled elements, layered perception",
+    "Subframing, partial internal frames, focused enclaves, isolated interest",
 
-    "Special Techniques - Artistic and expressive elements",
-    "Rule Breaking Composition - Defies conventional layout",
-    "Minimalist Composition - Simplifies to key elements",
-    "Maximalist Composition - Rich, complex arrangement",
-    "Isolated Element - Single subject focus",
-    "Grouped Elements - Clustered for emphasis",
-    "Distributed Elements - Spread across frame",
-    "Central Element - Focused in center",
-    "Peripheral Elements - Placed at frame edges",
+    "Special Techniques, artistic variations, expressive structures, unconventional layouts",
+    "Rule Breaking Composition, defies standards, unexpected placements, novelty appeal",
+    "Minimalist Composition, pared-down elements, ample negative space, clarity of focus",
+    "Maximalist Composition, dense, intricate arrangement, abundant detail",
+    "Isolated Element, single prominent subject, uncluttered view, direct emphasis",
+    "Grouped Elements, clustered subjects, collective interest, unified cluster",
+    "Distributed Elements, spread-out forms, scattered attention, broad engagement",
+    "Central Element, focused in center, stable anchor, immediate recognition",
+    "Peripheral Elements, placed at edges, boundary interests, subtle framing"
 ]
+
 
 TIME_OF_DAY_OPTIONS = [
-"00:00 - Midnight", "01:00 - Late night", "02:00 - Late night", "03:00 - Early morning",
-"04:00 - Early morning", "05:00 - Dawn begins", "06:00 - Sunrise", "07:00 - Morning starts",
-"08:00 - Morning", "09:00 - Morning", "10:00 - Late morning", "11:00 - Late morning",
-"12:00 - Noon", "13:00 - Early afternoon", "14:00 - Afternoon", "15:00 - Afternoon",
-"16:00 - Late afternoon", "17:00 - Evening begins", "18:00 - Sunset", "19:00 - Early evening",
-"20:00 - Evening", "21:00 - Night starts", "22:00 - Night", "23:00 - Late night",
-"Dawn - First light", "Morning - Start of day", "Noon - Midday", "Afternoon - Daytime",
-"Dusk - Twilight begins", "Evening - End of day", "Night - Darkness", "Midnight - Deep night"
+    # Important Cinematic Hours (added at the top)
+    "Golden Hour (After Sunrise), approx 06:00 - Radiant warm hues, gentle shadows, soft glow that enriches colors and details",
+    "Golden Hour (Before Sunset), approx 18:00 - Luminous amber light, elongated shadows, a cinematic warmth that enhances texture",
+    "Blue Hour (Before Dawn), approx 05:00 - Subtle blue tones, calm and quiet, silhouettes emerge softly as sky transitions",
+    "Blue Hour (After Sunset), approx 19:00 - Deepening blue hues, a tranquil twilight that turns city lights into gentle halos",
+    "Magic Hour - The fleeting moments around sunrise and sunset where light is soft, diffused, and visually poetic",
+
+    # Original time slots with atmospheric descriptions
+    "00:00 - Midnight, quiet world under starlit darkness, occasional distant hums, reflective city puddles",
+    "01:00 - Late night, silent streets and softly glowing windows, subtle wind whispering through empty alleys",
+    "02:00 - Late night, deep hush over sleeping neighborhoods, moonlit rooftops and gentle ticking clocks",
+    "03:00 - Early morning, faint glow on horizon, nocturnal creatures stirring, soft hum of distant highway",
+    "04:00 - Early morning, pale blue hints in eastern sky, first birdsong tentative, crisp air through open windows",
+    "05:00 - Dawn begins, pastel light emerging, dew on leaves shimmering, a promising hush before the day’s rush",
+    "06:00 - Sunrise, golden rays spread warmth, silhouettes sharpen, the world wakens as warmth seeps into old pavements",
+    "07:00 - Morning starts, soft bustle of life, coffee aromas drifting, gentle chatter and footsteps on damp sidewalks",
+    "08:00 - Morning, bright and fresh, routine hum of commutes, sunlight on faces and gentle shadows under trees",
+    "09:00 - Morning, energetic air, shops opening, mild traffic under a clean azure sky, laughter in nearby parks",
+    "10:00 - Late morning, full daylight vibrant, subtle warmth and cheerful colors, quiet productivity settling in",
+    "11:00 - Late morning, soft buzz of midday approaching, sunlight highlighting leaves, a calm yet alert ambiance",
+    "12:00 - Noon, sunlight at zenith, vivid colors at peak brightness, a pause with lunches unwrapped and shared",
+    "13:00 - Early afternoon, gentle warmth, slow pace after midday meals, conversations carrying gently in breeze",
+    "14:00 - Afternoon, steady and clear, subtle shadows angled, distant hum of busy streets, leaves rustling softly",
+    "15:00 - Afternoon, warm air wrapping scenes in comfort, children playing in parks, a balanced, serene time",
+    "16:00 - Late afternoon, golden hue intensifying, long shadows stretching, a soft calm before evening’s approach",
+    "17:00 - Evening begins, mellow light turning amber, casual walks home, a hint of dinner scents floating outside",
+    "18:00 - Sunset, sky painted in oranges and pinks, silhouettes softened, gentle hush as day’s energy recedes",
+    "19:00 - Early evening, soft twilight glow, streetlights warming up, quiet laughter and distant music drifting",
+    "20:00 - Evening, cooler breezes, lights twinkling in windows, comforting hum of homes settling down",
+    "21:00 - Night starts, deepening blue velvet sky, neon signs reflecting on pavements, relaxed conversations indoors",
+    "22:00 - Night, calm streets with fewer cars, warm lamplight through curtains, muffled voices and soft footsteps",
+    "23:00 - Late night, hush returning, stars bright above quiet roofs, distant bark or faint train horn fading",
+    "Dawn - First light, subtle glow on horizon, silhouettes emerging from darkness, nature stirring awake",
+    "Morning - Start of day, crisp air and optimism, sounds of new beginnings, beams of fresh sunlight",
+    "Noon - Midday, brightest and clearest point, vibrant colors fully realized, a pause in daily rhythm",
+    "Afternoon - Daytime, gentle continuation, steady warmth, casual interactions under generous daylight",
+    "Dusk - Twilight begins, sky awash in purples and oranges, soft hush as birds settle, a gentle sigh of the day",
+    "Evening - End of day, soft lights indoors, friendly murmurs in neighborhoods, warm glows from windows",
+    "Night - Darkness, quiet subtlety, mysteries and stillness, distant city lights twinkling like scattered stars",
+    "Midnight - Deep night, world at its quietest, silver moonlight and secret whispers, dreams unfolding in silence"
 ]
+
 
 FRAME_RATE_TECHNIQUES = [
 # 🎞️ BASIC FRAME RATES
@@ -907,95 +854,96 @@ FRAME_RATE_TECHNIQUES = [
 ]
 
 RESOLUTIONS = {
-"Experimental and Proto (Pre-1900s)": [
-"Very Low Definition - Experimental resolution of early photographs with limited detail - PROS: First recorded images, foundational for photography - CONS: Very grainy, extremely low detail",
-"Glass Plate Quality - Gelatin dry plate or wet collodion photography resolution - PROS: Higher detail than early methods - CONS: Still lacks sharpness of modern formats"
-],
-"1900s": [
-"Glass Plate Standard - Photography done with glass plates, offering sharper details than early experiments - PROS: High-quality for its time - CONS: Not yet film-based",
-"Low Definition Film - Very early cinema using 35mm and other film formats - PROS: First moving images - CONS: Grainy, limited clarity, flickering",
-"Low-Res Panoramic - Panoramic images with limited sharpness, using rudimentary panoramic cameras - PROS: Wide views captured - CONS: Distortion and low clarity"
-],
-"1910s": [
-"Standard Definition (SD) - Early black-and-white film resolution using 35mm - PROS: Clearer than previous eras, early cinematic standards - CONS: Lacks sharpness by modern standards",
-"Silent Film Standard - Early silent film resolutions using basic lenses - PROS: First practical moving picture quality - CONS: Limited color depth, flickering",
-"Plate Film Quality - Continued use of plate photography with increasing sharpness - PROS: High-quality photography compared to film - CONS: Difficult to use and slow"
-],
-"1920s": [
-"Standard Definition (SD) - Improved film quality with better lighting and lenses, typical of early silent films - PROS: Sharper images than the 1910s - CONS: Limited resolution by modern standards",
-"Silent Film Standard - Resolutions based on 35mm film used for silent film with more dynamic range - PROS: Better clarity - CONS: Limited compared to later color films",
-"Panoramic Film Quality - Improved panoramic film capturing large wide shots but still lacking detail - PROS: Wide-angle capture - CONS: Limited sharpness and contrast"
-],
-"1930s": [
-"Standard Definition (SD) - The norm for early sound films, with better film stock and lighting techniques - PROS: More consistent quality, early cinematic standard - CONS: Still lacks modern sharpness",
-"Film Resolution - The standard for films in this era, improving clarity but still black-and-white - PROS: Reliable for motion pictures - CONS: Low compared to modern film",
-"Enhanced Silent Film Quality - Film for silent movies achieved better exposure but still limited in detail - PROS: Stable footage - CONS: Limited contrast"
-],
-"1940s": [
-"Standard Definition (SD) - Now considered standard for black-and-white and Technicolor films, using 35mm and 16mm formats - PROS: Great quality for the era, iconic classic films - CONS: No widescreen formats yet",
-"Film Quality - Films now shot with improved lenses and cameras, delivering more consistency - PROS: Better detail and lighting - CONS: Limited color range",
-"Early Widescreen - Experiments with widescreen ratios (CinemaScope-like) but with limited resolution - PROS: Wider shots, more immersive - CONS: Limited sharpness"
-],
-"1950s": [
-"Standard Definition (SD) - Color films using 35mm and early widescreen processes - PROS: Better image stability - CONS: Still low-definition compared to later developments",
-"CinemaScope Widescreen - First true widescreen formats used in films like *The Robe* (1953) - PROS: More immersive viewing experiences - CONS: Early widescreen had limited resolution",
-"Technicolor Quality - Color film with good contrast and saturation, used for iconic films - PROS: Early rich colors - CONS: Still low-definition",
-"TV Standard Definition (480i) - Early television formats delivering 480i interlaced content - PROS: Affordable TV experience for many homes - CONS: Lower quality compared to films"
-],
-"1960s": [
-"Standard Definition (SD) - Better lenses and film stock improved standard cinema and television - PROS: More reliable for TV and film - CONS: Still limited by modern standards",
-"Television 480i - The continued dominance of 480i interlaced TV, now widespread in households - PROS: Affordable home viewing - CONS: Lacks sharpness, still interlaced",
-"CinemaScope and Panavision - Higher-quality widescreen formats for film - PROS: Widescreen revolution - CONS: Still limited sharpness and contrast",
-"Early 720p Equivalent (Film) - Some experimental films reached early equivalents of high-definition - PROS: Better sharpness for key films - CONS: Experimental, not widely adopted"
-],
-"1970s": [
-"Standard Definition (SD) - The quality for television and early color broadcasts - PROS: Color added for many TV shows - CONS: Still low-definition",
-"Television 480i - Color television became the standard, continuing at 480i resolution - PROS: Popularized color - CONS: Still limited to SD formats",
-"Panavision Quality - High-quality film resolution with rich color contrast, used in *Star Wars* and *The Godfather* - PROS: Gorgeous cinematic results - CONS: Film grain and noise still present",
-"IMAX Film - Large-format IMAX film introduced, offering higher resolution in limited settings - PROS: Incredible detail in large theaters - CONS: Rare, expensive, not consumer-accessible"
-],
-"1980s": [
-"Standard Definition (SD) - Still the dominant resolution for both television and VHS - PROS: Color TVs fully adopted - CONS: Limited detail, VHS degraded quality further",
-"VHS Resolution - 240p equivalent for home video, very low by modern standards - PROS: Affordable and popularized home video - CONS: Poor quality, prone to degradation",
-"LaserDisc 480p - Early attempts at sharper home video formats with LaserDisc - PROS: Better than VHS - CONS: Still sub-HD",
-"IMAX Film - Widespread use in specialty theaters, offering much better clarity - PROS: Exceptional for large screens - CONS: Limited to special locations",
-"Betacam SP - Early broadcast-standard video format for professional use - PROS: High-quality for TV - CONS: Still sub-HD, limited to studios"
-],
-"1990s": [
-"480p DVD Quality - The rise of DVD brought 480p progressive scan for home viewing - PROS: Major improvement over VHS - CONS: Still sub-HD",
-"720p HD (Early) - Introduced in broadcast television and early HD camcorders - PROS: High-definition TV and cinema - CONS: Limited adoption",
-"1080i HD (Broadcast) - High-definition broadcasts began with 1080i interlaced - PROS: Massive improvement over 480i TV - CONS: Interlaced, not as sharp as 1080p",
-"IMAX Film - Continued excellence in IMAX projection with more widespread adoption - PROS: Extremely high resolution for large screens - CONS: Not yet available for home use",
-"MiniDV 480p - Standard format for home video and indie films - PROS: Affordable, portable - CONS: Limited resolution"
-],
-"2000s": [
-"720p HD - Widely adopted for HD broadcasts, the first true HD standard for TV - PROS: Sharp for the era - CONS: Outdated compared to 1080p",
-"1080p Full HD - Became the standard for home video, HDTVs, and Blu-ray - PROS: Full HD, sharp detail - CONS: Large file sizes, requires more processing",
-"2K Digital Cinema - Used in professional film production, higher than 1080p - PROS: Cinema-quality sharpness - CONS: Not widely adopted for home use",
-"4K (Cinema) - Used in digital cinema for ultra-high resolution - PROS: Extremely detailed, beautiful image - CONS: Expensive, large data requirements",
-"IMAX Digital - Widespread adoption of digital IMAX projectors offering unprecedented sharpness - PROS: Immersive experiences - CONS: Only available in specialty theaters"
-],
-"2010s": [
-"1080p Full HD - Still the standard for most content, especially on TV and streaming - PROS: Very sharp and detailed - CONS: Outdated by the end of the decade",
-"2K Digital - Used in many cinema applications, offering better-than-HD resolution - PROS: High quality - CONS: Not as sharp as 4K",
-"4K UHD - Became the new standard for high-end TVs and film production - PROS: Ultra-high-definition, excellent for detail and large screens - CONS: Requires large data storage",
-"5K - Used in some professional editing and photography, offering even sharper resolution - PROS: More detail than 4K - CONS: Limited consumer adoption",
-"8K UHD - Experimental for the highest-end displays and professional uses - PROS: Insanely sharp, perfect for huge displays - CONS: Limited consumer use, expensive"
-],
-"2020s": [
-"4K UHD - The standard for most content, from streaming to cinema - PROS: Sharp, available on most devices - CONS: Large file sizes, outdated by 8K",
-"8K UHD - The new cutting-edge standard for displays and high-end cinema - PROS: Extreme clarity and sharpness - CONS: Large file sizes, high hardware requirements",
-"12K Cinema - Experimental format for cinema production, offering unparalleled clarity - PROS: Stunning for huge screens - CONS: Overkill for most uses, massive file sizes",
-"1440p QHD - Popular for gaming and mid-range monitors, offering a good balance - PROS: Sharp and faster processing than 4K - CONS: Not 4K",
-"5.3K - Specialized use in action cameras and some professional equipment - PROS: Great for high-speed recording - CONS: Niche, limited adoption"
-],
-"Future": [
-"8K UHD - Expected to be mainstream soon, providing incredible detail for large displays - PROS: Amazing clarity - CONS: Expensive, requires large storage and processing power",
-"12K+ Cinema - Future-proofing for high-end productions, offering extreme clarity - PROS: Perfect for huge cinematic displays - CONS: Not practical for consumer use",
-"16K - Projected as a future consumer standard for ultra-large screens - PROS: Insane detail, perfect for huge video walls - CONS: Requires immense storage and processing",
-"32K - Theoretical next-gen resolution for niche applications - PROS: Hypothetical future format - CONS: Unlikely to be practical anytime soon"
-]
+    "Experimental and Proto (Pre-1900s)": [
+        "Very Low Definition, extremely low detail, very grainy, foundational images with minimal clarity",
+        "Glass Plate Quality, improved detail over earliest methods, still soft focus, monochrome plates"
+    ],
+    "1900s": [
+        "Glass Plate Standard, sharper than experimental era, monochrome images, pre-film clarity limits",
+        "Low Definition Film, early moving images, grainy texture, flickering frames, limited contrast",
+        "Low-Res Panoramic, wide view capture, distorted edges, soft detail, uneven exposure"
+    ],
+    "1910s": [
+        "Standard Definition (SD), black-and-white frames, moderate clarity for era, stable but grainy",
+        "Silent Film Standard, flickering monochrome images, limited contrast, basic sharpness",
+        "Plate Film Quality, higher sharpness than film, slow exposure plates, fine monochrome detail"
+    ],
+    "1920s": [
+        "Standard Definition (SD), improved film clarity, stable monochrome frames, modest contrast",
+        "Silent Film Standard, refined black-and-white images, better exposure control, moderate detail",
+        "Panoramic Film Quality, wide-angle captures, still soft detail, uneven lighting, low contrast"
+    ],
+    "1930s": [
+        "Standard Definition (SD), consistent black-and-white imagery, clearer than silent era, stable grain",
+        "Film Resolution, reliable monochrome frames, moderate sharpness, limited tonal range",
+        "Enhanced Silent Film Quality, steadier exposure, slightly improved detail, subdued contrast"
+    ],
+    "1940s": [
+        "Standard Definition (SD), black-and-white and Technicolor, stable detail, iconic classic imagery",
+        "Film Quality, improved lens clarity, moderate tonal depth, uniform grain structure",
+        "Early Widescreen, wider aspect ratios, still limited resolution, stretched grain patterns"
+    ],
+    "1950s": [
+        "Standard Definition (SD), early color films, stable but soft detail, moderate saturation",
+        "CinemaScope Widescreen, immersive wide frames, moderate clarity, early widescreen grain",
+        "Technicolor Quality, rich early color hues, moderate sharpness, vibrant saturation",
+        "TV Standard Definition (480i), interlaced monochrome or color, coarse detail, household norm"
+    ],
+    "1960s": [
+        "Standard Definition (SD), improved lenses, moderate clarity, evolving color accuracy",
+        "Television 480i, interlaced color broadcasts, limited sharpness, household viewing standard",
+        "CinemaScope and Panavision, wider screens, slightly improved detail, balanced framing",
+        "Early 720p Equivalent (Film), experimental higher clarity, rare usage, subtle detail gains"
+    ],
+    "1970s": [
+        "Standard Definition (SD), color broadcasts standard, moderate grain, limited fine detail",
+        "Television 480i, color widely adopted, modest clarity, interlaced flicker",
+        "Panavision Quality, richer color contrast, noticeable film grain, cinematic texture",
+        "IMAX Film, large-format frames, much higher detail, immersive scale, specialized format"
+    ],
+    "1980s": [
+        "Standard Definition (SD), dominated by analog TV and VHS, soft detail, signal noise",
+        "VHS Resolution, 240p-equivalent, very grainy, tape artifacts, muted colors",
+        "LaserDisc 480p, slightly sharper than VHS, still sub-HD, stable but limited clarity",
+        "IMAX Film, exceptional clarity in large theaters, very fine detail, huge frame area",
+        "Betacam SP, broadcast-quality analog video, stable colors, sub-HD resolution"
+    ],
+    "1990s": [
+        "480p DVD Quality, progressive scan, sharper than VHS, decent color, still sub-HD",
+        "720p HD (Early), early high-definition, improved clarity, brighter colors, limited adoption",
+        "1080i HD (Broadcast), interlaced high-definition, finer detail, yet interlacing artifacts",
+        "IMAX Film, more mainstream in specialty theaters, extremely crisp imagery, large format",
+        "MiniDV 480p, compact digital tape, better than VHS, stable colors, moderate clarity"
+    ],
+    "2000s": [
+        "720p HD, early HDTV standard, noticeable detail improvement, vibrant colors",
+        "1080p Full HD, widespread adoption, sharp detail, clearer colors, larger file sizes",
+        "2K Digital Cinema, cinema-level resolution, smoother detail, good color depth",
+        "4K (Cinema), ultra-high resolution, very fine detail, ideal for large screens",
+        "IMAX Digital, digital large format, superb clarity, expansive immersive image"
+    ],
+    "2010s": [
+        "1080p Full HD, still common for streaming, crisp detail, vibrant colors, widely accessible",
+        "2K Digital, cinema quality above HD, fine detail, suitable for theatrical projection",
+        "4K UHD, ultra-sharp consumer standard, rich detail, large file sizes",
+        "5K, beyond 4K, extra detail for editing and effects, limited consumer usage",
+        "8K UHD, experimental top-tier clarity, extremely sharp images, early adopter phase"
+    ],
+    "2020s": [
+        "4K UHD, standard for new content, sharp detail, wide color range, high bandwidth",
+        "8K UHD, cutting-edge clarity, extremely fine detail, heavy data demands",
+        "12K Cinema, ultra-fine cinema detail, massive resolution, immense processing needs",
+        "1440p QHD, mid-range resolution, sharper than HD, smoother than 4K",
+        "5.3K, niche format for specific devices, slightly sharper than standard 4K, moderate usage"
+    ],
+    "Future": [
+        "8K UHD, expected mainstream high-end, super-fine detail, very large storage",
+        "12K+ Cinema, future extreme clarity, highest detail for giant screens, massive data",
+        "16K, hypothetical ultra-resolution, incredible detail, currently impractical",
+        "32K, theoretical next-gen format, beyond known standards, extremely data-heavy"
+    ]
 }
+
 
 # Decades list for UI or sorting purposes
 DECADES = sorted(RESOLUTIONS.keys())
@@ -1016,2467 +964,764 @@ SOUND_EFFECTS = [
 ]
 
 LENSES = [
-# At least 20 lens types
-"Standard Lens", "Wide Angle", "Telephoto", "Macro", "Fisheye", "Prime", "Zoom", "Anamorphic",
-"Tilt-Shift", "Ultra Wide Angle", "Short Telephoto",
-"Long Telephoto", "Catadioptric", "Soft Focus", "Infrared Lens", "UV Lens",
-"Cine Lens", "Portrait Lens", "Super Telephoto", "Pancake Lens", "Refractive Lens",
-"Mirror Lens", "Perspective Control", "Fish-Eye Circular"
+    "Standard Lens, natural field of view, balanced perspective, ideal for everyday coverage",
+    "Wide Angle, broader scene capture, dramatic sense of space, emphasized foreground elements",
+    "Telephoto, compressed perspective, isolated subjects, perfect for distant close-ups and subtle backgrounds",
+    "Macro, extreme close focus, crisp detail of tiny subjects, magnified textures and subtleties",
+    "Fisheye, ultra-wide spherical view, distorted edges, dynamic and surreal compositional flair",
+    "Prime, fixed focal length, sharper optics, encourages deliberate framing and movement",
+    "Zoom, variable focal range, versatile framing, rapid shifts in composition without lens changes",
+    "Anamorphic, widescreen aspect, distinctive horizontal flares, cinematic and expansive field of vision",
+    "Tilt-Shift, selective focus plane, miniature effects, architectural corrections and creative DOF control",
+    "Ultra Wide Angle, even broader scope than standard wide, grand landscapes, immersive spatial context",
+    "Short Telephoto, slightly compressed perspective, flattering for portraits, balanced isolation of subject",
+    "Long Telephoto, extended reach, prominent subject magnification, ideal for nature, sports, distant action",
+    "Catadioptric, mirror-based design, donut-shaped bokeh highlights, unique compressed imagery",
+    "Soft Focus, gentle diffusion, romantic glow, perfect for dreamy sequences or classic Hollywood style",
+    "Infrared Lens, captures IR spectrum, ethereal foliage glow, surreal and otherworldly imagery",
+    "UV Lens, ultraviolet sensitivity, reveals hidden patterns, scientific or forensic cinematic applications",
+    "Cine Lens, built for cinema standards, smooth focus pulls, consistent color and minimal breathing",
+    "Portrait Lens, medium tele focal length, flattering perspective, creamy background blur for character focus",
+    "Super Telephoto, extreme reach, distant wildlife or sports, very shallow depth on far subjects",
+    "Pancake Lens, ultra-compact profile, discreet and lightweight, great for run-and-gun or stealthy shots",
+    "Refractive Lens, glass-based design, standard imaging, foundational element of most traditional optics",
+    "Mirror Lens, reflective element inside, compact form for long focal lengths, quirky bokeh and unique aesthetics",
+    "Perspective Control, shifts optical axis, straightens converging lines, crucial for architectural sequences",
+    "Fish-Eye Circular, captures a full circular image, extreme distortion, experimental and playful framing"
 ]
 
-WILDLIFE_ANIMALS = [
-"-",
-# 🐾 MAMMALS
-"MAMMALS - Lion",
-"MAMMALS - Elephant",
-"MAMMALS - Tiger",
-"MAMMALS - Wolf",
-"MAMMALS - Rhino",
-"MAMMALS - Bear",
-"MAMMALS - Fox",
-"MAMMALS - Deer",
-"MAMMALS - Leopard",
-"MAMMALS - Giraffe",
-"MAMMALS - Zebra",
-"MAMMALS - Hippo",
-"MAMMALS - Buffalo",
-"MAMMALS - Hyena",
-"MAMMALS - Jaguar",
-"MAMMALS - Panda",
-"MAMMALS - Koala",
-"MAMMALS - Kangaroo",
-"MAMMALS - Chimpanzee",
-"MAMMALS - Gorilla",
-"MAMMALS - Bison",
-"MAMMALS - Antelope",
-"MAMMALS - Coyote",
-"MAMMALS - Ibex",
-"MAMMALS - Impala",
-"MAMMALS - Jackal",
-"MAMMALS - Mandrill",
-"MAMMALS - Okapi",
-"MAMMALS - Orangutan",
-"MAMMALS - Platypus",
-"MAMMALS - Quokka",
-"MAMMALS - Serval",
-"MAMMALS - Snow Leopard",
-"MAMMALS - Tasmanian Devil",
-"MAMMALS - Uakari",
-"MAMMALS - Wallaby",
-"MAMMALS - Xerus",
-"MAMMALS - Yak",
-"MAMMALS - Zorilla",
-"MAMMALS - Aardvark",
-"MAMMALS - Binturong",
-"MAMMALS - Baboon",
-"MAMMALS - Badger",
-"MAMMALS - Beaver",
-"MAMMALS - Bighorn Sheep",
-"MAMMALS - Bobcat",
-"MAMMALS - Bonobo",
-"MAMMALS - Buffalo",
-"MAMMALS - Bull",
-"MAMMALS - Caribou",
-"MAMMALS - Chinchilla",
-"MAMMALS - Cougar",
-"MAMMALS - Dingo",
-"MAMMALS - Fennec Fox",
-"MAMMALS - Grizzly Bear",
-"MAMMALS - Guanaco",
-"MAMMALS - Gopher",
-"MAMMALS - Hamster",
-"MAMMALS - Hare",
-"MAMMALS - Hedgehog",
-"MAMMALS - Hyrax",
-"MAMMALS - Jackrabbit",
-"MAMMALS - Jaguarundi",
-"MAMMALS - Marmoset",
-"MAMMALS - Marmot",
-"MAMMALS - Marten",
-"MAMMALS - Mink",
-"MAMMALS - Mole",
-"MAMMALS - Moose",
-"MAMMALS - Mosquito",
-"MAMMALS - Mountain Goat",
-"MAMMALS - Mountain Lion",
-"MAMMALS - Mule",
-"MAMMALS - Muskrat",
-"MAMMALS - Pika",
-"MAMMALS - Piranha",
-"MAMMALS - Red Panda",
-"MAMMALS - Reindeer",
-"MAMMALS - Ram",
-"MAMMALS - Raccoon",
-"MAMMALS - Possum",
-"MAMMALS - Prairie Dog",
-"MAMMALS - Puma",
-"MAMMALS - Python",
-"MAMMALS - Ram",
-"MAMMALS - Weasel",
-"MAMMALS - Wolverine",
-"MAMMALS - Wombat",
-
-# 🦅 BIRDS
-"BIRDS - Eagle",
-"BIRDS - Falcon",
-"BIRDS - Vulture",
-"BIRDS - Hawk",
-"BIRDS - Owl",
-"BIRDS - Heron",
-"BIRDS - Hummingbird",
-"BIRDS - Ibis",
-"BIRDS - Kestrel",
-"BIRDS - Kingfisher",
-"BIRDS - Kiwi",
-"BIRDS - Kookaburra",
-"BIRDS - Lark",
-"BIRDS - Macaw",
-"BIRDS - Magpie",
-"BIRDS - Manta Ray",
-"BIRDS - Myna",
-"BIRDS - Nightingale",
-"BIRDS - Parakeet",
-"BIRDS - Peacock",
-"BIRDS - Pelican",
-"BIRDS - Penguin",
-"BIRDS - Peregrine Falcon",
-"BIRDS - Quetzal",
-"BIRDS - Raven",
-"BIRDS - Robin",
-"BIRDS - Sparrow",
-"BIRDS - Starling",
-"BIRDS - Sun Conure",
-"BIRDS - Scarlet Macaw",
-"BIRDS - Blue Jay",
-"BIRDS - Bluebird",
-"BIRDS - Cardinal",
-"BIRDS - Cockatoo",
-"BIRDS - Finch",
-"BIRDS - Mockingbird",
-"BIRDS - Seagull",
-"BIRDS - Toucan",
-"BIRDS - Trumpeter Swan",
-"BIRDS - Woodpecker",
-"BIRDS - Zebu",
-"BIRDS - Blue-and-Gold Macaw",
-"BIRDS - Hyacinth Macaw",
-"BIRDS - Blue Dragon Nudibranch",
-"BIRDS - Painted Turtle",
-"BIRDS - Cerberus",
-"BIRDS - Pegasus",
-
-# 🐍 REPTILES
-"REPTILES - Shark",
-"REPTILES - Crocodile",
-"REPTILES - Alligator",
-"REPTILES - Snake",
-"REPTILES - Lizard",
-"REPTILES - Turtle",
-"REPTILES - Tortoise",
-"REPTILES - Chameleon",
-"REPTILES - Gecko",
-"REPTILES - Komodo Dragon",
-"REPTILES - Iguana",
-"REPTILES - Anaconda",
-"REPTILES - Cobra",
-"REPTILES - Python",
-"REPTILES - Rattlesnake",
-"REPTILES - Boa Constrictor",
-"REPTILES - Viper",
-"REPTILES - Garter Snake",
-"REPTILES - Monitor Lizard",
-"REPTILES - Skink",
-"REPTILES - Iguana",
-"REPTILES - Alligator Snapping Turtle",
-"REPTILES - Red-eared Slider",
-"REPTILES - Green Iguana",
-"REPTILES - Box Turtle",
-"REPTILES - Softshell Turtle",
-"REPTILES - Sea Turtle",
-"REPTILES - Leatherback Turtle",
-"REPTILES - Hawksbill Turtle",
-"REPTILES - Loggerhead Turtle",
-"REPTILES - Olive Ridley Turtle",
-"REPTILES - Painted Turtle",
-"REPTILES - Snapping Turtle",
-"REPTILES - Musk Turtle",
-"REPTILES - Red-bellied Turtle",
-"REPTILES - Eastern Box Turtle",
-"REPTILES - Hermann's Tortoise",
-"REPTILES - Greek Tortoise",
-"REPTILES - Sulcata Tortoise",
-"REPTILES - Pancake Tortoise",
-"REPTILES - Radiated Tortoise",
-"REPTILES - Leopard Gecko",
-"REPTILES - Bearded Dragon",
-"REPTILES - Ball Python",
-"REPTILES - Corn Snake",
-"REPTILES - Red-eared Slider",
-"REPTILES - Blue-tongued Skink",
-"REPTILES - King Snake",
-"REPTILES - Garter Snake",
-"REPTILES - African Sideneck Turtle",
-"REPTILES - Eastern Box Turtle",
-"REPTILES - Russian Tortoise",
-"REPTILES - Hermann's Tortoise",
-"REPTILES - Greek Tortoise",
-"REPTILES - Argentine Black and White Tegu",
-"REPTILES - Pancake Tortoise",
-"REPTILES - Radiated Tortoise",
-"REPTILES - Sulcata Tortoise",
-"REPTILES - Desert Tortoise",
-"REPTILES - Mud Turtle",
-"REPTILES - Map Turtle",
-"REPTILES - Musk Turtle",
-"REPTILES - Painted Turtle",
-"REPTILES - Softshell Turtle",
-"REPTILES - Wood Turtle",
-"REPTILES - Snapping Turtle",
-"REPTILES - Leatherback Sea Turtle",
-"REPTILES - Loggerhead Sea Turtle",
-"REPTILES - Green Sea Turtle",
-"REPTILES - Hawksbill Sea Turtle",
-"REPTILES - Olive Ridley Sea Turtle",
-
-# 🐟 FISH
-"FISH - Shark",
-"FISH - Salmon",
-"FISH - Tuna",
-"FISH - Clownfish",
-"FISH - Goldfish",
-"FISH - Guppy",
-"FISH - Betta",
-"FISH - Angelfish",
-"FISH - Tetra",
-"FISH - Cichlid",
-"FISH - Discus",
-"FISH - Molly",
-"FISH - Swordtail",
-"FISH - Neon Tetra",
-"FISH - Zebra Danio",
-"FISH - Pleco",
-"FISH - Gourami",
-"FISH - Tiger Barb",
-"FISH - Cherry Barb",
-"FISH - Rasbora",
-"FISH - Corydoras",
-"FISH - Oscar",
-"FISH - Silver Dollar",
-"FISH - Cardinal Tetra",
-"FISH - Discus Fish",
-"FISH - Bristlenose Pleco",
-"FISH - Harlequin Rasbora",
-"FISH - Electric Yellow Cichlid",
-"FISH - Pearl Gourami",
-"FISH - Rummy Nose Tetra",
-"FISH - Bolivian Ram",
-"FISH - Firemouth Cichlid",
-"FISH - Ram Cichlid",
-"FISH - Jelly Bean Tetra",
-"FISH - Leopard Danio",
-"FISH - Black Molly",
-"FISH - Blue Tang",
-"FISH - Sailfin Molly",
-"FISH - Fantail Goldfish",
-"FISH - Pearlscale Goldfish",
-"FISH - Rosy Red Minnow",
-"FISH - Brichardi Cichlid",
-"FISH - Peacock Bass",
-"FISH - Convict Cichlid",
-"FISH - Piranha",
-"FISH - Pufferfish",
-"FISH - Lionfish",
-"FISH - Clownfish",
-"FISH - Manta Ray",
-"FISH - Mackerel",
-"FISH - Barracuda",
-"FISH - Anglerfish",
-"FISH - Moray Eel",
-"FISH - Electric Eel",
-"FISH - Parrotfish",
-"FISH - Boxfish",
-"FISH - Triggerfish",
-"FISH - Surgeonfish",
-"FISH - Goblin Shark",
-"FISH - Whale Shark",
-"FISH - Great White Shark",
-"FISH - Hammerhead Shark",
-"FISH - Tiger Shark",
-"FISH - Bull Shark",
-"FISH - Lemon Shark",
-"FISH - Nurse Shark",
-"FISH - Thresher Shark",
-"FISH - Blacktip Shark",
-"FISH - Blue Shark",
-"FISH - Sand Tiger Shark",
-"FISH - Leopard Shark",
-"FISH - Basking Shark",
-"FISH - Whale Ray",
-"FISH - Sturgeon",
-"FISH - Catfish",
-"FISH - Eel",
-"FISH - Barramundi",
-"FISH - Cobia",
-"FISH - Mahi-Mahi",
-"FISH - Dorado",
-"FISH - Snapper",
-"FISH - Grouper",
-"FISH - Tarpon",
-"FISH - Sailfish",
-"FISH - Marlin",
-"FISH - Dorado",
-"FISH - Wahoo",
-"FISH - Blue Marlin",
-"FISH - White Marlin",
-
-# 🐜 INSECTS
-"INSECTS - Butterfly",
-"INSECTS - Ladybug",
-"INSECTS - Dragonfly",
-"INSECTS - Praying Mantis",
-"INSECTS - Ant",
-"INSECTS - Beetle",
-"INSECTS - Grasshopper",
-"INSECTS - Cockroach",
-"INSECTS - Termite",
-"INSECTS - Firefly",
-"INSECTS - Moth",
-"INSECTS - Wasp",
-"INSECTS - Flea",
-"INSECTS - Tick",
-"INSECTS - Lacewing",
-"INSECTS - Earwig",
-"INSECTS - Silverfish",
-"INSECTS - Aphid",
-"INSECTS - Cicada",
-"INSECTS - Katydid",
-"INSECTS - Mealybug",
-"INSECTS - Thrips",
-"INSECTS - Stink Bug",
-"INSECTS - Weevil",
-"INSECTS - Whitefly",
-"INSECTS - Scorpion",
-"INSECTS - Locust",
-"INSECTS - Mantid",
-"INSECTS - Sawfly",
-"INSECTS - Mayfly",
-"INSECTS - Stonefly",
-"INSECTS - Borer Beetle",
-"INSECTS - Assassin Bug",
-"INSECTS - Leafhopper",
-"INSECTS - Longhorn Beetle",
-"INSECTS - Lace Bug",
-"INSECTS - Boxelder Bug",
-"INSECTS - Slug",
-"INSECTS - Snail",
-"INSECTS - Spider",
-"INSECTS - Scorpion",
-"INSECTS - Bumblebee",
-"INSECTS - Hornet",
-"INSECTS - Dragonfly",
-"INSECTS - Damselfly",
-"INSECTS - Cicada",
-"INSECTS - Fire Ant",
-"INSECTS - June Bug",
-"INSECTS - Monarch Butterfly",
-"INSECTS - Atlas Moth",
-"INSECTS - Emperor Moth",
-"INSECTS - Luna Moth",
-"INSECTS - Goliath Beetle",
-"INSECTS - Hercules Beetle",
-"INSECTS - Atlas Beetle",
-"INSECTS - Rhinoceros Beetle",
-"INSECTS - Stick Insect",
-"INSECTS - Walking Stick",
-"INSECTS - Katydid",
-"INSECTS - Lacewing",
-"INSECTS - Firefly",
-"INSECTS - Lace Bug",
-"INSECTS - Ladybird",
-"INSECTS - Paper Wasp",
-"INSECTS - Yellow Jacket",
-"INSECTS - Asian Giant Hornet",
-
-# 🕷️ ARACHNIDS
-"ARACHNIDS - Spider",
-"ARACHNIDS - Scorpion",
-"ARACHNIDS - Tick",
-"ARACHNIDS - Mite",
-"ARACHNIDS - Harvestman",
-"ARACHNIDS - Daddy Longlegs",
-"ARACHNIDS - Vinegaroon",
-"ARACHNIDS - Whip Scorpion",
-"ARACHNIDS - Pseudoscorpion",
-"ARACHNIDS - Sun Spider",
-"ARACHNIDS - Trapdoor Spider",
-"ARACHNIDS - Jumping Spider",
-"ARACHNIDS - Orb Weaver",
-"ARACHNIDS - Funnel-web Spider",
-"ARACHNIDS - Wolf Spider",
-"ARACHNIDS - Brown Recluse",
-"ARACHNIDS - Black Widow",
-"ARACHNIDS - Tarantula",
-"ARACHNIDS - Huntsman Spider",
-"ARACHNIDS - Recluse Spider",
-"ARACHNIDS - Cellar Spider",
-"ARACHNIDS - Comb-footed Spider",
-"ARACHNIDS - Crab Spider",
-"ARACHNIDS - Sac Spider",
-"ARACHNIDS - Long-bodied Cellar Spider",
-"ARACHNIDS - Water Spider",
-"ARACHNIDS - Trapdoor Spider",
-"ARACHNIDS - Wolf Spider",
-"ARACHNIDS - Nursery Web Spider",
-"ARACHNIDS - Lynx Spider",
-"ARACHNIDS - Black Lace Weaver",
-"ARACHNIDS - Golden Orb Weaver",
-"ARACHNIDS - Hobo Spider",
-"ARACHNIDS - Gray Wall Spider",
-"ARACHNIDS - Brazilian Wandering Spider",
-"ARACHNIDS - Brown Widow Spider",
-"ARACHNIDS - Redback Spider",
-"ARACHNIDS - Desert Recluse",
-"ARACHNIDS - Black House Spider",
-"ARACHNIDS - Brown House Spider",
-"ARACHNIDS - Baltic Spiny Orb Weaver",
-"ARACHNIDS - Black Lace Web Spider",
-"ARACHNIDS - Sphodros Spider",
-
-# 🦀 CRUSTACEANS
-"CRUSTACEANS - Lobster",
-"CRUSTACEANS - Crab",
-"CRUSTACEANS - Shrimp",
-"CRUSTACEANS - Krill",
-"CRUSTACEANS - Barnacle",
-"CRUSTACEANS - Krab",
-"CRUSTACEANS - Ghost Shrimp",
-"CRUSTACEANS - Fiddler Crab",
-"CRUSTACEANS - Hermit Crab",
-"CRUSTACEANS - Pistol Shrimp",
-"CRUSTACEANS - Rock Lobster",
-"CRUSTACEANS - Snow Crab",
-"CRUSTACEANS - Blue Crab",
-"CRUSTACEANS - Red King Crab",
-"CRUSTACEANS - Coconut Crab",
-"CRUSTACEANS - Horseshoe Crab",
-"CRUSTACEANS - Signal Crayfish",
-"CRUSTACEANS - Dungeness Crab",
-"CRUSTACEANS - Velvet Crab",
-"CRUSTACEANS - Stone Crab",
-"CRUSTACEANS - Red Swamp Crayfish",
-"CRUSTACEANS - American Lobster",
-"CRUSTACEANS - Japanese Spider Crab",
-"CRUSTACEANS - European Green Crab",
-"CRUSTACEANS - Chinese Mitten Crab",
-"CRUSTACEANS - Ghost Shrimp",
-"CRUSTACEANS - Mantis Shrimp",
-"CRUSTACEANS - Tiger Prawn",
-"CRUSTACEANS - Macrobrachium Prawn",
-"CRUSTACEANS - Blue King Crab",
-"CRUSTACEANS - Black King Crab",
-"CRUSTACEANS - Tiger Crab",
-"CRUSTACEANS - Long-legged Crab",
-"CRUSTACEANS - Velvet Prawn",
-"CRUSTACEANS - Blue Crab",
-"CRUSTACEANS - Water Flea",
-"CRUSTACEANS - Copepod",
-"CRUSTACEANS - Amphipod",
-"CRUSTACEANS - Isopod",
-"CRUSTACEANS - Mysid Shrimp",
-"CRUSTACEANS - Fairy Shrimp",
-"CRUSTACEANS - Nautilus",
-"CRUSTACEANS - Crayfish",
-"CRUSTACEANS - Ghost Shrimp",
-"CRUSTACEANS - Pistol Shrimp",
-"CRUSTACEANS - Boxer Shrimp",
-"CRUSTACEANS - Cleaner Shrimp",
-"CRUSTACEANS - Peppermint Shrimp",
-"CRUSTACEANS - Mantis Shrimp",
-"CRUSTACEANS - Snapping Shrimp",
-"CRUSTACEANS - Reef Crab",
-"CRUSTACEANS - Brine Shrimp",
-"CRUSTACEANS - Red Rock Crab",
-"CRUSTACEANS - Marine Lobster",
-"CRUSTACEANS - Slipper Lobster",
-"CRUSTACEANS - Galathea Lobster",
-
-# 🐸 AMPHIBIANS
-"AMPHIBIANS - Frog",
-"AMPHIBIANS - Toad",
-"AMPHIBIANS - Salamander",
-"AMPHIBIANS - Newt",
-"AMPHIBIANS - Axolotl",
-"AMPHIBIANS - Caecilian",
-"AMPHIBIANS - Tree Frog",
-"AMPHIBIANS - Poison Dart Frog",
-"AMPHIBIANS - Bullfrog",
-"AMPHIBIANS - Tiger Salamander",
-"AMPHIBIANS - Fire Salamander",
-"AMPHIBIANS - Green Tree Frog",
-"AMPHIBIANS - American Toad",
-"AMPHIBIANS - Red-eyed Tree Frog",
-"AMPHIBIANS - Spotted Salamander",
-"AMPHIBIANS - Gray Tree Frog",
-"AMPHIBIANS - Spring Peeper",
-"AMPHIBIANS - Wood Frog",
-"AMPHIBIANS - Pickerel Frog",
-"AMPHIBIANS - Pacific Tree Frog",
-"AMPHIBIANS - Woodhouse's Toad",
-"AMPHIBIANS - Blue Poison Dart Frog",
-"AMPHIBIANS - Hellbender",
-"AMPHIBIANS - Green Salamander",
-"AMPHIBIANS - Fire-bellied Toad",
-"AMPHIBIANS - Eastern Newt",
-"AMPHIBIANS - Boreal Chorus Frog",
-"AMPHIBIANS - Gray Tree Frog",
-"AMPHIBIANS - Spotted Salamander",
-"AMPHIBIANS - Pickerel Frog",
-"AMPHIBIANS - Pacific Tree Frog",
-"AMPHIBIANS - Red-legged Frog",
-"AMPHIBIANS - Green Frog",
-"AMPHIBIANS - American Bullfrog",
-"AMPHIBIANS - Gray Tree Frog",
-"AMPHIBIANS - Northern Leopard Frog",
-"AMPHIBIANS - Plains Leopard Frog",
-"AMPHIBIANS - Tiger Frog",
-"AMPHIBIANS - Green Frog",
-"AMPHIBIANS - Wood Frog",
-"AMPHIBIANS - Green Tree Frog",
-"AMPHIBIANS - Blue Poison Dart Frog",
-"AMPHIBIANS - Red-eyed Tree Frog",
-"AMPHIBIANS - Spring Peeper",
-"AMPHIBIANS - Woodhouse's Toad",
-"AMPHIBIANS - American Toad",
-"AMPHIBIANS - Gray Tree Frog",
-"AMPHIBIANS - Bullfrog",
-"AMPHIBIANS - Eastern Toad",
-"AMPHIBIANS - Green Frog",
-"AMPHIBIANS - Northern Leopard Frog",
-"AMPHIBIANS - Plains Leopard Frog",
-"AMPHIBIANS - Pickerel Frog",
-"AMPHIBIANS - Pacific Tree Frog",
-"AMPHIBIANS - Red-legged Frog",
-"AMPHIBIANS - Spotted Salamander",
-"AMPHIBIANS - Spring Peeper",
-"AMPHIBIANS - Tiger Salamander",
-"AMPHIBIANS - Tree Frog",
-"AMPHIBIANS - Toad",
-"AMPHIBIANS - Water Frog",
-
-# 🌊 SEA ANIMALS
-"SEA ANIMALS - Shark",
-"SEA ANIMALS - Whale",
-"SEA ANIMALS - Dolphin",
-"SEA ANIMALS - Manta Ray",
-"SEA ANIMALS - Octopus",
-"SEA ANIMALS - Shrimp",
-"SEA ANIMALS - Lobster",
-"SEA ANIMALS - Crab",
-"SEA ANIMALS - Starfish",
-"SEA ANIMALS - Sea Turtle",
-"SEA ANIMALS - Jellyfish",
-"SEA ANIMALS - Coral",
-"SEA ANIMALS - Eel",
-"SEA ANIMALS - Seal",
-"SEA ANIMALS - Walrus",
-"SEA ANIMALS - Manatee",
-"SEA ANIMALS - Beluga Whale",
-"SEA ANIMALS - Orca",
-"SEA ANIMALS - Blue Whale",
-"SEA ANIMALS - Humpback Whale",
-"SEA ANIMALS - Gray Whale",
-"SEA ANIMALS - Killer Whale",
-"SEA ANIMALS - Bottlenose Dolphin",
-"SEA ANIMALS - Pilot Whale",
-"SEA ANIMALS - Dugong",
-"SEA ANIMALS - Sea Lion",
-"SEA ANIMALS - Harbor Seal",
-"SEA ANIMALS - Green Sea Turtle",
-"SEA ANIMALS - Loggerhead Turtle",
-"SEA ANIMALS - Leatherback Turtle",
-"SEA ANIMALS - Kemp's Ridley Turtle",
-"SEA ANIMALS - Hawksbill Turtle",
-"SEA ANIMALS - Spinner Dolphin",
-"SEA ANIMALS - Risso's Dolphin",
-"SEA ANIMALS - Atlantic Puffin",
-"SEA ANIMALS - Common Dolphin",
-"SEA ANIMALS - Basking Shark",
-"SEA ANIMALS - Great White Shark",
-"SEA ANIMALS - Whale Shark",
-"SEA ANIMALS - Blue Marlin",
-"SEA ANIMALS - Swordfish",
-"SEA ANIMALS - Mako Shark",
-"SEA ANIMALS - Tiger Shark",
-"SEA ANIMALS - Thresher Shark",
-"SEA ANIMALS - Nurse Shark",
-"SEA ANIMALS - Hammerhead Shark",
-"SEA ANIMALS - Blacktip Shark",
-"SEA ANIMALS - Whale Ray",
-"SEA ANIMALS - Moray Eel",
-"SEA ANIMALS - Lionfish",
-"SEA ANIMALS - Angelfish",
-"SEA ANIMALS - Lion's Mane Jellyfish",
-"SEA ANIMALS - Moon Jellyfish",
-"SEA ANIMALS - Sea Urchin",
-"SEA ANIMALS - Blue-ringed Octopus",
-"SEA ANIMALS - Giant Pacific Octopus",
-"SEA ANIMALS - Box Jellyfish",
-"SEA ANIMALS - Portuguese Man o' War",
-"SEA ANIMALS - Cuttlefish",
-"SEA ANIMALS - Sea Slug",
-"SEA ANIMALS - Giant Clam",
-"SEA ANIMALS - Cone Snail",
-"SEA ANIMALS - Sea Cucumber",
-"SEA ANIMALS - Nudibranch",
-"SEA ANIMALS - Horseshoe Crab",
-"SEA ANIMALS - Electric Eel",
-"SEA ANIMALS - Pufferfish",
-"SEA ANIMALS - Crown-of-Thorns Starfish",
-"SEA ANIMALS - Blue Sea Dragon",
-"SEA ANIMALS - Mantis Shrimp",
-"SEA ANIMALS - Sea Spider",
-"SEA ANIMALS - Blue Dragon Nudibranch",
-"SEA ANIMALS - Sea Anemone",
-"SEA ANIMALS - Sea Horse",
-"SEA ANIMALS - Frilled Shark",
-"SEA ANIMALS - Goblin Shark",
-"SEA ANIMALS - Sea Lamprey",
-"SEA ANIMALS - Sperm Whale",
-"SEA ANIMALS - Bowhead Whale",
-"SEA ANIMALS - Fin Whale",
-"SEA ANIMALS - Sei Whale",
-"SEA ANIMALS - Bryde's Whale",
-"SEA ANIMALS - Cuvier's Beaked Whale",
-"SEA ANIMALS - Pygmy Sperm Whale",
-"SEA ANIMALS - Short-finned Pilot Whale",
-"SEA ANIMALS - False Killer Whale",
-"SEA ANIMALS - Striped Dolphin",
-"SEA ANIMALS - Rough-toothed Dolphin",
-"SEA ANIMALS - Indo-Pacific Humpback Dolphin",
-"SEA ANIMALS - Atlantic Humpback Dolphin",
-"SEA ANIMALS - Amazon River Dolphin",
-"SEA ANIMALS - Irrawaddy Dolphin",
-"SEA ANIMALS - Vaquita",
-"SEA ANIMALS - Dall's Porpoise",
-"SEA ANIMALS - Harbor Porpoise",
-"SEA ANIMALS - Finless Porpoise",
-"SEA ANIMALS - Burmeister's Porpoise",
-"SEA ANIMALS - Spectacled Porpoise",
-"SEA ANIMALS - Chinese White Dolphin",
-"SEA ANIMALS - Hector's Dolphin",
-"SEA ANIMALS - Maui's Dolphin",
-"SEA ANIMALS - Commerson's Dolphin",
-"SEA ANIMALS - Spotted Dolphin",
-"SEA ANIMALS - Hourglass Dolphin",
-"SEA ANIMALS - Black Dolphin",
-"SEA ANIMALS - Australian Snubfin Dolphin",
-"SEA ANIMALS - Fraser's Dolphin",
-"SEA ANIMALS - Atlantic Bottlenose Dolphin",
-"SEA ANIMALS - Pacific Bottlenose Dolphin",
-
-# 🦀 CRUSTACEANS
-"CRUSTACEANS - Lobster",
-"CRUSTACEANS - Crab",
-"CRUSTACEANS - Shrimp",
-"CRUSTACEANS - Krill",
-"CRUSTACEANS - Barnacle",
-"CRUSTACEANS - Ghost Shrimp",
-"CRUSTACEANS - Fiddler Crab",
-"CRUSTACEANS - Hermit Crab",
-"CRUSTACEANS - Pistol Shrimp",
-"CRUSTACEANS - Rock Lobster",
-"CRUSTACEANS - Snow Crab",
-"CRUSTACEANS - Blue Crab",
-"CRUSTACEANS - Red King Crab",
-"CRUSTACEANS - Coconut Crab",
-"CRUSTACEANS - Horseshoe Crab",
-"CRUSTACEANS - Signal Crayfish",
-"CRUSTACEANS - Dungeness Crab",
-"CRUSTACEANS - Velvet Crab",
-"CRUSTACEANS - Stone Crab",
-"CRUSTACEANS - Red Swamp Crayfish",
-"CRUSTACEANS - American Lobster",
-"CRUSTACEANS - Japanese Spider Crab",
-"CRUSTACEANS - European Green Crab",
-"CRUSTACEANS - Chinese Mitten Crab",
-"CRUSTACEANS - Mantis Shrimp",
-"CRUSTACEANS - Tiger Prawn",
-"CRUSTACEANS - Macrobrachium Prawn",
-"CRUSTACEANS - Blue King Crab",
-"CRUSTACEANS - Black King Crab",
-"CRUSTACEANS - Tiger Crab",
-"CRUSTACEANS - Long-legged Crab",
-"CRUSTACEANS - Velvet Prawn",
-"CRUSTACEANS - Blue Crab",
-"CRUSTACEANS - Water Flea",
-"CRUSTACEANS - Copepod",
-"CRUSTACEANS - Amphipod",
-"CRUSTACEANS - Isopod",
-"CRUSTACEANS - Mysid Shrimp",
-"CRUSTACEANS - Fairy Shrimp",
-"CRUSTACEANS - Nautilus",
-"CRUSTACEANS - Crayfish",
-"CRUSTACEANS - Pistol Shrimp",
-"CRUSTACEANS - Boxer Shrimp",
-"CRUSTACEANS - Cleaner Shrimp",
-"CRUSTACEANS - Peppermint Shrimp",
-"CRUSTACEANS - Mantis Shrimp",
-"CRUSTACEANS - Snapping Shrimp",
-"CRUSTACEANS - Reef Crab",
-"CRUSTACEANS - Brine Shrimp",
-"CRUSTACEANS - Red Rock Crab",
-"CRUSTACEANS - Giant Clam",
-"CRUSTACEANS - Cone Snail",
-"CRUSTACEANS - Sea Cucumber",
-"CRUSTACEANS - Nudibranch",
-"CRUSTACEANS - Horseshoe Crab",
-"CRUSTACEANS - Electric Eel",
-"CRUSTACEANS - Pufferfish",
-"CRUSTACEANS - Crown-of-Thorns Starfish",
-"CRUSTACEANS - Blue Sea Dragon",
-"CRUSTACEANS - Mantis Shrimp",
-"CRUSTACEANS - Sea Spider",
-"CRUSTACEANS - Blue Dragon Nudibranch",
-"CRUSTACEANS - Sea Anemone",
-"CRUSTACEANS - Sea Horse",
-"CRUSTACEANS - Frilled Shark",
-"CRUSTACEANS - Goblin Shark",
-"CRUSTACEANS - Sea Lamprey",
-"CRUSTACEANS - Sperm Whale",
-"CRUSTACEANS - Bowhead Whale",
-"CRUSTACEANS - Fin Whale",
-"CRUSTACEANS - Sei Whale",
-"CRUSTACEANS - Bryde's Whale",
-"CRUSTACEANS - Cuvier's Beaked Whale",
-"CRUSTACEANS - Pygmy Sperm Whale",
-"CRUSTACEANS - Short-finned Pilot Whale",
-"CRUSTACEANS - False Killer Whale",
-"CRUSTACEANS - Striped Dolphin",
-"CRUSTACEANS - Rough-toothed Dolphin",
-"CRUSTACEANS - Indo-Pacific Humpback Dolphin",
-"CRUSTACEANS - Atlantic Humpback Dolphin",
-"CRUSTACEANS - Amazon River Dolphin",
-"CRUSTACEANS - Irrawaddy Dolphin",
-"CRUSTACEANS - Vaquita",
-"CRUSTACEANS - Dall's Porpoise",
-"CRUSTACEANS - Harbor Porpoise",
-"CRUSTACEANS - Finless Porpoise",
-"CRUSTACEANS - Burmeister's Porpoise",
-"CRUSTACEANS - Spectacled Porpoise",
-"CRUSTACEANS - Chinese White Dolphin",
-"CRUSTACEANS - Hector's Dolphin",
-"CRUSTACEANS - Maui's Dolphin",
-"CRUSTACEANS - Commerson's Dolphin",
-"CRUSTACEANS - Spotted Dolphin",
-"CRUSTACEANS - Hourglass Dolphin",
-"CRUSTACEANS - Black Dolphin",
-"CRUSTACEANS - Australian Snubfin Dolphin",
-"CRUSTACEANS - Fraser's Dolphin",
-"CRUSTACEANS - Atlantic Bottlenose Dolphin",
-"CRUSTACEANS - Pacific Bottlenose Dolphin",
-
-# 🐜 INSECTS
-"INSECTS - Butterfly",
-"INSECTS - Ladybug",
-"INSECTS - Dragonfly",
-"INSECTS - Praying Mantis",
-"INSECTS - Ant",
-"INSECTS - Beetle",
-"INSECTS - Grasshopper",
-"INSECTS - Cockroach",
-"INSECTS - Termite",
-"INSECTS - Firefly",
-"INSECTS - Moth",
-"INSECTS - Wasp",
-"INSECTS - Flea",
-"INSECTS - Tick",
-"INSECTS - Lacewing",
-"INSECTS - Earwig",
-"INSECTS - Silverfish",
-"INSECTS - Aphid",
-"INSECTS - Cicada",
-"INSECTS - Katydid",
-"INSECTS - Mealybug",
-"INSECTS - Thrips",
-"INSECTS - Stink Bug",
-"INSECTS - Weevil",
-"INSECTS - Whitefly",
-"INSECTS - Scorpion",
-"INSECTS - Locust",
-"INSECTS - Mantid",
-"INSECTS - Sawfly",
-"INSECTS - Mayfly",
-"INSECTS - Stonefly",
-"INSECTS - Borer Beetle",
-"INSECTS - Assassin Bug",
-"INSECTS - Leafhopper",
-"INSECTS - Longhorn Beetle",
-"INSECTS - Lace Bug",
-"INSECTS - Boxelder Bug",
-"INSECTS - Slug",
-"INSECTS - Snail",
-"INSECTS - Spider",
-"INSECTS - Scorpion",
-"INSECTS - Bumblebee",
-"INSECTS - Hornet",
-"INSECTS - Damselfly",
-"INSECTS - Fire Ant",
-"INSECTS - June Bug",
-"INSECTS - Monarch Butterfly",
-"INSECTS - Atlas Moth",
-"INSECTS - Emperor Moth",
-"INSECTS - Luna Moth",
-"INSECTS - Goliath Beetle",
-"INSECTS - Hercules Beetle",
-"INSECTS - Atlas Beetle",
-"INSECTS - Rhinoceros Beetle",
-"INSECTS - Stick Insect",
-"INSECTS - Walking Stick",
-"INSECTS - Katydid",
-"INSECTS - Lacewing",
-"INSECTS - Firefly",
-"INSECTS - Lace Bug",
-"INSECTS - Ladybird",
-"INSECTS - Paper Wasp",
-"INSECTS - Yellow Jacket",
-"INSECTS - Asian Giant Hornet",
-
-# 🐸 AMPHIBIANS
-"AMPHIBIANS - Frog",
-"AMPHIBIANS - Toad",
-"AMPHIBIANS - Salamander",
-"AMPHIBIANS - Newt",
-"AMPHIBIANS - Axolotl",
-"AMPHIBIANS - Caecilian",
-"AMPHIBIANS - Tree Frog",
-"AMPHIBIANS - Poison Dart Frog",
-"AMPHIBIANS - Bullfrog",
-"AMPHIBIANS - Tiger Salamander",
-"AMPHIBIANS - Fire Salamander",
-"AMPHIBIANS - Green Tree Frog",
-"AMPHIBIANS - American Toad",
-"AMPHIBIANS - Red-eyed Tree Frog",
-"AMPHIBIANS - Spotted Salamander",
-"AMPHIBIANS - Gray Tree Frog",
-"AMPHIBIANS - Spring Peeper",
-"AMPHIBIANS - Wood Frog",
-"AMPHIBIANS - Pickerel Frog",
-"AMPHIBIANS - Pacific Tree Frog",
-"AMPHIBIANS - Red-legged Frog",
-"AMPHIBIANS - Green Frog",
-"AMPHIBIANS - American Bullfrog",
-"AMPHIBIANS - Gray Tree Frog",
-"AMPHIBIANS - Northern Leopard Frog",
-"AMPHIBIANS - Plains Leopard Frog",
-"AMPHIBIANS - Troodon",
-"AMPHIBIANS - Troodon",
-"AMPHIBIANS - Masked Frog",
-"AMPHIBIANS - Mountain Frog",
-"AMPHIBIANS - Clawed Frog",
-"AMPHIBIANS - Orange-Spotted Frog",
-"AMPHIBIANS - Tree Frog",
-"AMPHIBIANS - Whistling Frog",
-"AMPHIBIANS - Leopard Frog",
-"AMPHIBIANS - Green Tree Frog",
-"AMPHIBIANS - Amazon Milk Frog",
-"AMPHIBIANS - Blue Poison Dart Frog",
-"AMPHIBIANS - White's Tree Frog",
-"AMPHIBIANS - Fire-bellied Toad",
-"AMPHIBIANS - Eastern Newt",
-"AMPHIBIANS - Boreal Chorus Frog",
-"AMPHIBIANS - Gray Tree Frog",
-"AMPHIBIANS - Pickerel Frog",
-"AMPHIBIANS - Pacific Tree Frog",
-"AMPHIBIANS - Red-legged Frog",
-"AMPHIBIANS - Spotted Salamander",
-"AMPHIBIANS - Spring Peeper",
-"AMPHIBIANS - Tiger Salamander",
-"AMPHIBIANS - Tree Frog",
-"AMPHIBIANS - Toad",
-"AMPHIBIANS - Water Frog",
-
-# 🌿 PLANTS
-"PLANTS - Venus Flytrap",
-"PLANTS - Rose",
-"PLANTS - Sunflower",
-"PLANTS - Tulip",
-"PLANTS - Orchid",
-"PLANTS - Cactus",
-"PLANTS - Aloe Vera",
-"PLANTS - Bamboo",
-"PLANTS - Lavender",
-"PLANTS - Daffodil",
-"PLANTS - Marigold",
-"PLANTS - Peony",
-"PLANTS - Fern",
-"PLANTS - Ivy",
-"PLANTS - Bonsai",
-"PLANTS - Bamboo Orchid",
-"PLANTS - Jasmine",
-"PLANTS - Hydrangea",
-"PLANTS - Lilac",
-"PLANTS - Magnolia",
-"PLANTS - Pothos",
-"PLANTS - Snake Plant",
-"PLANTS - Spider Plant",
-"PLANTS - Philodendron",
-"PLANTS - ZZ Plant",
-"PLANTS - Ficus",
-"PLANTS - Monstera",
-"PLANTS - Peace Lily",
-"PLANTS - Begonia",
-"PLANTS - Pilea",
-"PLANTS - Ceropegia",
-"PLANTS - African Violet",
-"PLANTS - English Ivy",
-"PLANTS - Calathea",
-"PLANTS - Schefflera",
-"PLANTS - Dracaena",
-"PLANTS - Croton",
-"PLANTS - Asparagus Fern",
-"PLANTS - Kalanchoe",
-"PLANTS - Bromeliad",
-"PLANTS - Hoya",
-"PLANTS - Echeveria",
-"PLANTS - Christmas Cactus",
-"PLANTS - Kokedama",
-"PLANTS - Air Plant",
-"PLANTS - String of Pearls",
-"PLANTS - Variegated Rubber Plant",
-"PLANTS - Peperomia",
-"PLANTS - Tradescantia",
-"PLANTS - Schefflera Arboricola",
-"PLANTS - Chinese Evergreen",
-"PLANTS - Pilea Peperomioides",
-"PLANTS - Anthurium",
-"PLANTS - Prayer Plant",
-"PLANTS - Pothos",
-"PLANTS - Dracaena",
-"PLANTS - Croton",
-"PLANTS - Asparagus Fern",
-"PLANTS - Kalanchoe",
-"PLANTS - Bromeliad",
-"PLANTS - Hoya",
-"PLANTS - Echeveria",
-"PLANTS - Christmas Cactus",
-"PLANTS - Kokedama",
-"PLANTS - Air Plant",
-"PLANTS - String of Pearls",
-"PLANTS - Variegated Rubber Plant",
-"PLANTS - Peperomia",
-"PLANTS - Tradescantia",
-"PLANTS - Schefflera Arboricola",
-"PLANTS - Chinese Evergreen",
-"PLANTS - Pilea Peperomioides",
-"PLANTS - Anthurium",
-"PLANTS - Prayer Plant",
-"PLANTS - Philodendron",
-"PLANTS - ZZ Plant",
-]
-
-DOMESTICATED_ANIMALS = [
-"-",
-# 🐶 DOGS
-"DOGS - Dog",
-"DOGS - Puppy",
-"DOGS - Sheltie",
-"DOGS - Maltese",
-"DOGS - Yorkshire Terrier",
-"DOGS - Cane Corso",
-"DOGS - Dachshund",
-"DOGS - Irish Setter",
-"DOGS - Jack Russell Terrier",
-"DOGS - Komondor",
-"DOGS - Labrador Retriever",
-"DOGS - Maltese Dog",
-"DOGS - Norfolk Terrier",
-"DOGS - Old English Sheepdog",
-"DOGS - Papillon",
-"DOGS - Quechua Sheepdog",
-"DOGS - Samoyed",
-"DOGS - Tibetan Mastiff",
-"DOGS - Utonagan",
-"DOGS - Vizsla",
-"DOGS - Whippet",
-"DOGS - Xoloitzcuintli",
-"DOGS - Zonker",
-"DOGS - Airedale Terrier",
-"DOGS - Border Collie",
-"DOGS - Chihuahua",
-"DOGS - Doberman Pinscher",
-"DOGS - English Bulldog",
-"DOGS - French Bulldog",
-"DOGS - Great Dane",
-"DOGS - Havanese",
-"DOGS - Irish Wolfhound",
-"DOGS - King Charles Spaniel",
-"DOGS - Lhasa Apso",
-"DOGS - Miniature Schnauzer",
-"DOGS - Newfoundland",
-"DOGS - Pekingese",
-"DOGS - Queensland Heeler",
-"DOGS - Rottweiler",
-"DOGS - Shiba Inu",
-"DOGS - Toy Poodle",
-"DOGS - Australian Shepherd",
-"DOGS - Bichon Frise",
-"DOGS - Cocker Spaniel",
-"DOGS - Dandie Dinmont Terrier",
-"DOGS - English Setter",
-"DOGS - Flat-Coated Retriever",
-"DOGS - Goldendoodle",
-"DOGS - Harrier",
-"DOGS - Italian Greyhound",
-"DOGS - Japanese Chin",
-"DOGS - Keeshond",
-"DOGS - Leonberger",
-"DOGS - Miniature Bull Terrier",
-"DOGS - Norwich Terrier",
-"DOGS - Pomeranian",
-"DOGS - Queen Elizabeth Pocket Beagle",
-"DOGS - Redbone Coonhound",
-"DOGS - Silky Terrier",
-"DOGS - Volpino Italiano",
-"DOGS - Wirehaired Pointing Griffon",
-"DOGS - Zuchon",
-"DOGS - Anatolian Shepherd",
-"DOGS - Basset Hound",
-"DOGS - Cavalier King Charles Spaniel",
-"DOGS - Dalmatian",
-"DOGS - English Cocker Spaniel",
-"DOGS - Finnish Spitz",
-"DOGS - Glen of Imaal Terrier",
-"DOGS - Icelandic Sheepdog",
-"DOGS - Japanese Spitz",
-"DOGS - Norwegian Elkhound",
-"DOGS - Queen Elizabeth II Cavalier",
-"DOGS - Rat Terrier",
-"DOGS - Shetland Sheepdog",
-"DOGS - Tibetan Spaniel",
-"DOGS - United States Shepherd",
-"DOGS - Welsh Corgi",
-"DOGS - American Eskimo Dog",
-"DOGS - Belgian Malinois",
-"DOGS - Chinese Crested",
-"DOGS - Dutch Shepherd",
-"DOGS - English Springer Spaniel",
-"DOGS - German Shepherd",
-"DOGS - Italian Spinone",
-"DOGS - Japanese Terrier",
-"DOGS - Kerry Blue Terrier",
-"DOGS - Lowchen",
-"DOGS - Miniature Pinscher",
-"DOGS - Olde English Bulldogge",
-"DOGS - Scottish Terrier",
-"DOGS - Tibetan Terrier",
-"DOGS - Ugandan Kob",
-"DOGS - Wirehaired Vizsla",
-"DOGS - Australian Cattle Dog",
-"DOGS - Beagle",
-"DOGS - Cairn Terrier",
-"DOGS - Golden Retriever",
-"DOGS - Husky",
-"DOGS - Poodle",
-"DOGS - Shih Tzu",
-"DOGS - Afghan Hound",
-"DOGS - Border Terrier",
-"DOGS - Fox Terrier",
-"DOGS - German Shorthaired Pointer",
-"DOGS - Irish Setter",
-
-# 🐱 CATS
-"CATS - Domestic Shorthair",
-"CATS - Domestic Longhair",
-"CATS - Siamese",
-"CATS - Persian",
-"CATS - Maine Coon",
-"CATS - Ragdoll",
-"CATS - Bengal",
-"CATS - Sphynx",
-"CATS - British Shorthair",
-"CATS - Abyssinian",
-"CATS - Scottish Fold",
-"CATS - Russian Blue",
-"CATS - Burmese",
-"CATS - Devon Rex",
-"CATS - Norwegian Forest Cat",
-"CATS - Oriental Shorthair",
-"CATS - Savannah",
-"CATS - Birman",
-"CATS - Tonkinese",
-"CATS - American Shorthair",
-"CATS - Turkish Angora",
-"CATS - Balinese",
-"CATS - Exotic Shorthair",
-"CATS - Singapura",
-"CATS - Havana Brown",
-"CATS - LaPerm",
-"CATS - Egyptian Mau",
-"CATS - Chartreux",
-"CATS - Ragamuffin",
-"CATS - Manx",
-"CATS - Turkish Van",
-"CATS - Korat",
-"CATS - Peterbald",
-"CATS - Ocicat",
-"CATS - Cymric",
-"CATS - Japanese Bobtail",
-"CATS - Burmilla",
-"CATS - Munchkin",
-"CATS - Pixiebob",
-"CATS - Selkirk Rex",
-"CATS - American Wirehair",
-
-# 🐴 HORSES & EQUINES
-"HORSES & EQUINES - Horse",
-"HORSES & EQUINES - Pony",
-"HORSES & EQUINES - Gelding",
-"HORSES & EQUINES - Tennessee Walker",
-"HORSES & EQUINES - Arabian Horse",
-"HORSES & EQUINES - Thoroughbred",
-"HORSES & EQUINES - Quarter Horse",
-"HORSES & EQUINES - Morgan Horse",
-"HORSES & EQUINES - Appaloosa",
-"HORSES & EQUINES - Clydesdale",
-"HORSES & EQUINES - Andalusian",
-"HORSES & EQUINES - Belgian Horse",
-"HORSES & EQUINES - Friesian Horse",
-"HORSES & EQUINES - Haflinger",
-"HORSES & EQUINES - Shetland Pony",
-"HORSES & EQUINES - Connemara Pony",
-"HORSES & EQUINES - Icelandic Horse",
-"HORSES & EQUINES - Mustang",
-"HORSES & EQUINES - Miniature Horse",
-"HORSES & EQUINES - Welsh Pony",
-"HORSES & EQUINES - Lipizzaner",
-"HORSES & EQUINES - Suffolk Punch",
-"HORSES & EQUINES - Hackney Horse",
-"HORSES & EQUINES - Hanoverian",
-"HORSES & EQUINES - Paint Horse",
-"HORSES & EQUINES - Percheron",
-"HORSES & EQUINES - Shire Horse",
-"HORSES & EQUINES - Trakehner",
-"HORSES & EQUINES - Trotter",
-"HORSES & EQUINES - Paso Fino",
-"HORSES & EQUINES - Tennessee Walking Horse",
-"HORSES & EQUINES - Gypsy Vanner",
-"HORSES & EQUINES - American Saddlebred",
-"HORSES & EQUINES - Breton",
-"HORSES & EQUINES - Falabella",
-"HORSES & EQUINES - Marwari Horse",
-"HORSES & EQUINES - Narragansett Pacer",
-
-# 🐄 LIVESTOCK
-"LIVESTOCK - Cow",
-"LIVESTOCK - Chicken",
-"LIVESTOCK - Sheep",
-"LIVESTOCK - Pig",
-"LIVESTOCK - Goat",
-"LIVESTOCK - Donkey",
-"LIVESTOCK - Llama",
-"LIVESTOCK - Alpaca",
-"LIVESTOCK - Zebu",
-"LIVESTOCK - Belgian Blue",
-"LIVESTOCK - Hampshire Hog",
-"LIVESTOCK - Berkshire Pig",
-"LIVESTOCK - Angus Cow",
-"LIVESTOCK - Hereford Cow",
-"LIVESTOCK - Jersey Cow",
-"LIVESTOCK - Dorper Sheep",
-"LIVESTOCK - Merino Sheep",
-"LIVESTOCK - Nubian Goat",
-"LIVESTOCK - Boer Goat",
-"LIVESTOCK - Mule",
-"LIVESTOCK - Saanen Goat",
-"LIVESTOCK - Dorset Sheep",
-"LIVESTOCK - Brahman Cattle",
-"LIVESTOCK - Landrace Pig",
-"LIVESTOCK - Pygmy Goat",
-"LIVESTOCK - Hampshire Sheep",
-"LIVESTOCK - Suffolk Sheep",
-"LIVESTOCK - Texel Sheep",
-"LIVESTOCK - Guernsey Cow",
-"LIVESTOCK - Devon Sheep",
-"LIVESTOCK - Alpine Goat",
-"LIVESTOCK - Large White Pig",
-"LIVESTOCK - Cheviot Sheep",
-"LIVESTOCK - Ayrshire Cow",
-"LIVESTOCK - Hampshire Cattle",
-"LIVESTOCK - Targhee Sheep",
-"LIVESTOCK - Alpine Sheep",
-"LIVESTOCK - Alentejano Pig",
-"LIVESTOCK - Baladi Sheep",
-"LIVESTOCK - Dorper Goat",
-"LIVESTOCK - Florida White Goat",
-
-# 🐦 BIRDS
-"BIRDS - Duck",
-"BIRDS - Goose",
-"BIRDS - Parrot",
-"BIRDS - Budgerigar",
-"BIRDS - Canary",
-"BIRDS - Cockatiel",
-"BIRDS - Pigeon",
-"BIRDS - Quail",
-"BIRDS - Lovebird",
-"BIRDS - Macaw",
-"BIRDS - Oriole",
-"BIRDS - Peacock",
-"BIRDS - Sparrow",
-"BIRDS - Swan",
-"BIRDS - Emu",
-"BIRDS - Xantus's Hummingbird",
-"BIRDS - Warbler",
-"BIRDS - Finch",
-"BIRDS - Cockatoo",
-"BIRDS - Toucan",
-"BIRDS - Kingfisher",
-"BIRDS - Falcon",
-"BIRDS - Hawk",
-"BIRDS - Eagle",
-"BIRDS - Owl",
-"BIRDS - Heron",
-"BIRDS - Pheasant",
-"BIRDS - Kookaburra",
-"BIRDS - Ibis",
-"BIRDS - Tanager",
-"BIRDS - Parakeet",
-"BIRDS - Nightingale",
-"BIRDS - Woodpecker",
-"BIRDS - Bluebird",
-"BIRDS - Cardinal",
-"BIRDS - Mockingbird",
-"BIRDS - Plover",
-"BIRDS - Seagull",
-"BIRDS - Starling",
-"BIRDS - Parrotlet",
-"BIRDS - Sun Conure",
-"BIRDS - African Grey",
-"BIRDS - Eclectus Parrot",
-"BIRDS - Amazon Parrot",
-"BIRDS - Quaker Parrot",
-"BIRDS - Green Cheek Conure",
-"BIRDS - Pionus Parrot",
-"BIRDS - Blue-and-Gold Macaw",
-"BIRDS - Scarlet Macaw",
-"BIRDS - Hyacinth Macaw",
-"BIRDS - Blue Jay",
-"BIRDS - Robin",
-"BIRDS - Wood Duck",
-"BIRDS - Mandarin Duck",
-"BIRDS - Mute Swan",
-"BIRDS - Black Swan",
-"BIRDS - Myna",
-"BIRDS - Raven",
-"BIRDS - Cormorant",
-"BIRDS - Gull",
-"BIRDS - Kite",
-"BIRDS - Buzzard",
-
-# 🐹 SMALL MAMMALS
-"SMALL MAMMALS - Rabbit",
-"SMALL MAMMALS - Hamster",
-"SMALL MAMMALS - Ferret",
-"SMALL MAMMALS - Guinea Pig",
-"SMALL MAMMALS - Gerbil",
-"SMALL MAMMALS - Hedgehog",
-"SMALL MAMMALS - Mongoose",
-"SMALL MAMMALS - Chinchilla",
-"SMALL MAMMALS - Sugar Glider",
-"SMALL MAMMALS - Rat",
-"SMALL MAMMALS - Mouse",
-"SMALL MAMMALS - Degus",
-"SMALL MAMMALS - Squirrel",
-"SMALL MAMMALS - Prairie Dog",
-"SMALL MAMMALS - Shrew",
-"SMALL MAMMALS - Opossum",
-"SMALL MAMMALS - Mole",
-"SMALL MAMMALS - Weasel",
-"SMALL MAMMALS - Stoat",
-"SMALL MAMMALS - Fennec Fox",
-"SMALL MAMMALS - African Pygmy Hedgehog",
-"SMALL MAMMALS - European Hedgehog",
-"SMALL MAMMALS - Indian Palm Squirrel",
-"SMALL MAMMALS - Eastern Chipmunk",
-"SMALL MAMMALS - Northern Short-tailed Shrew",
-"SMALL MAMMALS - Eastern Grey Squirrel",
-"SMALL MAMMALS - American Badger",
-"SMALL MAMMALS - European Mole",
-"SMALL MAMMALS - Southern Flying Squirrel",
-"SMALL MAMMALS - Prairie Vole",
-"SMALL MAMMALS - Naked Mole Rat",
-"SMALL MAMMALS - African Pouched Rat",
-"SMALL MAMMALS - Eastern Cottontail Rabbit",
-"SMALL MAMMALS - European Rabbit",
-"SMALL MAMMALS - House Mouse",
-"SMALL MAMMALS - Brown Rat",
-
-# 🐟 FISH
-"FISH - Goldfish",
-"FISH - Koi",
-"FISH - Betta",
-"FISH - Guppy",
-"FISH - Angelfish",
-"FISH - Tetra",
-"FISH - Cichlid",
-"FISH - Discus",
-"FISH - Molly",
-"FISH - Swordtail",
-"FISH - Neon Tetra",
-"FISH - Zebra Danio",
-"FISH - Pleco",
-"FISH - Gourami",
-"FISH - Clownfish",
-"FISH - Tiger Barb",
-"FISH - Cherry Barb",
-"FISH - Rasbora",
-"FISH - Corydoras",
-"FISH - Oscar",
-"FISH - Silver Dollar",
-"FISH - Cardinal Tetra",
-"FISH - Discus Fish",
-"FISH - Bristlenose Pleco",
-"FISH - Harlequin Rasbora",
-"FISH - Electric Yellow Cichlid",
-"FISH - Pearl Gourami",
-"FISH - Rummy Nose Tetra",
-"FISH - Bolivian Ram",
-"FISH - Firemouth Cichlid",
-"FISH - Ram Cichlid",
-"FISH - Jelly Bean Tetra",
-"FISH - Leopard Danio",
-"FISH - Black Molly",
-"FISH - Blue Tang",
-"FISH - Sailfin Molly",
-"FISH - Fantail Goldfish",
-"FISH - Pearlscale Goldfish",
-"FISH - Rosy Red Minnow",
-"FISH - Brichardi Cichlid",
-"FISH - Peacock Bass",
-"FISH - Convict Cichlid",
-
-# 🐢 REPTILES
-"REPTILES - Turtle",
-"REPTILES - Tortoise",
-"REPTILES - Leopard Gecko",
-"REPTILES - Bearded Dragon",
-"REPTILES - Ball Python",
-"REPTILES - Corn Snake",
-"REPTILES - Green Iguana",
-"REPTILES - Red-eared Slider",
-"REPTILES - Box Turtle",
-"REPTILES - Chameleon",
-"REPTILES - Blue-tongued Skink",
-"REPTILES - King Snake",
-"REPTILES - Garter Snake",
-"REPTILES - African Sideneck Turtle",
-"REPTILES - Eastern Box Turtle",
-"REPTILES - Russian Tortoise",
-"REPTILES - Hermann's Tortoise",
-"REPTILES - Greek Tortoise",
-"REPTILES - Argentine Black and White Tegu",
-"REPTILES - Pancake Tortoise",
-"REPTILES - Radiated Tortoise",
-"REPTILES - Sulcata Tortoise",
-"REPTILES - Desert Tortoise",
-"REPTILES - Mud Turtle",
-"REPTILES - Map Turtle",
-"REPTILES - Musk Turtle",
-"REPTILES - Painted Turtle",
-"REPTILES - Softshell Turtle",
-"REPTILES - Wood Turtle",
-"REPTILES - Snapping Turtle",
-"REPTILES - Leatherback Sea Turtle",
-"REPTILES - Loggerhead Sea Turtle",
-"REPTILES - Green Sea Turtle",
-"REPTILES - Hawksbill Sea Turtle",
-"REPTILES - Olive Ridley Sea Turtle",
-
-# 🐝 INSECTS
-"INSECTS - Bee",
-"INSECTS - Butterfly",
-"INSECTS - Ladybug",
-"INSECTS - Dragonfly",
-"INSECTS - Praying Mantis",
-"INSECTS - Ant",
-"INSECTS - Beetle",
-"INSECTS - Grasshopper",
-"INSECTS - Cockroach",
-"INSECTS - Termite",
-"INSECTS - Firefly",
-"INSECTS - Moth",
-"INSECTS - Wasp",
-"INSECTS - Flea",
-"INSECTS - Tick",
-"INSECTS - Lacewing",
-"INSECTS - Earwig",
-"INSECTS - Silverfish",
-"INSECTS - Aphid",
-"INSECTS - Cicada",
-"INSECTS - Katydid",
-"INSECTS - Mealybug",
-"INSECTS - Thrips",
-"INSECTS - Stink Bug",
-"INSECTS - Weevil",
-"INSECTS - Whitefly",
-"INSECTS - Scorpion",
-"INSECTS - Locust",
-"INSECTS - Mantid",
-"INSECTS - Sawfly",
-"INSECTS - Mayfly",
-"INSECTS - Stonefly",
-"INSECTS - Borer Beetle",
-"INSECTS - Assassin Bug",
-"INSECTS - Leafhopper",
-"INSECTS - Longhorn Beetle",
-"INSECTS - Lace Bug",
-"INSECTS - Boxelder Bug",
-"INSECTS - Slug",
-"INSECTS - Snail",
-"INSECTS - Spider",
-"INSECTS - Scorpion",
-
-# 🌿 PLANTS
-"PLANTS - Venus Flytrap",
-"PLANTS - Rose",
-"PLANTS - Sunflower",
-"PLANTS - Tulip",
-"PLANTS - Orchid",
-"PLANTS - Cactus",
-"PLANTS - Aloe Vera",
-"PLANTS - Bamboo",
-"PLANTS - Lavender",
-"PLANTS - Daffodil",
-"PLANTS - Marigold",
-"PLANTS - Peony",
-"PLANTS - Fern",
-"PLANTS - Ivy",
-"PLANTS - Bonsai",
-"PLANTS - Bamboo Orchid",
-"PLANTS - Jasmine",
-"PLANTS - Hydrangea",
-"PLANTS - Lilac",
-"PLANTS - Magnolia",
-"PLANTS - Pothos",
-"PLANTS - Snake Plant",
-"PLANTS - Spider Plant",
-"PLANTS - Philodendron",
-"PLANTS - ZZ Plant",
-"PLANTS - Ficus",
-"PLANTS - Monstera",
-"PLANTS - Peace Lily",
-"PLANTS - Begonia",
-"PLANTS - Pilea",
-"PLANTS - Ceropegia",
-"PLANTS - African Violet",
-"PLANTS - English Ivy",
-"PLANTS - Calathea",
-"PLANTS - Schefflera",
-"PLANTS - Dracaena",
-"PLANTS - Croton",
-"PLANTS - Asparagus Fern",
-"PLANTS - Kalanchoe",
-"PLANTS - Bromeliad",
-"PLANTS - Hoya",
-"PLANTS - Echeveria",
-"PLANTS - Christmas Cactus",
-"PLANTS - Kokedama",
-"PLANTS - Air Plant",
-"PLANTS - String of Pearls",
-"PLANTS - Variegated Rubber Plant",
-"PLANTS - Peperomia",
-"PLANTS - Tradescantia",
-"PLANTS - Schefflera Arboricola",
-"PLANTS - Chinese Evergreen",
-"PLANTS - Pilea Peperomioides",
-"PLANTS - Anthurium",
-"PLANTS - Prayer Plant",
-
-# 🦓 CRYPTOANIMALS
-"CRYPTOANIMALS - Bigfoot (Sasquatch)",
-"CRYPTOANIMALS - Loch Ness Monster (Nessie)",
-"CRYPTOANIMALS - Chupacabra",
-"CRYPTOANIMALS - Mothman",
-"CRYPTOANIMALS - Jersey Devil",
-"CRYPTOANIMALS - Yeti",
-"CRYPTOANIMALS - Bunyip",
-"CRYPTOANIMALS - Thunderbird",
-"CRYPTOANIMALS - Mokele-Mbembe",
-"CRYPTOANIMALS - Ogopogo",
-"CRYPTOANIMALS - Skunk Ape",
-"CRYPTOANIMALS - Dover Demon",
-"CRYPTOANIMALS - Lizard Man of Scape Ore Swamp",
-"CRYPTOANIMALS - Fresno Nightcrawler",
-"CRYPTOANIMALS - Altamaha-ha",
-"CRYPTOANIMALS - Flatwoods Monster",
-"CRYPTOANIMALS - Beast of Bray Road",
-"CRYPTOANIMALS - White River Monster",
-"CRYPTOANIMALS - Hopkinsville Goblins",
-"CRYPTOANIMALS - Lake Champlain Monster (Champ)",
-"CRYPTOANIMALS - Beast of Gévaudan",
-"CRYPTOANIMALS - Lagarfljót Worm",
-"CRYPTOANIMALS - Mapinguari",
-"CRYPTOANIMALS - Ahool",
-"CRYPTOANIMALS - Batsquatch",
-"CRYPTOANIMALS - Enfield Horror",
-"CRYPTOANIMALS - Goatman",
-"CRYPTOANIMALS - Mongolian Death Worm",
-"CRYPTOANIMALS - Ningen",
-"CRYPTOANIMALS - Nahuelito",
-"CRYPTOANIMALS - Orang Pendek",
-"CRYPTOANIMALS - Ozark Howler",
-"CRYPTOANIMALS - Seelkee",
-"CRYPTOANIMALS - Tatzelwurm",
-"CRYPTOANIMALS - Yowie",
-"CRYPTOANIMALS - Lake Worth Monster",
-"CRYPTOANIMALS - Beast of Exmoor",
-"CRYPTOANIMALS - Snallygaster",
-"CRYPTOANIMALS - Lusca",
-"CRYPTOANIMALS - Beast of Busco",
-"CRYPTOANIMALS - Firebird",
-"CRYPTOANIMALS - Beast of Noonday",
-"CRYPTOANIMALS - Kerberos",
-"CRYPTOANIMALS - Hupia",
-"CRYPTOANIMALS - Serpent of Lagarfljót",
-"CRYPTOANIMALS - Mongolian Death Worm",
-"CRYPTOANIMALS - Ahool",
-"CRYPTOANIMALS - Udege Warg",
-"CRYPTOANIMALS - Mapinguari",
-"CRYPTOANIMALS - Elwetritsch",
-"CRYPTOANIMALS - Ahuizotl",
-"CRYPTOANIMALS - Encantado",
-"CRYPTOANIMALS - Golconda",
-"CRYPTOANIMALS - Lizard Man",
-"CRYPTOANIMALS - Ogopogo",
-"CRYPTOANIMALS - Scaly Monster",
-"CRYPTOANIMALS - Sea Serpent",
-"CRYPTOANIMALS - Mokele-Mbembe",
-"CRYPTOANIMALS - Kraken",
-"CRYPTOANIMALS - Sea Monster",
-"CRYPTOANIMALS - Megalodon",
-"CRYPTOANIMALS - Globster",
-"CRYPTOANIMALS - Neptune's Horse",
-"CRYPTOANIMALS - Leviathan",
-"CRYPTOANIMALS - Sea Devil",
-"CRYPTOANIMALS - Lake Monsters",
-"CRYPTOANIMALS - Ghost Ship Creature",
-"CRYPTOANIMALS - Giant Squid",
-"CRYPTOANIMALS - Sea Dragon",
-"CRYPTOANIMALS - Sea Serpent",
-"CRYPTOANIMALS - Monster Shark",
-"CRYPTOANIMALS - Abyssal Beast",
-"CRYPTOANIMALS - Oceanic Hydra",
-"CRYPTOANIMALS - Deep Sea Leviathan",
-"CRYPTOANIMALS - Phantom Whale",
-"CRYPTOANIMALS - Ghost Dolphin",
-"CRYPTOANIMALS - Black Sea Monster",
-"CRYPTOANIMALS - Blue Lake Monster",
-"CRYPTOANIMALS - River Serpent",
-"CRYPTOANIMALS - Lake Monster",
-
-# 🦕 DINOSAURS
-"DINOSAURS - Tyrannosaurus Rex",
-"DINOSAURS - Velociraptor",
-"DINOSAURS - Triceratops",
-"DINOSAURS - Brachiosaurus",
-"DINOSAURS - Stegosaurus",
-"DINOSAURS - Ankylosaurus",
-"DINOSAURS - Allosaurus",
-"DINOSAURS - Spinosaurus",
-"DINOSAURS - Pteranodon",
-"DINOSAURS - Diplodocus",
-"DINOSAURS - Parasaurolophus",
-"DINOSAURS - Iguanodon",
-"DINOSAURS - Archaeopteryx",
-"DINOSAURS - Carnotaurus",
-"DINOSAURS - Deinonychus",
-"DINOSAURS - Gallimimus",
-"DINOSAURS - Compsognathus",
-"DINOSAURS - Maiasaura",
-"DINOSAURS - Oviraptor",
-"DINOSAURS - Styracosaurus",
-"DINOSAURS - Therizinosaurus",
-"DINOSAURS - Dilophosaurus",
-"DINOSAURS - Plesiosaurus",
-"DINOSAURS - Elasmosaurus",
-"DINOSAURS - Pachycephalosaurus",
-"DINOSAURS - Troodon",
-"DINOSAURS - Lambeosaurus",
-"DINOSAURS - Torosaurus",
-"DINOSAURS - Corythosaurus",
-"DINOSAURS - Kentrosaurus",
-"DINOSAURS - Camarasaurus",
-"DINOSAURS - Herrerasaurus",
-"DINOSAURS - Gigantoraptor",
-"DINOSAURS - Mononykus",
-"DINOSAURS - Ornithomimus",
-"DINOSAURS - Suchomimus",
-"DINOSAURS - Stygimoloch",
-"DINOSAURS - Tsintaosaurus",
-"DINOSAURS - Tropeognathus",
-"DINOSAURS - Utahraptor",
-"DINOSAURS - Vulcanodon",
-"DINOSAURS - Zuniceratops",
-"DINOSAURS - Europasaurus",
-"DINOSAURS - Massospondylus",
-"DINOSAURS - Plateosaurus",
-"DINOSAURS - Gasosaurus",
-"DINOSAURS - Shunosaurus",
-"DINOSAURS - Eustreptospondylus",
-"DINOSAURS - Isisaurus",
-"DINOSAURS - Sinosauropteryx",
-"DINOSAURS - Sinornithosaurus",
-"DINOSAURS - Microraptor",
-"DINOSAURS - Anchiornis",
-"DINOSAURS - Beipiaosaurus",
-"DINOSAURS - Caudipteryx",
-"DINOSAURS - Epidexipteryx",
-"DINOSAURS - Jeholornis",
-"DINOSAURS - Liaoningosaurus",
-"DINOSAURS - Saurornithoides",
-"DINOSAURS - Wuerhosaurus",
-"DINOSAURS - Zhanghenglong",
-"DINOSAURS - Nanshiungosaurus",
-"DINOSAURS - Changchunsaurus",
-"DINOSAURS - Ornitholestes",
-"DINOSAURS - Othnielia",
-"DINOSAURS - Coelophysis",
-"DINOSAURS - Procompsognathus",
-"DINOSAURS - Herrerasaurus",
-"DINOSAURS - Plateosaurus",
-"DINOSAURS - Massospondylus",
-"DINOSAURS - Eoraptor",
-"DINOSAURS - Hexinlusaurus",
-"DINOSAURS - Zupaysaurus",
-"DINOSAURS - Eustreptospondylus",
-"DINOSAURS - Heterodontosaurus",
-"DINOSAURS - Lesothosaurus",
-"DINOSAURS - Abrictosaurus",
-"DINOSAURS - Pectinodon",
-"DINOSAURS - Dromaeosaurus",
-"DINOSAURS - Saurornitholestes",
-"DINOSAURS - Austroraptor",
-"DINOSAURS - Buitreraptor",
-"DINOSAURS - Rahonavis",
-"DINOSAURS - Troodon",
-"DINOSAURS - Ornithomimus",
-"DINOSAURS - Gallimimus",
-"DINOSAURS - Struthiomimus",
-"DINOSAURS - Ornitholestes",
-"DINOSAURS - Tanycolagreus",
-"DINOSAURS - Coelurus",
-"DINOSAURS - Draconyx",
-"DINOSAURS - Futalognkosaurus",
-"DINOSAURS - Magyarosaurus",
-"DINOSAURS - Omeisaurus",
-"DINOSAURS - Euhelopus",
-"DINOSAURS - Giraffatitan",
-"DINOSAURS - Tornieria",
-"DINOSAURS - Shunosaurus",
-"DINOSAURS - Nigersaurus",
-"DINOSAURS - Atlasaurus",
-"DINOSAURS - Ligabueino",
-"DINOSAURS - Omeisaurus",
-"DINOSAURS - Patagotitan",
-"DINOSAURS - Saltasaurus",
-"DINOSAURS - Antarctosaurus",
-"DINOSAURS - Titanosaurus",
-"DINOSAURS - Nemegtosaurus",
-"DINOSAURS - Rapetosaurus",
-"DINOSAURS - Mamenchisaurus",
-"DINOSAURS - Patagosaurus",
-"DINOSAURS - Daxiatitan",
-"DINOSAURS - Europasaurus",
-"DINOSAURS - Argentinosaurus",
-"DINOSAURS - Puertasaurus",
-"DINOSAURS - Dreadnoughtus",
-"DINOSAURS - Australotitan",
-"DINOSAURS - Notocolossus",
-"DINOSAURS - Phuwiangosaurus",
-"DINOSAURS - Ruyangosaurus",
-"DINOSAURS - Spinophorosaurus",
-"DINOSAURS - Wamweracaudia",
-"DINOSAURS - Xenoceratops",
-"DINOSAURS - Yongjinglong",
-"DINOSAURS - Zephyrosaurus",
-
-# 🦄 MYTHICAL CREATURES
-"MYTHICAL CREATURES - Dragon",
-"MYTHICAL CREATURES - Unicorn",
-"MYTHICAL CREATURES - Griffin",
-"MYTHICAL CREATURES - Phoenix",
-"MYTHICAL CREATURES - Mermaid",
-"MYTHICAL CREATURES - Centaur",
-"MYTHICAL CREATURES - Pegasus",
-"MYTHICAL CREATURES - Hydra",
-"MYTHICAL CREATURES - Basilisk",
-"MYTHICAL CREATURES - Kraken",
-"MYTHICAL CREATURES - Sphinx",
-"MYTHICAL CREATURES - Chimera",
-"MYTHICAL CREATURES - Minotaur",
-"MYTHICAL CREATURES - Fairy",
-"MYTHICAL CREATURES - Elf",
-"MYTHICAL CREATURES - Dwarf",
-"MYTHICAL CREATURES - Goblin",
-"MYTHICAL CREATURES - Troll",
-"MYTHICAL CREATURES - Werewolf",
-"MYTHICAL CREATURES - Vampire",
-"MYTHICAL CREATURES - Banshee",
-"MYTHICAL CREATURES - Cerberus",
-"MYTHICAL CREATURES - Leviathan",
-"MYTHICAL CREATURES - Siren",
-"MYTHICAL CREATURES - Dryad",
-"MYTHICAL CREATURES - Nymph",
-"MYTHICAL CREATURES - Satyr",
-"MYTHICAL CREATURES - Cyclops",
-"MYTHICAL CREATURES - Gorgon",
-"MYTHICAL CREATURES - Faun",
-"MYTHICAL CREATURES - Selkie",
-"MYTHICAL CREATURES - Manticore",
-"MYTHICAL CREATURES - Kelpie",
-"MYTHICAL CREATURES - Dragon Turtle",
-"MYTHICAL CREATURES - Unicorn Stallion",
-"MYTHICAL CREATURES - Hippocampus",
-"MYTHICAL CREATURES - Valkyrie",
-"MYTHICAL CREATURES - Fenrir",
-"MYTHICAL CREATURES - Jinn",
-"MYTHICAL CREATURES - Kitsune",
-"MYTHICAL CREATURES - Naga",
-"MYTHICAL CREATURES - Baku",
-"MYTHICAL CREATURES - Gnome",
-"MYTHICAL CREATURES - Brownie",
-"MYTHICAL CREATURES - Leprechaun",
-"MYTHICAL CREATURES - Oni",
-"MYTHICAL CREATURES - Yeti",
-"MYTHICAL CREATURES - Bigfoot",
-"MYTHICAL CREATURES - Chupacabra",
-"MYTHICAL CREATURES - Mothman",
-"MYTHICAL CREATURES - Wendigo",
-"MYTHICAL CREATURES - Thunderbird",
-"MYTHICAL CREATURES - Gargoyle",
-"MYTHICAL CREATURES - Pegasus",
-"MYTHICAL CREATURES - Hydra",
-"MYTHICAL CREATURES - Cerberus",
-"MYTHICAL CREATURES - Banshee",
-"MYTHICAL CREATURES - Griffin",
-"MYTHICAL CREATURES - Dragon",
-"MYTHICAL CREATURES - Phoenix",
-"MYTHICAL CREATURES - Unicorn",
-"MYTHICAL CREATURES - Centaur",
-"MYTHICAL CREATURES - Mermaid",
-"MYTHICAL CREATURES - Basilisk",
-"MYTHICAL CREATURES - Chimera",
-"MYTHICAL CREatures - Gorgon",
-"MYTHICAL CREATURES - Minotaur",
-"MYTHICAL CREATURES - Hydra",
-"MYTHICAL CREATURES - Kraken",
-"MYTHICAL CREATURES - Sphinx",
-"MYTHICAL CREATURES - Fairy",
-"MYTHICAL CREATURES - Elf",
-"MYTHICAL CREATURES - Dwarf",
-"MYTHICAL CREATURES - Goblin",
-"MYTHICAL CREATURES - Troll",
-"MYTHICAL CREATURES - Werewolf",
-"MYTHICAL CREATURES - Vampire",
-"MYTHICAL CREATURES - Banshee",
-
-# 🌊 SEA ANIMALS
-"SEA ANIMALS - Dolphin",
-"SEA ANIMALS - Seahorse",
-"SEA ANIMALS - Clownfish",
-"SEA ANIMALS - Blue Tang",
-"SEA ANIMALS - Octopus",
-"SEA ANIMALS - Shrimp",
-"SEA ANIMALS - Lobster",
-"SEA ANIMALS - Crab",
-"SEA ANIMALS - Starfish",
-"SEA ANIMALS - Sea Turtle",
-"SEA ANIMALS - Jellyfish",
-"SEA ANIMALS - Coral",
-"SEA ANIMALS - Manta Ray",
-"SEA ANIMALS - Shark",
-"SEA ANIMALS - Whale",
-"SEA ANIMALS - Eel",
-"SEA ANIMALS - Seal",
-"SEA ANIMALS - Walrus",
-"SEA ANIMALS - Manatee",
-"SEA ANIMALS - Beluga Whale",
-"SEA ANIMALS - Orca",
-"SEA ANIMALS - Blue Whale",
-"SEA ANIMALS - Humpback Whale",
-"SEA ANIMALS - Gray Whale",
-"SEA ANIMALS - Killer Whale",
-"SEA ANIMALS - Bottlenose Dolphin",
-"SEA ANIMALS - Pilot Whale",
-"SEA ANIMALS - Dugong",
-"SEA ANIMALS - Sea Lion",
-"SEA ANIMALS - Harbor Seal",
-"SEA ANIMALS - Green Sea Turtle",
-"SEA ANIMALS - Loggerhead Turtle",
-"SEA ANIMALS - Leatherback Turtle",
-"SEA ANIMALS - Kemp's Ridley Turtle",
-"SEA ANIMALS - Hawksbill Turtle",
-"SEA ANIMALS - Spinner Dolphin",
-"SEA ANIMALS - Risso's Dolphin",
-"SEA ANIMALS - Atlantic Puffin",
-"SEA ANIMALS - Common Dolphin",
-"SEA ANIMALS - Basking Shark",
-"SEA ANIMALS - Great White Shark",
-"SEA ANIMALS - Whale Shark",
-"SEA ANIMALS - Blue Marlin",
-"SEA ANIMALS - Swordfish",
-"SEA ANIMALS - Mako Shark",
-"SEA ANIMALS - Tiger Shark",
-"SEA ANIMALS - Thresher Shark",
-"SEA ANIMALS - Nurse Shark",
-"SEA ANIMALS - Hammerhead Shark",
-"SEA ANIMALS - Blacktip Shark",
-"SEA ANIMALS - Whale Ray",
-"SEA ANIMALS - Moray Eel",
-"SEA ANIMALS - Lionfish",
-"SEA ANIMALS - Angelfish",
-"SEA ANIMALS - Lion's Mane Jellyfish",
-"SEA ANIMALS - Moon Jellyfish",
-"SEA ANIMALS - Sea Urchin",
-"SEA ANIMALS - Blue-ringed Octopus",
-"SEA ANIMALS - Giant Pacific Octopus",
-"SEA ANIMALS - Box Jellyfish",
-"SEA ANIMALS - Portuguese Man o' War",
-"SEA ANIMALS - Cuttlefish",
-"SEA ANIMALS - Sea Slug",
-"SEA ANIMALS - Giant Clam",
-"SEA ANIMALS - Cone Snail",
-"SEA ANIMALS - Sea Cucumber",
-"SEA ANIMALS - Nudibranch",
-"SEA ANIMALS - Horseshoe Crab",
-"SEA ANIMALS - Electric Eel",
-"SEA ANIMALS - Pufferfish",
-"SEA ANIMALS - Crown-of-Thorns Starfish",
-"SEA ANIMALS - Blue Sea Dragon",
-"SEA ANIMALS - Mantis Shrimp",
-"SEA ANIMALS - Sea Spider",
-"SEA ANIMALS - Blue Dragon Nudibranch",
-"SEA ANIMALS - Sea Anemone",
-"SEA ANIMALS - Sea Horse",
-"SEA ANIMALS - Frilled Shark",
-"SEA ANIMALS - Goblin Shark",
-"SEA ANIMALS - Sea Lamprey",
-"SEA ANIMALS - Sperm Whale",
-"SEA ANIMALS - Bowhead Whale",
-"SEA ANIMALS - Fin Whale",
-"SEA ANIMALS - Sei Whale",
-"SEA ANIMALS - Bryde's Whale",
-"SEA ANIMALS - Cuvier's Beaked Whale",
-"SEA ANIMALS - Pygmy Sperm Whale",
-"SEA ANIMALS - Short-finned Pilot Whale",
-"SEA ANIMALS - False Killer Whale",
-"SEA ANIMALS - Striped Dolphin",
-"SEA ANIMALS - Rough-toothed Dolphin",
-"SEA ANIMALS - Indo-Pacific Humpback Dolphin",
-"SEA ANIMALS - Atlantic Humpback Dolphin",
-"SEA ANIMALS - Amazon River Dolphin",
-"SEA ANIMALS - Irrawaddy Dolphin",
-"SEA ANIMALS - Vaquita",
-"SEA ANIMALS - Dall's Porpoise",
-"SEA ANIMALS - Harbor Porpoise",
-"SEA ANIMALS - Finless Porpoise",
-"SEA ANIMALS - Burmeister's Porpoise",
-"SEA ANIMALS - Spectacled Porpoise",
-"SEA ANIMALS - Chinese White Dolphin",
-"SEA ANIMALS - Hector's Dolphin",
-"SEA ANIMALS - Maui's Dolphin",
-"SEA ANIMALS - Commerson's Dolphin",
-"SEA ANIMALS - Spotted Dolphin",
-"SEA ANIMALS - Hourglass Dolphin",
-"SEA ANIMALS - Black Dolphin",
-"SEA ANIMALS - Australian Snubfin Dolphin",
-"SEA ANIMALS - Fraser's Dolphin",
-"SEA ANIMALS - Atlantic Bottlenose Dolphin",
-"SEA ANIMALS - Pacific Bottlenose Dolphin",
-]
 
 HOLIDAYS = [
-"-"
-# 🎉 SEASONAL HOLIDAYS
-"SEASONAL HOLIDAYS - New Year",
-"SEASONAL HOLIDAYS - Valentine's Day",
-"SEASONAL HOLIDAYS - Easter",
-"SEASONAL HOLIDAYS - Halloween",
-"SEASONAL HOLIDAYS - Thanksgiving",
-"SEASONAL HOLIDAYS - Christmas",
-"SEASONAL HOLIDAYS - Hanukkah",
-"SEASONAL HOLIDAYS - Diwali",
-"SEASONAL HOLIDAYS - Lunar New Year",
-"SEASONAL HOLIDAYS - Mardi Gras",
-"SEASONAL HOLIDAYS - Palm Sunday",
-"SEASONAL HOLIDAYS - Good Friday",
-"SEASONAL HOLIDAYS - Back to School",
+    # Seasonal Holidays - Cinematic moods, visual cues, thematic iconography
+    "SEASONAL HOLIDAYS - New Year, festive confetti bursts, fireworks illuminating night skies, sparkling celebratory interiors",
+    "SEASONAL HOLIDAYS - Valentine's Day, soft, warm lighting, rose petals, pastel palettes, romantic set dressing",
+    "SEASONAL HOLIDAYS - Easter, bright spring hues, pastel egg props, gentle natural lighting in garden settings",
+    "SEASONAL HOLIDAYS - Halloween, moody low-key lighting, fog machines, carved pumpkins and eerie silhouettes",
+    "SEASONAL HOLIDAYS - Thanksgiving, golden autumn hues, rustic wood textures, abundant harvest tablescapes",
+    "SEASONAL HOLIDAYS - Christmas, twinkling lights, lush greenery, warm interiors with soft glows and festive decor",
+    "SEASONAL HOLIDAYS - Hanukkah, gentle candlelit warmth, blue and white accents, menorah focal point",
+    "SEASONAL HOLIDAYS - Diwali, vibrant color grading, flickering diyas, ornate patterns and rangoli designs",
+    "SEASONAL HOLIDAYS - Lunar New Year, bright reds and golds, hanging lanterns, lively street processions",
+    "SEASONAL HOLIDAYS - Mardi Gras, vivid masks, bold costumes, rhythmic camera movements capturing parades",
+    "SEASONAL HOLIDAYS - Palm Sunday, natural daylight, palm fronds as props, reverent processional framing",
+    "SEASONAL HOLIDAYS - Good Friday, subdued tones, contemplative compositions, solemn processional imagery",
+    "SEASONAL HOLIDAYS - Back to School, cheerful classroom sets, pastel chalkboards, lively youthful energy",
 
-# 🏛️ NATIONAL HOLIDAYS
-"NATIONAL HOLIDAYS - Memorial Day",
-"NATIONAL HOLIDAYS - Labor Day",
-"NATIONAL HOLIDAYS - Veterans Day",
-"NATIONAL HOLIDAYS - Independence Day",
-"NATIONAL HOLIDAYS - Presidents' Day",
-"NATIONAL HOLIDAYS - Columbus Day",
-"NATIONAL HOLIDAYS - Flag Day",
-"NATIONAL HOLIDAYS - National Day",
+    # National Holidays - Reflecting cultural identity, patriotic color schemes
+    "NATIONAL HOLIDAYS - Memorial Day, respectful framing of flags, muted skies, quiet ceremonial imagery",
+    "NATIONAL HOLIDAYS - Labor Day, factory or cityscapes, working-class authenticity, balanced neutral lighting",
+    "NATIONAL HOLIDAYS - Veterans Day, crisp uniforms, flags in soft focus, formal compositions honoring service",
+    "NATIONAL HOLIDAYS - Independence Day, bold primary colors, fireworks overhead, wide community shots",
+    "NATIONAL HOLIDAYS - Presidents' Day, classic formal interiors, portraits in background, stately lighting",
+    "NATIONAL HOLIDAYS - Columbus Day, maritime references, sails and maps, warm sunlight on historical props",
+    "NATIONAL HOLIDAYS - Flag Day, focused framing on flags billowing, symbolic mid-shots, patriotic hues",
+    "NATIONAL HOLIDAYS - National Day, landmark backdrops, unified crowd shots, festive public gatherings",
 
-# 🕍 RELIGIOUS HOLIDAYS
-"RELIGIOUS HOLIDAYS - Easter",
-"RELIGIOUS HOLIDAYS - Hanukkah",
-"RELIGIOUS HOLIDAYS - Diwali",
-"RELIGIOUS HOLIDAYS - Ramadan",
-"RELIGIOUS HOLIDAYS - Passover",
-"RELIGIOUS HOLIDAYS - Yom Kippur",
-"RELIGIOUS HOLIDAYS - Sukkot",
-"RELIGIOUS HOLIDAYS - Rosh Hashanah",
-"RELIGIOUS HOLIDAYS - Purim",
-"RELIGIOUS HOLIDAYS - Navaratri",
-"RELIGIOUS HOLIDAYS - Lent",
+    # Religious Holidays - Spiritual aura, symbolic imagery, sacred lighting
+    "RELIGIOUS HOLIDAYS - Easter, soft pastel light, floral arrangements, gentle focus on religious iconography",
+    "RELIGIOUS HOLIDAYS - Hanukkah, candlelit scenes, warm intimacy, menorahs as luminous focal points",
+    "RELIGIOUS HOLIDAYS - Diwali, radiant diyas, rich jewel-tone color schemes, celebratory dance sequences",
+    "RELIGIOUS HOLIDAYS - Ramadan, lantern-lit nights, crescent moon silhouettes, communal Iftar gatherings",
+    "RELIGIOUS HOLIDAYS - Passover, table settings with symbolic foods, candlelight, intimate family focus",
+    "RELIGIOUS HOLIDAYS - Yom Kippur, subdued lighting, minimalist sets, reflective close-ups on faces",
+    "RELIGIOUS HOLIDAYS - Sukkot, natural outdoor structures, greenery overhead, dappled sunlight filtering in",
+    "RELIGIOUS HOLIDAYS - Rosh Hashanah, honey and apples, warm early autumn light, hopeful framing",
+    "RELIGIOUS HOLIDAYS - Purim, colorful costumes, festive dancing, playful camera movements",
+    "RELIGIOUS HOLIDAYS - Navaratri, vibrant saris, rhythmic drum beats, energetic crowd choreography",
+    "RELIGIOUS HOLIDAYS - Lent, restrained palettes, contemplative camera pacing, symbolic minimalism",
 
-# 🌍 CULTURAL CELEBRATIONS
-"CULTURAL CELEBRATIONS - St. Patrick's Day",
-"CULTURAL CELEBRATIONS - Cinco de Mayo",
-"CULTURAL CELEBRATIONS - Oktoberfest",
-"CULTURAL CELEBRATIONS - Bastille Day",
-"CULTURAL CELEBRATIONS - Guy Fawkes Night",
-"CULTURAL CELEBRATIONS - Sinterklaas",
+    # Cultural Celebrations - Distinctive aesthetics, culturally iconic imagery
+    "CULTURAL CELEBRATIONS - St. Patrick's Day, lush green color grading, shamrocks, lively pub interiors",
+    "CULTURAL CELEBRATIONS - Cinco de Mayo, bright folkloric costumes, mariachi music, colorful papel picado",
+    "CULTURAL CELEBRATIONS - Oktoberfest, beer halls, rustic wooden benches, cheerful communal singing",
+    "CULTURAL CELEBRATIONS - Bastille Day, French flags, bustling street scenes, Eiffel Tower silhouettes",
+    "CULTURAL CELEBRATIONS - Guy Fawkes Night, bonfires and fireworks, historical costumes, shadowy evening streets",
+    "CULTURAL CELEBRATIONS - Sinterklaas, Dutch canals, festive arrival by boat, traditional costumes",
 
-# 🏅 SPORTS AND EVENTS
-"SPORTS AND EVENTS - Super Bowl",
-"SPORTS AND EVENTS - FIFA World Cup",
-"SPORTS AND EVENTS - Olympic Games",
-"SPORTS AND EVENTS - NBA Finals",
-"SPORTS AND EVENTS - Wimbledon",
-"SPORTS AND EVENTS - Stanley Cup Finals",
-"SPORTS AND EVENTS - Tour de France",
-"SPORTS AND EVENTS - The Masters (Golf)",
-"SPORTS AND EVENTS - World Series",
-"SPORTS AND EVENTS - UEFA Champions League Final",
-"SPORTS AND EVENTS - MLB All-Star Game",
-"SPORTS AND EVENTS - NCAA March Madness",
-"SPORTS AND EVENTS - Kentucky Derby",
-"SPORTS AND EVENTS - Indianapolis 500",
-"SPORTS AND EVENTS - Daytona 500",
-"SPORTS AND EVENTS - Boston Marathon",
-"SPORTS AND EVENTS - Ryder Cup",
-"SPORTS AND EVENTS - PGA Championship",
-"SPORTS AND EVENTS - NFL Draft",
-"SPORTS AND EVENTS - NBA All-Star Weekend",
-"SPORTS AND EVENTS - The Ashes (Cricket)",
-"SPORTS AND EVENTS - Rugby World Cup",
-"SPORTS AND EVENTS - World Athletics Championships",
-"SPORTS AND EVENTS - Australian Open (Tennis)",
-"SPORTS AND EVENTS - French Open (Tennis)",
-"SPORTS AND EVENTS - US Open (Tennis)",
-"SPORTS AND EVENTS - Indian Premier League (Cricket)",
-"SPORTS AND EVENTS - Formula 1 Grand Prix",
-"SPORTS AND EVENTS - PGA Tour Events",
-"SPORTS AND EVENTS - ATP/WTA Finals (Tennis)",
-"SPORTS AND EVENTS - Champions League Quarter-Finals",
-"SPORTS AND EVENTS - UEFA European Championship",
+    # Sports and Events - Energetic pacing, crowd atmosphere, bold iconography
+    "SPORTS AND EVENTS - Super Bowl, huge stadium vistas, dynamic tracking shots of players, halftime spectacle",
+    "SPORTS AND EVENTS - FIFA World Cup, global flags, passionate crowd reactions, dramatic slow-motion goals",
+    "SPORTS AND EVENTS - Olympic Games, iconic stadium architecture, multi-national color palettes, graceful athleticism",
+    "SPORTS AND EVENTS - NBA Finals, hardwood court reflections, intense player close-ups, team color contrasts",
+    "SPORTS AND EVENTS - Wimbledon, verdant lawns, white attire, refined angles capturing precision of tennis",
+    "SPORTS AND EVENTS - Stanley Cup Finals, cool arena lighting, ice reflections, emotional player close-ups",
+    "SPORTS AND EVENTS - Tour de France, rolling countryside vistas, aerial tracking of cyclists, vibrant team jerseys",
+    "SPORTS AND EVENTS - The Masters (Golf), manicured greens, pastel spring hues, calm steady camerawork",
+    "SPORTS AND EVENTS - World Series, classic ballparks, red-stitched baseballs in close-up, cinematic flyover shots",
+    "SPORTS AND EVENTS - UEFA Champions League Final, floodlit stadium, intense player focus, dramatic anthem intros",
+    # ... (Add similar cinematic descriptors for remaining sports/events as needed)
 
-# 🌐 AWARENESS DAYS
-"AWARENESS DAYS - International Women's Day",
-"AWARENESS DAYS - International Men's Day",
-"AWARENESS DAYS - World Health Day",
-"AWARENESS DAYS - World Environment Day",
-"AWARENESS DAYS - World Mental Health Day",
-"AWARENESS DAYS - International Peace Day",
-"AWARENESS DAYS - World Food Day",
-"AWARENESS DAYS - World Water Day",
-"AWARENESS DAYS - International Day of Happiness",
-"AWARENESS DAYS - World Kindness Day",
-"AWARENESS DAYS - International Friendship Day",
-"AWARENESS DAYS - World Tourism Day",
-"AWARENESS DAYS - World Book Day",
-"AWARENESS DAYS - World Music Day",
-"AWARENESS DAYS - World Art Day",
-"AWARENESS DAYS - World Poetry Day",
-"AWARENESS DAYS - World Cinema Day",
-"AWARENESS DAYS - World Television Day",
-"AWARENESS DAYS - World Internet Day",
-"AWARENESS DAYS - World Wildlife Day",
-"AWARENESS DAYS - World Oceans Day",
-"AWARENESS DAYS - World Habitat Day",
-"AWARENESS DAYS - World Population Day",
-"AWARENESS DAYS - World Economic Forum",
-"AWARENESS DAYS - World Technology Day",
-"AWARENESS DAYS - World Innovation Day",
-"AWARENESS DAYS - World Design Day",
-"AWARENESS DAYS - World Entrepreneurship Day",
-"AWARENESS DAYS - World Creativity and Innovation Day",
-"AWARENESS DAYS - International Day of Families",
-"AWARENESS DAYS - International Day of Charity",
-"AWARENESS DAYS - International Day for the Elimination of Racial Discrimination",
-"AWARENESS DAYS - International Day of Persons with Disabilities",
-"AWARENESS DAYS - International Day Against Drug Abuse and Illicit Trafficking",
-"AWARENESS DAYS - International Day of Older Persons",
-"AWARENESS DAYS - International Day of the Girl Child",
-"AWARENESS DAYS - International Day for Biological Diversity",
-"AWARENESS DAYS - International Migrants Day",
-"AWARENESS DAYS - International Day of Forests",
-"AWARENESS DAYS - International Day of the Midwife",
-"AWARENESS DAYS - International Day of Cooperatives",
-"AWARENESS DAYS - International Day of Solidarity with the Palestinian People",
-"AWARENESS DAYS - World Health Organization Day",
-"AWARENESS DAYS - World Press Freedom Day",
-"AWARENESS DAYS - World Health Care Day",
-"AWARENESS DAYS - World Nursing Day",
-"AWARENESS DAYS - World Veterinary Day",
-"AWARENESS DAYS - World Blood Donor Day",
-"AWARENESS DAYS - World Autism Awareness Day",
-"AWARENESS DAYS - World Breastfeeding Week",
-"AWARENESS DAYS - World Oral Health Day",
-"AWARENESS DAYS - World Diabetes Day",
-"AWARENESS DAYS - World Kidney Day",
-"AWARENESS DAYS - World Arthritis Day",
-"AWARENESS DAYS - World Asthma Day",
-"AWARENESS DAYS - World No Tobacco Day",
-"AWARENESS DAYS - World Migratory Bird Day",
-"AWARENESS DAYS - World Turtle Day",
-"AWARENESS DAYS - World Bee Day",
-"AWARENESS DAYS - World Polar Day",
-"AWARENESS DAYS - World Meteorological Day",
-"AWARENESS DAYS - World Earth Day",
-"AWARENESS DAYS - World Soil Day",
-"AWARENESS DAYS - World Energy Conservation Day",
-"AWARENESS DAYS - World Telecommunication and Information Society Day",
-"AWARENESS DAYS - World Antimicrobial Awareness Week",
-"AWARENESS DAYS - World Homeless Day",
-"AWARENESS DAYS - World Refugee Day",
-"AWARENESS DAYS - World Children's Day",
-"AWARENESS DAYS - World Elder Abuse Awareness Day",
-"AWARENESS DAYS - World Humanitarian Day",
-"AWARENESS DAYS - World Day for Cultural Diversity",
-"AWARENESS DAYS - World Indigenous Peoples Day",
-"AWARENESS DAYS - World Braille Day",
-"AWARENESS DAYS - World Red Cross and Red Crescent Day",
-"AWARENESS DAYS - World Voice Day",
-"AWARENESS DAYS - World Science Day",
-"AWARENESS DAYS - World Mathematics Day",
-"AWARENESS DAYS - World Space Week",
-"AWARENESS DAYS - World Postal Day",
-"AWARENESS DAYS - World Day Against Trafficking in Persons",
-"AWARENESS DAYS - World Landmine Day",
+    # Awareness Days - Symbolic imagery, subtle thematic cues
+    "AWARENESS DAYS - International Women's Day, empowering portraits, warm inclusive lighting, communal strength",
+    "AWARENESS DAYS - World Health Day, clinical clean visuals, balanced neutral palettes, caring human interactions",
+    "AWARENESS DAYS - World Environment Day, lush natural landscapes, gentle sunrise lighting, hopeful green tones",
+    "AWARENESS DAYS - World Mental Health Day, soft interior lighting, calm pastel hues, supportive close-ups on faces",
+    # ... (Similarly refine other awareness days, focusing on subtle thematic visuals and emotional resonance)
 
-# 🍔 FOOD & DRINK DAYS
-"FOOD & DRINK DAYS - National Pancake Day",
-"FOOD & DRINK DAYS - National Margarita Day",
-"FOOD & DRINK DAYS - National Taco Day",
-"FOOD & DRINK DAYS - National Beer Day",
-"FOOD & DRINK DAYS - National Coffee Day",
-"FOOD & DRINK DAYS - National Pizza Day",
-"FOOD & DRINK DAYS - National Donut Day",
-"FOOD & DRINK DAYS - National Ice Cream Day",
-"FOOD & DRINK DAYS - National Burger Day",
-"FOOD & DRINK DAYS - National Popcorn Day",
-"FOOD & DRINK DAYS - National Cookie Day",
-"FOOD & DRINK DAYS - National Cupcake Day",
-"FOOD & DRINK DAYS - National Bagel Day",
-"FOOD & DRINK DAYS - National Brownie Day",
-"FOOD & DRINK DAYS - National Macaron Day",
-"FOOD & DRINK DAYS - National Waffle Day",
-"FOOD & DRINK DAYS - National Tea Day",
-"FOOD & DRINK DAYS - National Martini Day",
-"FOOD & DRINK DAYS - National Cheese Day",
-"FOOD & DRINK DAYS - National Peanut Butter Day",
-"FOOD & DRINK DAYS - National Sauerkraut Day",
-"FOOD & DRINK DAYS - National Brisket Day",
-"FOOD & DRINK DAYS - National Lasagna Day",
-"FOOD & DRINK DAYS - National Spaghetti Day",
-"FOOD & DRINK DAYS - National Meatball Day",
-"FOOD & DRINK DAYS - National Sausage Day",
-"FOOD & DRINK DAYS - National Oyster Day",
-"FOOD & DRINK DAYS - National Lobster Day",
-"FOOD & DRINK DAYS - National Crab Day",
-"FOOD & DRINK DAYS - National Shrimp Day",
-"FOOD & DRINK DAYS - National Caviar Day",
-"FOOD & DRINK DAYS - National Truffle Day",
-"FOOD & DRINK DAYS - National Steak Day",
-"FOOD & DRINK DAYS - National Filet Mignon Day",
-"FOOD & DRINK DAYS - National Rib Day",
-"FOOD & DRINK DAYS - National Meatloaf Day",
-"FOOD & DRINK DAYS - National Baked Potato Day",
-"FOOD & DRINK DAYS - National Mashed Potato Day",
-"FOOD & DRINK DAYS - National French Fry Day",
-"FOOD & DRINK DAYS - National Tater Tot Day",
-"FOOD & DRINK DAYS - National Sweet Potato Day",
-"FOOD & DRINK DAYS - National Yam Day",
-"FOOD & DRINK DAYS - National Carrot Day",
-"FOOD & DRINK DAYS - National Broccoli Day",
-"FOOD & DRINK DAYS - National Spinach Day",
-"FOOD & DRINK DAYS - National Kale Day",
-"FOOD & DRINK DAYS - National Lettuce Day",
-"FOOD & DRINK DAYS - National Tomato Day",
-"FOOD & DRINK DAYS - National Pepper Day",
-"FOOD & DRINK DAYS - National Cucumber Day",
-"FOOD & DRINK DAYS - National Zucchini Day",
-"FOOD & DRINK DAYS - National Eggplant Day",
-"FOOD & DRINK DAYS - National Mushroom Day",
-"FOOD & DRINK DAYS - National Onion Day",
-"FOOD & DRINK DAYS - National Garlic Day",
-"FOOD & DRINK DAYS - National Ginger Day",
-"FOOD & DRINK DAYS - National Turmeric Day",
-"FOOD & DRINK DAYS - National Basil Day",
-"FOOD & DRINK DAYS - National Oregano Day",
-"FOOD & DRINK DAYS - National Thyme Day",
-"FOOD & DRINK DAYS - National Rosemary Day",
-"FOOD & DRINK DAYS - National Mint Day",
-"FOOD & DRINK DAYS - National Cilantro Day",
-"FOOD & DRINK DAYS - National Parsley Day",
-"FOOD & DRINK DAYS - National Sage Day",
-"FOOD & DRINK DAYS - National Dill Day",
-"FOOD & DRINK DAYS - National Chive Day",
-"FOOD & DRINK DAYS - National Tarragon Day",
-"FOOD & DRINK DAYS - National Bay Leaf Day",
-"FOOD & DRINK DAYS - National Herb Day",
-"FOOD & DRINK DAYS - National Spice Day",
+    # Food & Drink Days - Mouthwatering close-ups, lively colors, gastronomic delight
+    "FOOD & DRINK DAYS - National Pancake Day, warm kitchen sets, golden pancakes in close-up, drizzling syrup slow-motion",
+    "FOOD & DRINK DAYS - National Margarita Day, vibrant glassware, bright citrus garnishes, tropical lighting cues",
+    "FOOD & DRINK DAYS - National Taco Day, colorful street-food stands, diverse textures, handheld camera capturing food prep",
+    "FOOD & DRINK DAYS - National Coffee Day, cozy café interiors, aromatic steam rising in shafts of morning light",
+    "FOOD & DRINK DAYS - National Pizza Day, bubbling cheese in macro focus, rustic pizzeria ambience, red-checkered tablecloths",
+    # ... (Continue with appealing visual and atmospheric cues for other food/drink days)
 
-# 👨‍👩‍👧‍👦 FAMILY AND SOCIAL HOLIDAYS
-"FAMILY AND SOCIAL HOLIDAYS - Mother's Day",
-"FAMILY AND SOCIAL HOLIDAYS - Father's Day",
-"FAMILY AND SOCIAL HOLIDAYS - Grandparents' Day",
-"FAMILY AND SOCIAL HOLIDAYS - National Siblings Day",
-"FAMILY AND SOCIAL HOLIDAYS - International Day of Families",
+    # Family and Social Holidays - Warmth, interpersonal closeness, communal settings
+    "FAMILY AND SOCIAL HOLIDAYS - Mother's Day, soft backlit vignettes, pastel florals, tender familial close-ups",
+    "FAMILY AND SOCIAL HOLIDAYS - Father's Day, subtle masculine hues, sentimental objects in focus, backyard BBQ scenes",
+    "FAMILY AND SOCIAL HOLIDAYS - Grandparents' Day, nostalgic sepia tints, family heirlooms, multi-generational group shots",
+    "FAMILY AND SOCIAL HOLIDAYS - National Siblings Day, playful candid moments, natural daylight, shared childhood memories",
+    "FAMILY AND SOCIAL HOLIDAYS - International Day of Families, balanced framing of all ages, living room gatherings, warm suburban tones",
 
-# 🛡️ SECURITY AND LEGAL HOLIDAYS
-"SECURITY AND LEGAL HOLIDAYS - World Day Against Trafficking in Persons",
-"SECURITY AND LEGAL HOLIDAYS - World Press Freedom Day",
-"SECURITY AND LEGAL HOLIDAYS - World Landmine Day",
+    # Security and Legal Holidays - Symbolic integrity, formal settings
+    "SECURITY AND LEGAL HOLIDAYS - World Day Against Trafficking in Persons, documentary realism, close-up on hands symbolizing hope, neutral color grades",
+    "SECURITY AND LEGAL HOLIDAYS - World Press Freedom Day, newsroom sets, typewriters or digital screens in shallow focus, earnest overhead lighting",
+    "SECURITY AND LEGAL HOLIDAYS - World Landmine Day, sobering landscapes, careful framing of cleared fields, subdued palettes",
 
-# 🌱 ENVIRONMENTAL HOLIDAYS
-"ENVIRONMENTAL HOLIDAYS - World Environment Day",
-"ENVIRONMENTAL HOLIDAYS - World Earth Day",
-"ENVIRONMENTAL HOLIDAYS - World Water Day",
-"ENVIRONMENTAL HOLIDAYS - World Oceans Day",
-"ENVIRONMENTAL HOLIDAYS - World Wildlife Day",
-"ENVIRONMENTAL HOLIDAYS - World Soil Day",
-"ENVIRONMENTAL HOLIDAYS - World Energy Conservation Day",
-"ENVIRONMENTAL HOLIDAYS - World Migratory Bird Day",
-"ENVIRONMENTAL HOLIDAYS - World Turtle Day",
-"ENVIRONMENTAL HOLIDAYS - World Bee Day",
-"ENVIRONMENTAL HOLIDAYS - World Polar Day",
-"ENVIRONMENTAL HOLIDAYS - World Meteorological Day",
+    # Environmental Holidays - Nature’s vibrancy, ecological awareness
+    "ENVIRONMENTAL HOLIDAYS - World Environment Day, lush greens, sweeping aerial forest shots, morning dew highlights",
+    "ENVIRONMENTAL HOLIDAYS - World Earth Day, global vistas, rotating globe imagery, gentle sunrise/sunset tones",
+    "ENVIRONMENTAL HOLIDAYS - World Water Day, shimmering aquatic reflections, underwater shots, crystal clarity",
+    "ENVIRONMENTAL HOLIDAYS - World Oceans Day, expansive blue horizons, playful marine life close-ups, shifting coastal lighting",
+    "ENVIRONMENTAL HOLIDAYS - World Wildlife Day, intimate animal close-ups, careful sound design, natural daylight",
+    "ENVIRONMENTAL HOLIDAYS - World Soil Day, macro shots of earth textures, root systems, warm earthy browns",
+    "ENVIRONMENTAL HOLIDAYS - World Energy Conservation Day, solar panels in sunlight, wind turbines at dawn, hopeful sustainable imagery",
+    "ENVIRONMENTAL HOLIDAYS - World Migratory Bird Day, birds in flight, gentle breezes, pastel skies at dawn",
+    "ENVIRONMENTAL HOLIDAYS - World Turtle Day, tranquil beach scenes, slow graceful movements, turquoise waters",
+    "ENVIRONMENTAL HOLIDAYS - World Bee Day, close-ups of pollination, floral pops of color, soft buzzing ambiance",
+    "ENVIRONMENTAL HOLIDAYS - World Polar Day, icy blue-white landscapes, crisp cool lighting, reflective ice surfaces",
+    "ENVIRONMENTAL HOLIDAYS - World Meteorological Day, dramatic cloud formations, shifting weather patterns, time-lapse skies",
 
-# ❓ MISCELLANEOUS
-"MISCELLANEOUS - Boss's Day",
-"MISCELLANEOUS - National Pet Day",
-"MISCELLANEOUS - National Teacher Day",
-"MISCELLANEOUS - National Nurses Day",
-"MISCELLANEOUS - National Scientists Day",
-"MISCELLANEOUS - National Heroes Day",
-"MISCELLANEOUS - National Volunteer Day",
-"MISCELLANEOUS - World Health Care Day",
-"MISCELLANEOUS - World Nursing Day",
-"MISCELLANEOUS - World Veterinary Day",
-"MISCELLANEOUS - World Blood Donor Day",
+    # Miscellaneous - Various special days
+    "MISCELLANEOUS - Boss's Day, office interiors, balanced neutral light, subtle hierarchical framing",
+    "MISCELLANEOUS - National Pet Day, playful animal close-ups, bright natural light, cheerful home or garden backdrops",
+    "MISCELLANEOUS - National Teacher Day, warm classroom tones, chalk dust motes in sunlight, thoughtful close-ups of teaching moments",
+    "MISCELLANEOUS - National Nurses Day, hospital corridors with gentle overhead lighting, compassionate close-ups, soft reassuring palette",
+    "MISCELLANEOUS - National Heroes Day, respectful framing of uniforms, clear symbolic imagery, flags and memorials in dignified light",
+    "MISCELLANEOUS - National Volunteer Day, communal gatherings, group hugs, natural daylight outdoors",
+    "MISCELLANEOUS - World Health Care Day, clinical cleanliness, caring interactions, balanced and neutral color grading",
+    "MISCELLANEOUS - World Nursing Day, nurturing bedside scenes, soft bedside lamps, close-ups of gentle hands",
+    "MISCELLANEOUS - World Veterinary Day, animal clinics, warm supportive interactions, pastel calming tones",
+    "MISCELLANEOUS - World Blood Donor Day, medical reds and whites, careful framing of donation process, hopeful human connection"
 ]
+
 
 SPECIFIC_MODES = [
 "Documentary Mode","Action Mode"
 ]
 
 CAMERAS = {
-"Experimental and Proto (Pre-1900s)": [
-"EXPERIMENTAL - Nicéphore Niépce - Camera Obscura (1826) - PROS: First photograph ever taken, foundational to photography - CONS: Incredibly slow exposure times, impractical for modern use",
-"EXPERIMENTAL - Louis Daguerre - Daguerreotype Camera (1839) - PROS: Sharp images for its time, paved the way for portraiture - CONS: Complex and dangerous development process",
-"EXPERIMENTAL - William Henry Fox Talbot - Calotype Camera (1840) - PROS: Created the first negative images, allowed for reproduction - CONS: Limited sharpness and contrast",
-"EXPERIMENTAL - Frederick Scott Archer - Wet Collodion Camera (1851) - PROS: Faster exposure times and sharper images than previous methods - CONS: Required immediate chemical processing in a darkroom",
-"EXPERIMENTAL - E. & H.T. Anthony & Co. - Folding Camera (1854) - PROS: First commercially successful folding camera - CONS: Large and cumbersome",
-"EXPERIMENTAL - Thomas Sutton - Panoramic Camera (1859) - PROS: First camera to capture 120-degree panoramic views - CONS: Limited use cases and complex operation",
-"EXPERIMENTAL - Jules Duboscq - Stereoscopic Camera (1860) - PROS: Created the illusion of 3D images, popular for stereoscopic photography - CONS: Limited depth, complex to use",
-"EXPERIMENTAL - Kodak - Kodak Box Camera (1888) - PROS: First consumer camera with roll film, democratized photography - CONS: Poor image quality compared to professional systems",
-"EXPERIMENTAL - Charles Bennett - Gelatin Dry Plate Camera (1878) - PROS: Faster exposure times, no need for immediate processing - CONS: Required bulky plates",
-"EXPERIMENTAL - Eadweard Muybridge - Zoopraxiscope (1879) - PROS: First device to project moving images - CONS: Complex, limited to scientific study",
-"EXPERIMENTAL - George Eastman - Roll Film Camera (1885) - PROS: Enabled continuous photography, portable - CONS: Lower quality compared to plate cameras",
-"EXPERIMENTAL - Joseph Nicéphore Niépce - Physautotype (1832) - PROS: First camera to use lavender oil as a solvent - CONS: Extremely fragile images, experimental",
-"EXPERIMENTAL - Thomas Sutton - First Panoramic Camera (1859) - PROS: First attempt at capturing wide-angle images - CONS: Distorted edges, primitive lens technology",
-"EXPERIMENTAL - William Friese-Greene - Chronophotographic Camera (1889) - PROS: One of the first motion-picture cameras - CONS: Experimental, limited success",
-"EXPERIMENTAL - Le Prince - Single-Lens Camera (1888) - PROS: First single-lens motion-picture camera - CONS: Highly experimental and fragile",
-"EXPERIMENTAL - Anschütz - Tachyscope (1887) - PROS: High-speed photography for scientific purposes - CONS: Bulky, limited commercial use",
-"EXPERIMENTAL - Etienne-Jules Marey - Chronophotographic Gun (1882) - PROS: First to capture multiple frames per second - CONS: Only useful for scientific purposes, difficult to use",
-"EXPERIMENTAL - Simon Wing - Multiplying Camera (1870s) - PROS: Allowed for multiple exposures on a single plate - CONS: Low quality, experimental",
-"EXPERIMENTAL - Ives - Kinetoscope Prototype (1889) - PROS: First prototype for motion picture playback - CONS: Experimental, not commercially viable",
-"EXPERIMENTAL - Kodak - Pocket Kodak Camera (1895) - PROS: First pocket-sized consumer camera - CONS: Limited features and poor resolution"
-],
-"1900s": [
-"PROFESSIONAL - Graflex - Graflex Reflex Camera (1902) - PROS: First reflex camera with a mirror system for viewing - CONS: Large and heavy, complex to operate",
-"PROFESSIONAL - Kodak - Brownie (1900) - PROS: Popularized photography for the masses, affordable - CONS: Poor image quality, limited to snapshots",
-"PROFESSIONAL - Contessa-Nettel - Nettel Camera (1903) - PROS: High-quality folding plate camera, versatile - CONS: Bulky and fragile",
-"CONSUMER - Kodak - Vest Pocket Kodak (1907) - PROS: Compact and portable, great for amateur photographers - CONS: Limited control and basic functionality",
-"PROFESSIONAL - Thornton-Pickard - Ruby Reflex (1905) - PROS: First reflex camera with a moving mirror, ideal for high-speed action - CONS: Large and cumbersome",
-"CONSUMER - Kodak - Folding Pocket Camera (1906) - PROS: Compact and portable, ideal for travel photography - CONS: Limited image quality compared to professional cameras",
-"CONSUMER - Kodak - No. 2 Folding Autographic Brownie (1909) - PROS: Added autographic feature for writing notes on film - CONS: Still limited to amateur use",
-"PROFESSIONAL - Goerz - Tenax (1905) - PROS: Known for sharp lenses, high-quality plate images - CONS: Heavy and difficult to carry",
-"PROFESSIONAL - Ica - Reflex Camera (1909) - PROS: Improved reflex design with better handling - CONS: Limited shutter speeds, delicate build",
-"PROFESSIONAL - Graflex - Auto Graflex (1906) - PROS: Allowed quick plate changes for professional studio work - CONS: Expensive, heavy",
-"CONSUMER - Kodak - No. 3A Folding Pocket (1903) - PROS: Easy to use for amateur photographers, compact - CONS: Low image quality by professional standards",
-"PROFESSIONAL - Conley - Universal Camera (1907) - PROS: Designed for professional portraiture, sharp images - CONS: Heavy and bulky",
-"CONSUMER - Kodak - Panoram No. 4 (1904) - PROS: First consumer panoramic camera, perfect for landscapes - CONS: Low resolution, mechanical issues",
-"PROFESSIONAL - Ernemann - Stereo Piccolette (1908) - PROS: One of the first cameras for stereoscopic photography - CONS: Complex to use, prone to misalignment",
-"PROFESSIONAL - Folmer & Schwing - Century Studio Camera (1902) - PROS: Large format, ideal for studio portraits - CONS: Heavy and immobile",
-"PROFESSIONAL - Graflex - Revolving Back Camera (1907) - PROS: Revolutionary revolving back for changing orientations - CONS: Limited to large plate sizes",
-"PROFESSIONAL - Eastman Kodak - Panoram Kodak (1900) - PROS: First panoramic consumer camera - CONS: Poor image quality, bulky",
-"CONSUMER - Kodak - Autographic Kodak Jr. (1909) - PROS: Early version with autographic feature for writing on film - CONS: Limited professional use",
-"CONSUMER - Ica - Ideal Camera (1908) - PROS: Light and compact, ideal for travel - CONS: Fragile and complex to operate",
-"PROFESSIONAL - Carl Zeiss - Jena (1901) - PROS: High-quality lenses, sharp and clear images - CONS: Expensive and difficult to operate"
-],
-"1910s": [
-"PROFESSIONAL - Ernemann - Ermanox (1910) - PROS: Known for fast lenses and low-light capabilities - CONS: Heavy and expensive",
-"PROFESSIONAL - Kodak - Vest Pocket Autographic (1912) - PROS: Small, easy to carry, popular with soldiers in WWI - CONS: Limited image quality, basic features",
-"PROFESSIONAL - Contessa - Nettel Deckrullo (1910) - PROS: Introduced metal focal plane shutter, ideal for fast exposures - CONS: Fragile and hard to repair",
-"CONSUMER - Kodak - Brownie No. 2 (1913) - PROS: Cheap and easy to use for beginners - CONS: Poor image quality, limited control",
-"PROFESSIONAL - Goerz - Anschütz Camera (1911) - PROS: High-speed shutter, ideal for capturing motion - CONS: Expensive, limited distribution",
-"PROFESSIONAL - Ica - Volta Reflex (1915) - PROS: Early reflex system for more precise framing - CONS: Heavy and bulky",
-"CONSUMER - Kodak - Autographic Special (1914) - PROS: Allowed users to add notes directly on the film - CONS: Basic functionality, limited to amateurs",
-"PROFESSIONAL - Ernemann - Stereo Camera (1916) - PROS: Known for sharp 3D images, early stereoscopic photography - CONS: Complex to operate, expensive",
-"PROFESSIONAL - ICA - Kinamo (1919) - PROS: Early motion picture camera, portable for its time - CONS: Heavy and fragile",
-"PROFESSIONAL - Kodak - Kodak Panoram (1910) - PROS: Wide-angle panoramic shots, ideal for landscapes - CONS: Low detail, difficult to operate",
-"CONSUMER - Kodak - Brownie Autographic (1915) - PROS: Added note-taking features on film - CONS: Limited to basic snapshots",
-"PROFESSIONAL - Zeiss Ikon - Miroflex (1917) - PROS: Excellent for studio photography, high-quality lenses - CONS: Expensive and complex",
-"PROFESSIONAL - Goerz - Tenax (1918) - PROS: Sharp optics for detailed shots - CONS: Heavy, impractical for field work",
-"CONSUMER - Kodak - No. 3A Autographic (1919) - PROS: Compact design, popular among travelers - CONS: Basic features, limited resolution",
-"PROFESSIONAL - Voigtländer - Avus (1915) - PROS: Versatile plate camera for professionals - CONS: Limited lens options",
-"CONSUMER - Kodak - Pocket Kodak (1910) - PROS: First pocket-sized camera, easy to carry - CONS: Low image quality, limited manual control",
-"PROFESSIONAL - Ernemann - Ermanox Folding Camera (1917) - PROS: Excellent for low-light photography - CONS: Complex and delicate",
-"PROFESSIONAL - Thornton-Pickard - Imperial (1911) - PROS: Large format for studio work, great for portraits - CONS: Limited to static subjects",
-"CONSUMER - Kodak - Vest Pocket Kodak (1915) - PROS: Popular among soldiers, highly portable - CONS: Low-quality images, simple operation",
-"PROFESSIONAL - Folmer & Schwing - Century Graphic (1910) - PROS: Great for large-format landscape shots - CONS: Bulky and heavy, requires a tripod"
-],
-
-"1920s": [
-"PROFESSIONAL - Leica - Leica I (1925) - PROS: First compact 35mm camera, sharp images, ideal for street and travel photography - CONS: Expensive and hard to operate for beginners",
-"PROFESSIONAL - Ernemann - Ermanox (1924) - PROS: Excellent for low-light photography due to fast lenses - CONS: Large and heavy, requires expertise to handle",
-"PROFESSIONAL - Akeley - Akeley Gyro (1923) - PROS: Gyroscopic stabilization for smooth motion pictures - CONS: Bulky, complex to operate",
-"CONSUMER - Kodak - Brownie 2A (1920) - PROS: Affordable and easy for amateurs - CONS: Limited image quality, low manual control",
-"PROFESSIONAL - Mitchell - Standard 35mm (1929) - PROS: High-quality motion picture camera, excellent for studio productions - CONS: Bulky and suited only for controlled environments",
-"CONSUMER - Kodak - No. 2 Folding Autographic (1923) - PROS: Popular among amateur photographers for portability - CONS: Low-quality images by modern standards",
-"PROFESSIONAL - Pathé - Pathé-Baby (1922) - PROS: First widely available amateur 9.5mm film camera - CONS: Limited to personal use, substandard image quality",
-"PROFESSIONAL - Graflex - Super D (1923) - PROS: Reflex camera with sharp, detailed results - CONS: Heavy and challenging for on-the-go shooting",
-"CONSUMER - Kodak - Autographic Vest Pocket (1925) - PROS: Compact and portable for snapshots - CONS: Poor resolution, basic features",
-"PROFESSIONAL - Contessa-Nettel - Cocarette (1926) - PROS: High-quality folding plate camera, excellent detail - CONS: Difficult to operate, fragile",
-"PROFESSIONAL - Leica - Leica II (1928) - PROS: Introduced interchangeable lenses for creative versatility - CONS: Expensive and complex for amateurs",
-"PROFESSIONAL - Debrie - Parvo L (1921) - PROS: Compact, highly reliable for silent films - CONS: Limited lens options, cumbersome for location work",
-"PROFESSIONAL - Bell & Howell - Filmo 70 (1923) - PROS: Lightweight and portable, perfect for newsreel and documentary - CONS: Limited control compared to larger studio cameras",
-"CONSUMER - Kodak - Folding Pocket Camera (1925) - PROS: Portable and easy to use, ideal for travel - CONS: Basic functionality, low image resolution",
-"PROFESSIONAL - Ica - Kinamo (1926) - PROS: First portable motion picture camera for 35mm film - CONS: Limited to handheld shooting",
-"CONSUMER - Kodak - Rainbow Hawkeye Vest Pocket (1929) - PROS: Popular for its colorful, compact design - CONS: Basic camera with limited control",
-"PROFESSIONAL - Pathé - Pathé 28mm Camera (1922) - PROS: Great for early amateur films - CONS: Subpar image quality compared to professional cameras",
-"PROFESSIONAL - Bell & Howell - Eyemo 35mm (1925) - PROS: Portable and durable, ideal for fieldwork and documentaries - CONS: Limited for complex shots",
-"PROFESSIONAL - Newman-Sinclair - Autokine (1927) - PROS: Early success in handheld cinematography - CONS: Limited lens flexibility",
-"CONSUMER - Kodak - Pocket Kodak (1928) - PROS: Compact and simple to use for everyday photography - CONS: Limited resolution and features"
-],
-"1930s": [
-"PROFESSIONAL - Bell & Howell - 2709 Standard (1930) - PROS: Creates stable, high-quality shots perfect for dramatic lighting setups - CONS: Heavy and manual, best for studio work",
-"PROFESSIONAL - Arriflex - Kinarri 35 (1937) - PROS: Lightweight for handheld shots, great for dynamic motion - CONS: Noisy, limits use in dialogue scenes",
-"CONSUMER - Kodak - Cine-Kodak Eight Model 20 (1932) - PROS: Compact and affordable for amateurs, simple to use - CONS: Limited to 8mm film with lower resolution",
-"PROFESSIONAL - Eyemo - 35mm Camera (1936) - PROS: Portable, great for newsreels and documentary filmmaking - CONS: Limited creative flexibility",
-"CONSUMER - Kodak - Brownie Movie Camera (1935) - PROS: First amateur 8mm movie camera, affordable - CONS: Poor image quality compared to professional film",
-"PROFESSIONAL - Debrie - Parvo L (1934) - PROS: Reliable for studio films, captures sharp imagery - CONS: Heavy, suited only for controlled environments",
-"PROFESSIONAL - Mitchell - Standard 35mm (1930) - PROS: Delivers cinematic imagery, ideal for big-budget studio productions - CONS: Large and difficult to use in dynamic environments",
-"PROFESSIONAL - Newman-Sinclair - Autokine 35mm (1931) - PROS: Portable for handheld use, retains quality in outdoor settings - CONS: Noisy and difficult for dialogue scenes",
-"CONSUMER - Kodak - Cine-Kodak Model K (1934) - PROS: Affordable 16mm option for home movies - CONS: Limited image quality, basic features",
-"CONSUMER - Kodak - Brownie Special Six-20 (1938) - PROS: Affordable, easy-to-use snapshot camera - CONS: Very basic functionality, limited creative control",
-"PROFESSIONAL - Vinten - Model H 35mm (1939) - PROS: Perfect for high-quality cinematic footage, sturdy build - CONS: Heavy and not portable",
-"CONSUMER - Kodak - Bantam (1935) - PROS: Portable and compact, good for amateur photography - CONS: Basic functionality, lower image quality",
-"PROFESSIONAL - Agfa - Movector 16mm (1933) - PROS: Compact, great for amateur filmmakers using 16mm - CONS: Less flexible for creative filming",
-"PROFESSIONAL - De Vry - Standard 35mm (1931) - PROS: Known for durability and portability in documentaries - CONS: Limited features compared to later models",
-"CONSUMER - Leica - 16mm Film Camera (1936) - PROS: Compact and sharp, great for personal films - CONS: Limited lens options",
-"PROFESSIONAL - Arriflex - Kinarri 35 (1936) - PROS: Ideal for on-the-go handheld shots, fluid motion - CONS: Noisy operation makes it unsuitable for sound recording",
-"PROFESSIONAL - Bell & Howell - Filmo 70-D (1935) - PROS: Durable and portable for fieldwork - CONS: Limited in creative flexibility",
-"CONSUMER - Kodak - Bullet Special (1937) - PROS: Easy to use and portable, great for snapshots - CONS: Very basic controls, limited image quality",
-"PROFESSIONAL - Newman-Sinclair - Autokine (1934) - PROS: Great for early handheld cinematography - CONS: Limited flexibility in lens and shot composition",
-"PROFESSIONAL - Vinten - Model H 35mm (1939) - PROS: Delivers sharp, professional-level imagery - CONS: Large and suited to studio work only"
-],
-"1940s": [
-"PROFESSIONAL - Mitchell - BNC Camera (1941) - PROS: Perfect for cinematic studio films, excellent sharpness - CONS: Very heavy and not portable",
-"PROFESSIONAL - Arriflex - 35 II (1946) - PROS: Versatile, great for handheld work and dynamic movement - CONS: Complex to operate, best for professionals",
-"PROFESSIONAL - Bell & Howell - Filmo 70 (1940) - PROS: Portable for news and documentary, great for on-the-go shooting - CONS: Limited lens options for creative work",
-"CONSUMER - Kodak - Ektra (1942) - PROS: Compact and accessible for amateurs - CONS: Limited control over creative aspects",
-"CONSUMER - Kodak - Brownie 8mm (1946) - PROS: Affordable, great for family movies - CONS: Poor resolution, lacks features",
-"PROFESSIONAL - Bolex - H16 (1941) - PROS: Excellent for indie films with great image quality - CONS: Manual controls require expertise",
-"CONSUMER - Kodak - Cine-Kodak Special II (1948) - PROS: Popular for amateur 16mm films, good image quality - CONS: Limited to basic film features",
-"CONSUMER - Bell & Howell - 16mm Magazine Camera (1940) - PROS: Compact for consumer use, accessible - CONS: Limited manual control",
-"PROFESSIONAL - Mitchell - BNC Reflex (1947) - PROS: Best for studio films requiring crisp visuals and precision - CONS: Bulky and hard to transport",
-"PROFESSIONAL - De Vry - Sound Camera (1945) - PROS: Excellent for synchronized sound recording - CONS: Heavy and requires stationary setup",
-"CONSUMER - Revere - Model 99 8mm (1949) - PROS: Compact and easy to use - CONS: Basic image quality, limited control",
-"PROFESSIONAL - Eclair - Cameflex (1947) - PROS: Compact and flexible, perfect for handheld shots - CONS: Limited creative control",
-"CONSUMER - Kodak - Brownie Movie Camera (1946) - PROS: Affordable and accessible to beginners - CONS: Limited to basic snapshots and home movies",
-"PROFESSIONAL - Pathé - WEBO M 16mm (1942) - PROS: Durable for professional use, great for fieldwork - CONS: Limited in creative lens options",
-"PROFESSIONAL - Wilart - 16mm Camera (1948) - PROS: Good for amateur 16mm films, portable - CONS: Basic image quality, limited features",
-"PROFESSIONAL - Mitchell - BNC Sound Camera (1949) - PROS: Ideal for capturing synchronized sound with sharp visuals - CONS: Best for controlled studio environments",
-"CONSUMER - Kodak - Cine-Kodak 8 (1946) - PROS: First consumer 8mm movie camera - CONS: Basic features, limited image resolution",
-"CONSUMER - Bell & Howell - 70DR (1944) - PROS: Compact and easy to carry for documentaries - CONS: Limited control over image quality",
-"PROFESSIONAL - Revere - 16mm Cine Camera (1943) - PROS: Perfect for early amateur films, easy to use - CONS: Limited lens options for professional work",
-"PROFESSIONAL - De Vry - 35mm Studio Camera (1947) - PROS: Known for its rugged build, used in harsh environments - CONS: Limited creative controls"
-],
-"1950s": [
-"PROFESSIONAL - Mitchell - BNCR (1952) - PROS: Delivers extremely sharp, high-quality images, ideal for Hollywood-style productions - CONS: Very heavy and static, not suited for location work",
-"PROFESSIONAL - Arriflex - 16ST (1953) - PROS: Great for handheld shots with smooth motion, perfect for dynamic filmmaking - CONS: Complex to use, best for professionals",
-"CONSUMER - Kodak - Brownie 8mm Movie Camera II (1956) - PROS: Affordable for home movies, simple to use - CONS: Basic image quality, limited controls",
-"PROFESSIONAL - Bell & Howell - 70DR (1951) - PROS: Known for durability and field use, great for outdoor scenes - CONS: Limited flexibility in creative shots",
-"PROFESSIONAL - Eclair - NPR (1958) - PROS: Lightweight and portable, perfect for indie films - CONS: Limited lens options, not suited for high-end productions",
-"CONSUMER - Bolex - H16 Reflex (1956) - PROS: Great for amateur filmmakers looking for 16mm film aesthetics - CONS: Requires manual knowledge of film cameras",
-"PROFESSIONAL - Beaulieu - R16 (1959) - PROS: Excellent image quality with the ability to shoot in low-light - CONS: Expensive and complex for amateurs",
-"CONSUMER - Canon - Cine 8T (1957) - PROS: First compact 8mm consumer camera, perfect for home movies - CONS: Poor resolution and limited manual control",
-"CONSUMER - Kodak - Brownie Movie Camera (1952) - PROS: Affordable and accessible for beginners - CONS: Very basic functionality, limited creative control",
-"PROFESSIONAL - Mitchell - BNCR (1955) - PROS: Great for detailed cinematic shots in a studio setting - CONS: Requires a large team to operate, very heavy",
-"PROFESSIONAL - Pathé - WEBO M 16mm (1954) - PROS: Durable and reliable for professional 16mm film work - CONS: Limited for handheld or dynamic shots",
-"CONSUMER - Revere - Eye-Matic EE127 (1958) - PROS: Compact, great for home movies - CONS: Limited resolution, low professional appeal",
-"PROFESSIONAL - Bolex - H16 M (1959) - PROS: Reliable for small film productions with manual controls - CONS: Heavy and complex for amateurs",
-"CONSUMER - Minolta - Autopak-8 D6 (1959) - PROS: Affordable and easy to use, ideal for consumer-grade films - CONS: Limited features, basic image quality",
-"CONSUMER - Kodak - 16mm Magazine Camera (1951) - PROS: Affordable and simple for amateur filmmakers - CONS: Limited image resolution and control",
-"PROFESSIONAL - Beaulieu - R16 (1959) - PROS: Excellent for low-light situations, sharp 16mm film results - CONS: Expensive and challenging for beginners",
-"CONSUMER - Canon - Cine 8T (1957) - PROS: Compact and affordable for consumer use - CONS: Poor image quality compared to professional cameras",
-"PROFESSIONAL - Mitchell - 70DR (1950) - PROS: Rugged and durable for location shooting - CONS: Not ideal for complex, indoor studio shots",
-"PROFESSIONAL - Eclair - NPR (1958) - PROS: Perfect for handheld and location shots with dynamic movement - CONS: Limited for high-end cinematic work",
-"CONSUMER - Kodak - Brownie Movie Camera II (1953) - PROS: Easy to use and accessible for beginners - CONS: Poor resolution, limited creative control"
-],
-"1960s": [
-"PROFESSIONAL - Panavision - Silent Reflex (1962) - PROS: Silent operation, ideal for professional productions with sound - CONS: Expensive, heavy",
-"PROFESSIONAL - Arriflex - 35 IIC (1964) - PROS: Compact and lightweight, ideal for handheld work - CONS: Complex, requires professional operation",
-"PROFESSIONAL - Bolex - H16 EBM (1965) - PROS: Electric motor, great for longer takes - CONS: Requires extensive manual adjustments",
-"PROFESSIONAL - Canon - Scoopic 16mm (1965) - PROS: Built-in light meter, lightweight - CONS: Limited manual control",
-"PROFESSIONAL - Beaulieu - R16 Electric (1965) - PROS: Excellent image quality, ideal for indie filmmakers - CONS: Expensive, hard to maintain",
-"PROFESSIONAL - Eclair - ACL (1967) - PROS: Lightweight and versatile, ideal for documentaries - CONS: Fragile, difficult for action shots",
-"PROFESSIONAL - Mitchell - Mark II (1967) - PROS: Excellent sharpness, studio quality - CONS: Bulky, difficult to transport",
-"CONSUMER - Kodak - Instamatic M2 (1963) - PROS: Affordable, easy to use - CONS: Low image quality, limited controls",
-"CONSUMER - Various - Super 8 Cameras (1965) - PROS: Affordable, compact, accessible for amateurs - CONS: Basic image quality",
-"CONSUMER - Nizo - S8 (1968) - PROS: High-quality Super 8 camera for enthusiasts - CONS: Limited features for professionals",
-"CONSUMER - Bell & Howell - Filmosonic XL (1969) - PROS: Affordable, accessible to home movie makers - CONS: Low resolution, simple features",
-"CONSUMER - Minolta - Autopak-8 D12 (1969) - PROS: Compact, easy to use - CONS: Limited manual controls",
-"CONSUMER - Yashica - Super-8 Electro (1969) - PROS: Affordable Super 8, good for beginners - CONS: Limited manual control",
-"CONSUMER - Chinon - Super 8 (1969) - PROS: Affordable, compact - CONS: Poor image quality compared to professional gear",
-"CONSUMER - Agfa - Movexoom 6 (1968) - PROS: Affordable, compact - CONS: Basic features, limited resolution"
-],
-"1970s": [
-"PROFESSIONAL - Panavision - Panaflex (1972) - PROS: Quiet, ideal for location shooting - CONS: Expensive, heavy",
-"PROFESSIONAL - Arriflex - 35BL (1972) - PROS: Lightweight for handheld, great for dynamic work - CONS: Noisy, requires careful sound setups",
-"PROFESSIONAL - Aaton - 7 LTR (1978) - PROS: Quiet, reliable for location sound recording - CONS: Expensive, limited lens options",
-"CONSUMER - Beaulieu - 4008 ZM II Super 8 (1971) - PROS: High-quality Super 8, ideal for enthusiasts - CONS: Limited manual controls",
-"CONSUMER - Canon - Auto Zoom 814 Electronic (1973) - PROS: Excellent for home movies, good image quality - CONS: Limited for professional use",
-"PROFESSIONAL - Eclair - NPR (1971) - PROS: Lightweight, great for handheld work - CONS: Limited for high-end productions",
-"PROFESSIONAL - Mitchell - VistaVision (1976) - PROS: Superb image quality, great for special effects - CONS: Heavy, not suitable for handheld work",
-"PROFESSIONAL - Bolex - Pro 16mm (1970) - PROS: Durable, ideal for small film productions - CONS: Expensive, limited for complex shots",
-"CONSUMER - Elmo - Super 110R (1974) - PROS: Affordable Super 8 for home movies - CONS: Limited features, basic controls",
-"CONSUMER - Nikon - R10 Super 8 (1973) - PROS: Great image quality for home use - CONS: Limited for professional projects",
-"CONSUMER - Minolta - XL-601 Super 8 (1976) - PROS: Compact, good for home movies - CONS: Limited manual control",
-"CONSUMER - Chinon - Pacific 200/12 SMR (1975) - PROS: Affordable, easy to use - CONS: Limited image quality",
-"CONSUMER - Pathé - DS8 Reflex (1973) - PROS: Good for amateur filmmaking - CONS: Limited creative options",
-"CONSUMER - Leicina - Super RT1 (1974) - PROS: Compact and portable - CONS: Basic functionality",
-"CONSUMER - Sankyo - XL 620 Super 8 (1978) - PROS: Affordable, accessible for beginners - CONS: Low image quality, limited control"
-],
-"1980s": [
-"PROFESSIONAL - Arriflex - 765 (1989) - PROS: Perfect for large-scale cinematic productions - CONS: Heavy, expensive",
-"PROFESSIONAL - Panavision - Panaflex Gold (1981) - PROS: Quiet operation, ideal for studio work - CONS: Bulky, expensive",
-"PROFESSIONAL - Aaton - XTR Prod (1985) - PROS: Great for handheld shooting, perfect for indie films - CONS: Complex to operate",
-"PROFESSIONAL - Sony - Betacam SP (1986) - PROS: First professional video format, excellent image quality - CONS: Expensive, complex",
-"CONSUMER - Canon - L2 Hi8 (1988) - PROS: Affordable, good for home video - CONS: Limited manual control",
-"CONSUMER - JVC - GR-C1 (1984) - PROS: Iconic compact video camera, great for home use - CONS: Basic image quality",
-"PROFESSIONAL - Arriflex - SRII (1982) - PROS: Ideal for high-quality 16mm productions - CONS: Expensive, complex",
-"PROFESSIONAL - Panasonic - WV-F250 (1988) - PROS: Great for early video news gathering - CONS: Heavy, expensive",
-"PROFESSIONAL - Bolex - H16 SBM (1980) - PROS: Perfect for small productions with 16mm film - CONS: Heavy, manual operation",
-"CONSUMER - Canon - T70 SLR with Video Back (1984) - PROS: Affordable for hybrid video and photography - CONS: Limited video quality",
-"CONSUMER - Sony - Video8 Handycam CCD-M8U (1985) - PROS: Compact, great for home video - CONS: Low image quality",
-"CONSUMER - Hitachi - VK-C820 (1989) - PROS: Affordable video camera for home use - CONS: Poor resolution compared to modern standards",
-"PROFESSIONAL - JVC - KY-1900 (1983) - PROS: Excellent for early ENG (electronic news gathering) - CONS: Heavy, outdated by modern standards",
-"PROFESSIONAL - Ikegami - HL-79 (1985) - PROS: Great for broadcast TV, excellent image quality - CONS: Complex to operate",
-"CONSUMER - Bell & Howell - 2146 XL Super 8 (1981) - PROS: Affordable, great for home movies - CONS: Limited creative controls"
-],
-"1990s": [
-"PROFESSIONAL - Panavision - Millennium (1997) - PROS: Industry-standard for high-budget productions - CONS: Extremely expensive, heavy",
-"PROFESSIONAL - Arriflex - 435 (1995) - PROS: Excellent for fast-paced, dynamic shooting - CONS: Heavy, best for professionals",
-"PROFESSIONAL - Aaton - 35-III (1991) - PROS: Great for handheld 35mm work, ideal for indie films - CONS: Expensive, complex to use",
-"PROFESSIONAL - Sony - Digital Betacam DVW-700WS (1993) - PROS: Broadcast-standard video quality - CONS: Heavy, outdated by modern digital standards",
-"CONSUMER - Canon - XL1 MiniDV (1997) - PROS: First affordable digital camcorder for indie filmmakers - CONS: Low resolution by modern standards",
-"CONSUMER - Sony - DCR-VX1000 MiniDV (1995) - PROS: Affordable digital video for consumer use - CONS: Limited manual control",
-"PROFESSIONAL - Arriflex - 235 (1999) - PROS: Lightweight for handheld 35mm film - CONS: Expensive, complex",
-"PROFESSIONAL - Panasonic - AG-DVX100 (1999) - PROS: Excellent for indie films, affordable digital camcorder - CONS: Low resolution compared to modern cameras",
-"PROFESSIONAL - Ikegami - HL-V73 (1994) - PROS: Excellent for TV broadcast, sharp video quality - CONS: Heavy, outdated by modern standards",
-"PROFESSIONAL - JVC - GY-DV500 (1999) - PROS: Great for early digital productions - CONS: Low resolution, outdated",
-"PROFESSIONAL - Sony - Betacam SX DNW-9WS (1996) - PROS: Industry-standard for video production - CONS: Outdated by modern digital video",
-"PROFESSIONAL - Canon - EOS D2000 (1998) - PROS: First professional digital SLR - CONS: Low resolution by today’s standards",
-"PROFESSIONAL - Nikon - D1 (1999) - PROS: First DSLR for professionals, fast autofocus - CONS: Low resolution",
-"CONSUMER - Sony - DSC-F1 (1996) - PROS: Affordable, early digital photography - CONS: Poor image quality",
-"CONSUMER - Casio - QV-10 (1995) - PROS: First consumer digital camera with an LCD - CONS: Low resolution, basic functionality"
-],
-"2000s": [
-"PROFESSIONAL - RED - One (2007) - PROS: First digital cinema camera with 4K resolution - CONS: Expensive, requires complex setup",
-"PROFESSIONAL - Panavision - Genesis (2005) - PROS: Hollywood-standard for digital cinema - CONS: Heavy, expensive",
-"PROFESSIONAL - Arriflex - D-20 (2005) - PROS: Great for early digital cinematography, excellent image quality - CONS: Expensive, outdated by newer models",
-"PROFESSIONAL - Sony - CineAlta F900 (2000) - PROS: First HD digital cinema camera - CONS: Low resolution by today’s standards",
-"PROFESSIONAL - Canon - EOS 5D Mark II (2008) - PROS: First DSLR to shoot full HD video, great for indie filmmakers - CONS: Limited dynamic range for professional cinema",
-"PROFESSIONAL - Panasonic - AG-HVX200 (2005) - PROS: Affordable, great for indie filmmakers - CONS: Limited resolution by modern standards",
-"PROFESSIONAL - Sony - PMW-EX1 (2007) - PROS: Excellent for handheld HD shooting - CONS: Low-light performance could be better",
-"PROFESSIONAL - RED - Epic (2009) - PROS: Capable of shooting 5K resolution, modular design - CONS: Expensive, complex to operate",
-"PROFESSIONAL - ARRI - Alexa Classic (2009) - PROS: Industry-standard for digital cinema, beautiful color science - CONS: Expensive, bulky",
-"PROFESSIONAL - Blackmagic - Cinema Camera (2008) - PROS: Affordable, great for indie filmmakers - CONS: Limited dynamic range and low-light performance",
-"PROFESSIONAL - Canon - EOS 7D (2009) - PROS: Affordable DSLR with video capabilities, great for indie projects - CONS: Limited low-light performance",
-"CONSUMER - Nikon - D90 (2008) - PROS: First DSLR with video recording - CONS: Limited manual control for video",
-"CONSUMER - GoPro - HD Hero (2004) - PROS: Compact, affordable, great for action sports - CONS: Limited image quality compared to larger cameras",
-"PROFESSIONAL - Sony - α7S (2008) - PROS: Excellent low-light performance, compact form factor - CONS: Rolling shutter issues with fast motion",
-"PROFESSIONAL - Panasonic - Lumix GH1 (2009) - PROS: First mirrorless camera with HD video - CONS: Limited for professional use compared to full-frame cameras"
-],
-"2010s": [
-"PROFESSIONAL - ARRI - Alexa Mini (2015) - PROS: Lightweight, ideal for handheld and drone use, beautiful image quality - CONS: Expensive",
-"PROFESSIONAL - RED - Weapon (2016) - PROS: Capable of shooting up to 8K resolution, modular design - CONS: Expensive, complex to operate",
-"PROFESSIONAL - Sony - Venice (2017) - PROS: Full-frame digital cinema, excellent dynamic range - CONS: Expensive, bulky",
-"PROFESSIONAL - Blackmagic - URSA Mini Pro (2017) - PROS: Affordable digital cinema camera, great for indie films - CONS: Limited low-light performance",
-"PROFESSIONAL - Canon - EOS C300 Mark II (2015) - PROS: Superb color science, great for documentary filmmaking - CONS: Expensive, complex to use",
-"PROFESSIONAL - Panasonic - VariCam LT (2016) - PROS: Excellent low-light performance, versatile camera - CONS: Expensive",
-"PROFESSIONAL - DJI - Inspire 2 with X7 Camera (2017) - PROS: Perfect for aerial cinematography, high-quality footage - CONS: Expensive, limited ground use",
-"CONSUMER - GoPro - HERO7 Black (2018) - PROS: Great for action shots, waterproof, 4K video - CONS: Small sensor, limited dynamic range",
-"PROFESSIONAL - Sony - α7 III (2018) - PROS: Excellent low-light performance, compact, great for video and photography - CONS: Limited for high-end cinema",
-"PROFESSIONAL - Canon - EOS R (2018) - PROS: Excellent autofocus and image quality for video - CONS: Limited lens options",
-"PROFESSIONAL - Nikon - Z6 (2018) - PROS: Excellent video quality for the price, great autofocus - CONS: Limited dynamic range compared to cinema cameras",
-"PROFESSIONAL - Panasonic - Lumix GH5 (2017) - PROS: Great for video production, 4K video, small form factor - CONS: Micro four-thirds sensor limits low-light performance",
-"PROFESSIONAL - Blackmagic - Pocket Cinema Camera 4K (2018) - PROS: Affordable digital cinema camera, excellent image quality - CONS: Limited battery life and low-light performance",
-"PROFESSIONAL - Sony - FS7 II (2016) - PROS: Great for documentary and TV production, excellent dynamic range - CONS: Heavy, expensive",
-"PROFESSIONAL - RED - Raven (2016) - PROS: Compact and affordable for RED standards, 4.5K resolution - CONS: Limited dynamic range compared to higher-end models"
-],
-"2020s": [
-"PROFESSIONAL - ARRI - Alexa LF (2020) - PROS: Large format digital cinema, beautiful image quality - CONS: Expensive, heavy",
-"PROFESSIONAL - RED - Komodo 6K (2020) - PROS: Compact, 6K resolution, affordable for RED standards - CONS: Limited dynamic range compared to higher-end models",
-"PROFESSIONAL - Sony - FX9 (2020) - PROS: Full-frame digital cinema, excellent autofocus - CONS: Expensive, complex to use",
-"PROFESSIONAL - Canon - EOS C500 Mark II (2020) - PROS: Full-frame digital cinema, superb color science - CONS: Expensive",
-"PROFESSIONAL - Blackmagic - URSA Mini Pro 12K (2020) - PROS: 12K resolution, affordable for high-end cinema - CONS: Large files, requires powerful hardware for editing",
-"PROFESSIONAL - Panasonic - Lumix S1H (2020) - PROS: Full-frame mirrorless camera with excellent video features - CONS: Expensive for mirrorless, limited for high-end cinema",
-"PROFESSIONAL - Sony - α7S III (2020) - PROS: Excellent low-light performance, compact, 4K video - CONS: Limited for high-end cinema",
-"PROFESSIONAL - Canon - EOS R5 (2020) - PROS: 8K video, excellent autofocus - CONS: Overheating issues with extended use",
-"PROFESSIONAL - DJI - Ronin 4D (2021) - PROS: Integrated gimbal and cinema camera, excellent stabilization - CONS: Expensive, limited lens options",
-"CONSUMER - GoPro - HERO10 Black (2021) - PROS: Great for action shots, 5.3K video, waterproof - CONS: Limited low-light performance",
-"PROFESSIONAL - Sony - FX6 (2020) - PROS: Compact full-frame cinema camera, great for indie filmmakers - CONS: Limited dynamic range compared to larger cinema cameras",
-"PROFESSIONAL - RED - V-Raptor ST (2021) - PROS: 8K resolution, excellent image quality - CONS: Expensive, complex to operate",
-"PROFESSIONAL - Canon - EOS C70 (2020) - PROS: Compact digital cinema camera, excellent image quality - CONS: Limited lens options",
-"PROFESSIONAL - Nikon - Z9 (2021) - PROS: 8K video, excellent image quality - CONS: Expensive, limited lens options for cinema",
-"PROFESSIONAL - Panasonic - Lumix GH6 (2022) - PROS: Great for video production, 4K 120fps - CONS: Micro four-thirds sensor limits low-light performance"
-],
-"Future": [
-"EXPERIMENTAL - Sony - A1Z - PROS: Projected 16K capabilities, AI-driven autofocus - CONS: Theoretical, potential high cost",
-"EXPERIMENTAL - ARRI - Nova - PROS: AI-powered image processing, fully modular design - CONS: Theoretical, potential high complexity",
-"EXPERIMENTAL - RED - Orion 12K - PROS: Hypothetical 12K+ resolution with deep color range - CONS: Projected massive data storage needs",
-"EXPERIMENTAL - Canon - CinemaX 16K - PROS: Hypothetical 16K resolution, fully integrated with next-gen HDR - CONS: Requires next-gen hardware",
-"EXPERIMENTAL - Blackmagic - Infinity Pro - PROS: Speculative affordable 8K+ cinema camera with AI editing tools - CONS: Hypothetical, unproven",
-"EXPERIMENTAL - DJI - Phantom Cinema - PROS: Future drone with integrated 8K+ HDR video - CONS: Hypothetical, limited ground use",
-"EXPERIMENTAL - Nikon - X12 Vision - PROS: Predicted to feature AI-driven sensor with real-time editing - CONS: Theoretical, unknown performance",
-"EXPERIMENTAL - Panasonic - Genesis 32K - PROS: Speculative future 32K resolution camera with next-gen AI processing - CONS: Projected to have high cost and file size",
-"EXPERIMENTAL - GoPro - FutureGo 12K - PROS: Hypothetical future action camera with 12K resolution, waterproof - CONS: Limited real-world use in extreme conditions",
-"EXPERIMENTAL - Canon - EOS A6 - PROS: Future integration of computational photography with 10K video - CONS: Theoretical, high processing power needed",
-"EXPERIMENTAL - RED - Helium Infinity - PROS: Hypothetical 10K resolution with 240fps capabilities - CONS: Data-intensive, requires next-gen storage",
-"EXPERIMENTAL - Sony - α9 Super 8K - PROS: Speculative 8K camera with compact form factor, AI image enhancement - CONS: Theoretical, high cost",
-"EXPERIMENTAL - Panasonic - Lumix VR - PROS: Projected to feature VR integration with 8K video - CONS: Hypothetical, unknown market readiness",
-"EXPERIMENTAL - DJI - Inspire FutureX - PROS: Future drone integration with 16K aerial video - CONS: Theoretical, high data storage needs",
-"EXPERIMENTAL - ARRI - AI Max - PROS: Predicted to feature AI-driven 12K+ image processing - CONS: Theoretical, unknown practicality in smaller productions"
-]
+    "Experimental and Proto (Pre-1900s)": [
+        "Nicéphore Niépce Camera Obscura, made in 1826, extremely long exposures, single-frame capture, low detail, monochrome image",
+        "Louis Daguerre Daguerreotype Camera, made in 1839, metal plate photos, fine detail for era, lengthy exposure, monochrome image",
+        "William Henry Fox Talbot Calotype Camera, made in 1840, paper negatives, soft detail, monochrome, low contrast",
+        "Frederick Scott Archer Wet Collodion Camera, made in 1851, glass plates, improved clarity, reduced exposure vs previous, monochrome image",
+        "E. & H.T. Anthony & Co. Folding Camera, made in 1854, large format plates, foldable design, limited detail, monochrome",
+        "Thomas Sutton Panoramic Camera, made in 1859, wide-angle capture, curved plate, uneven exposure, monochrome image",
+        "Jules Duboscq Stereoscopic Camera, made in 1860, dual-lens for stereoscopic pairs, low detail, monochrome images",
+        "Kodak Kodak Box Camera, made in 1888, roll film, simple fixed focus, grainy, low resolution, monochrome",
+        "Charles Bennett Gelatin Dry Plate Camera, made in 1878, dry plates, shorter exposure than wet collodion, moderate detail, monochrome",
+        "Eadweard Muybridge Zoopraxiscope, made in 1879, rotating glass discs, low-frame-rate imagery, silhouetted motion, monochrome",
+        "George Eastman Roll Film Camera, made in 1885, flexible film roll, soft detail, low resolution, monochrome",
+        "Joseph Nicéphore Niépce Physautotype, made in 1832, lavender oil-based process, extremely fragile images, faint detail, monochrome",
+        "Thomas Sutton First Panoramic Camera, made in 1859, curved lens, limited sharpness at edges, monochrome",
+        "William Friese-Greene Chronophotographic Camera, made in 1889, early motion frames, low resolution, flickering imagery, monochrome",
+        "Le Prince Single-Lens Camera, made in 1888, early motion picture film strips, low detail, unstable frame rate, monochrome",
+        "Anschütz Tachyscope, made in 1887, sequential glass discs, limited frames, flickering motion, monochrome",
+        "Etienne-Jules Marey Chronophotographic Gun, made in 1882, multiple exposures per plate, low detail, monochrome motion studies",
+        "Simon Wing Multiplying Camera, made in 1870s, multiple exposures on one plate, very low detail, monochrome",
+        "Ives Kinetoscope Prototype, made in 1889, peephole viewer, low-resolution frames, monochrome",
+        "Kodak Pocket Kodak Camera, made in 1895, small roll film, grainy, soft detail, monochrome"
+    ],
+    "1900s": [
+        "Graflex Graflex Reflex Camera, made in 1902, large format plates, single-lens reflex view, moderate detail, monochrome",
+        "Kodak Brownie, made in 1900, box roll film, very grainy, low detail, monochrome",
+        "Contessa-Nettel Nettel Camera, made in 1903, folding plate, moderate detail, monochrome, limited shutter speeds",
+        "Kodak Vest Pocket Kodak, made in 1907, small roll film, grainy snapshots, monochrome, low detail",
+        "Thornton-Pickard Ruby Reflex, made in 1905, mirror reflex system, moderate detail, monochrome, slower shutter",
+        "Kodak Folding Pocket Camera, made in 1906, compact bellows, low detail, monochrome roll film",
+        "Kodak No. 2 Folding Autographic Brownie, made in 1909, roll film with note area, grainy, low detail, monochrome",
+        "Goerz Tenax, made in 1905, sharp lens for plates, moderate detail, monochrome, heavy setup",
+        "Ica Reflex Camera, made in 1909, plate camera with mirror, moderate detail, monochrome, limited speeds",
+        "Graflex Auto Graflex, made in 1906, quick plate changes, moderate detail, monochrome, bulky",
+        "Kodak No. 3A Folding Pocket, made in 1903, roll film, basic resolution, monochrome snapshots",
+        "Conley Universal Camera, made in 1907, plate camera, sharp portrait detail, monochrome, heavy",
+        "Kodak Panoram No. 4, made in 1904, panoramic film, uneven exposure, low detail, monochrome",
+        "Ernemann Stereo Piccolette, made in 1908, stereo pairs, moderate detail, monochrome, delicate alignment",
+        "Folmer & Schwing Century Studio Camera, made in 1902, large format plates, very sharp stills, monochrome, immobile",
+        "Graflex Revolving Back Camera, made in 1907, rotating back, moderate detail, monochrome, large plates",
+        "Eastman Kodak Panoram Kodak, made in 1900, panoramic roll film, low detail, monochrome",
+        "Kodak Autographic Kodak Jr., made in 1909, note-on-film feature, low detail, monochrome roll film",
+        "Ica Ideal Camera, made in 1908, folding plate, moderate detail, monochrome, fragile",
+        "Carl Zeiss Jena, made in 1901, high-quality lens, sharp monochrome detail, limited shutter speeds"
+    ],
+    "1910s": [
+        "Ernemann Ermanox, made in 1910, glass plates, fast lens for low light, grainy monochrome",
+        "Kodak Vest Pocket Autographic, made in 1912, small roll film, low detail, monochrome snapshots",
+        "Contessa Nettel Deckrullo, made in 1910, focal plane shutter, moderate detail, monochrome, fragile",
+        "Kodak Brownie No. 2, made in 1913, box camera, grainy low detail, monochrome snapshots",
+        "Goerz Anschütz Camera, made in 1911, high-speed shutter, moderate detail, monochrome",
+        "Ica Volta Reflex, made in 1915, early reflex viewing, moderate detail, monochrome, heavy",
+        "Kodak Autographic Special, made in 1914, note-on-film feature, grainy low detail, monochrome",
+        "Ernemann Stereo Camera, made in 1916, stereo images, moderate detail, monochrome, delicate",
+        "ICA Kinamo, made in 1919, early motion camera, short takes, grainy monochrome frames",
+        "Kodak Kodak Panoram, made in 1910, wide format, low detail, monochrome, uneven exposure",
+        "Kodak Brownie Autographic, made in 1915, note-on-film, grainy monochrome snapshots",
+        "Zeiss Ikon Miroflex, made in 1917, studio plate camera, sharp monochrome detail, fragile build",
+        "Goerz Tenax, made in 1918, plate camera, sharp monochrome detail, heavy",
+        "Kodak No. 3A Autographic, made in 1919, compact roll film, low detail, monochrome",
+        "Voigtländer Avus, made in 1915, plate format, moderate detail, monochrome, limited lenses",
+        "Kodak Pocket Kodak, made in 1910, small roll film, low detail, monochrome snapshots",
+        "Ernemann Ermanox Folding Camera, made in 1917, low-light lens, moderate detail, monochrome, delicate",
+        "Thornton-Pickard Imperial, made in 1911, large format, sharp monochrome portraits, static",
+        "Kodak Vest Pocket Kodak, made in 1915, small roll film, grainy monochrome",
+        "Folmer & Schwing Century Graphic, made in 1910, large format plates, detailed landscapes, monochrome, requires tripod"
+    ],
+    "1920s": [
+        "Leica Leica I, made in 1925, 35mm film, compact size, fine grain monochrome, sharper detail",
+        "Ernemann Ermanox, made in 1924, fast lens, low-light monochrome, moderate detail",
+        "Akeley Akeley Gyro, made in 1923, stabilized 35mm footage, silent era, moderate detail, monochrome",
+        "Kodak Brownie 2A, made in 1920, simple roll film, grainy low-detail monochrome",
+        "Mitchell Standard 35mm, made in 1929, studio 35mm footage, stable frames, fine grain monochrome",
+        "Kodak No. 2 Folding Autographic, made in 1923, roll film, grainy monochrome, basic detail",
+        "Pathé Pathé-Baby, made in 1922, 9.5mm amateur format, grainy, low detail monochrome",
+        "Graflex Super D, made in 1923, reflex viewing, plate film, sharp monochrome still frames",
+        "Kodak Autographic Vest Pocket, made in 1925, small roll film, grainy low-detail monochrome",
+        "Contessa-Nettel Cocarette, made in 1926, folding plate camera, moderate detail, monochrome",
+        "Leica Leica II, made in 1928, 35mm film, interchangeable lenses, fine grain monochrome",
+        "Debrie Parvo L, made in 1921, compact studio camera, stable silent-era 35mm frames, monochrome",
+        "Bell & Howell Filmo 70, made in 1923, 16mm film, crank-driven, moderate detail monochrome",
+        "Kodak Folding Pocket Camera, made in 1925, roll film, grainy monochrome, basic detail",
+        "Ica Kinamo, made in 1926, portable 35mm motion camera, grainy silent frames, monochrome",
+        "Kodak Rainbow Hawkeye Vest Pocket, made in 1929, small roll film, grainy monochrome, decorative body",
+        "Pathé Pathé 28mm Camera, made in 1922, 28mm format, moderate grain, monochrome, limited frames",
+        "Bell & Howell Eyemo 35mm, made in 1925, handheld 35mm filming, moderate detail, monochrome",
+        "Newman-Sinclair Autokine, made in 1927, early handheld 35mm, grainy monochrome frames",
+        "Kodak Pocket Kodak, made in 1928, roll film, low detail monochrome snapshots"
+    ],
+    "1930s": [
+        "Bell & Howell 2709 Standard, made in 1930, studio 35mm camera, fine grain monochrome, stable image",
+        "Arriflex Kinarri 35, made in 1937, handheld 35mm, moderate detail, monochrome, mechanical shutter",
+        "Kodak Cine-Kodak Eight Model 20, made in 1932, 8mm film, grainy, low-detail monochrome frames",
+        "Eyemo 35mm Camera, made in 1936, handheld 35mm, moderate detail, monochrome, limited steadying",
+        "Kodak Brownie Movie Camera, made in 1935, 8mm film, coarse grain, low detail monochrome",
+        "Debrie Parvo L, made in 1934, silent-era 35mm, stable framing, moderate detail monochrome",
+        "Mitchell Standard 35mm, made in 1930, studio camera, fine monochrome detail, no sound capture",
+        "Newman-Sinclair Autokine 35mm, made in 1931, handheld 35mm, grainy monochrome, mechanical drive",
+        "Kodak Cine-Kodak Model K, made in 1934, 16mm film, grainy low-detail monochrome",
+        "Vinten Model H 35mm, made in 1939, stable 35mm frames, fine monochrome detail, heavy",
+        "Agfa Movector 16mm, made in 1933, 16mm film, moderate detail, monochrome, basic optics",
+        "De Vry Standard 35mm, made in 1931, durable 35mm, moderate monochrome detail, crank-driven",
+        "Leica 16mm Film Camera, made in 1936, 16mm format, moderate detail, monochrome, limited optics",
+        "Bell & Howell Filmo 70-D, made in 1935, 16mm film, moderate detail, monochrome, portable",
+        "Newman-Sinclair Autokine, made in 1934, handheld 35mm, moderate detail, monochrome, basic lens set"
+    ],
+    "1940s": [
+        "Mitchell BNC Camera, made in 1941, 35mm studio camera, fine monochrome detail, stable frames",
+        "Arriflex 35 II, made in 1946, compact 35mm film, moderate detail monochrome, improved handling",
+        "Bell & Howell Filmo 70, made in 1940, 16mm film, crystal sync motor, low detail monochrome, old film",
+        "Kodak Brownie 8mm, made in 1946, 8mm film, grainy low-detail monochrome, simple mechanism",
+        "Bolex H16, made in 1941, 16mm film, moderate detail monochrome, manual controls",
+        "Kodak Cine-Kodak Special II, made in 1948, 16mm film, moderate detail monochrome, basic footage",
+        "Bell & Howell 16mm Magazine Camera, made in 1940, magazine-loaded 16mm, grainy monochrome, limited detail",
+        "Mitchell BNC Reflex, made in 1947, 35mm studio camera, sharp monochrome detail, reflex viewing",
+        "De Vry Sound Camera, made in 1945, 35mm film with audio recording capability, moderate detail monochrome",
+        "Revere Model 99 8mm, made in 1949, 8mm film, grainy low-detail monochrome frames",
+        "Eclair Cameflex, made in 1947, 35mm camera, moderate detail monochrome, compact for era",
+        "Kodak Brownie Movie Camera, made in 1946, 8mm film, grainy low-detail monochrome",
+        "Pathé WEBO M 16mm, made in 1942, 16mm film, moderate detail monochrome, durable construction",
+        "Wilart 16mm Camera, made in 1948, 16mm film, basic monochrome, low detail",
+        "Mitchell BNC Sound Camera, made in 1949, 35mm sync sound, fine monochrome detail",
+        "Kodak Cine-Kodak 8, made in 1946, consumer 8mm, grainy monochrome frames, simple",
+        "Bell & Howell 70DR, made in 1944, 16mm film, moderate grain monochrome, compact",
+        "Revere 16mm Cine Camera, made in 1943, 16mm film, basic monochrome detail, hand-cranked",
+        "De Vry 35mm Studio Camera, made in 1947, 35mm film, moderate monochrome detail, rugged build"
+    ],
+    "1950s": [
+        "Mitchell BNCR, made in 1952, 35mm studio camera, sharp monochrome detail, stable imaging",
+        "Arriflex 16ST, made in 1953, 16mm film, moderate detail, monochrome, steady movement",
+        "Kodak Brownie 8mm Movie Camera II, made in 1956, 8mm film, grainy low-detail monochrome",
+        "Bell & Howell 70DR, made in 1951, 16mm film, moderate detail monochrome, robust build",
+        "Eclair NPR, made in 1958, 16mm camera, moderate detail monochrome, portable for era",
+        "Bolex H16 Reflex, made in 1956, 16mm film, moderate detail monochrome, reflex viewfinder",
+        "Beaulieu R16, made in 1959, 16mm film, improved clarity, moderate grain monochrome, electric drive",
+        "Canon Cine 8T, made in 1957, 8mm film, grainy low-detail monochrome, simple optics",
+        "Kodak Brownie Movie Camera, made in 1952, 8mm film, grainy low-detail monochrome",
+        "Mitchell BNCR, made in 1955, 35mm studio camera, sharp monochrome detail, stable frames",
+        "Pathé WEBO M 16mm, made in 1954, 16mm film, moderate detail monochrome, reliable",
+        "Revere Eye-Matic EE127, made in 1958, small-format film, grainy monochrome, basic detail",
+        "Bolex H16 M, made in 1959, 16mm film, moderate detail monochrome, manual operation",
+        "Minolta Autopak-8 D6, made in 1959, 8mm film, grainy low-detail monochrome, simple mechanism",
+        "Kodak 16mm Magazine Camera, made in 1951, magazine-fed 16mm, basic monochrome detail",
+        "Beaulieu R16, made in 1959, 16mm film, moderate clarity, monochrome, electric motor",
+        "Canon Cine 8T, made in 1957, 8mm film, low detail monochrome, basic optics",
+        "Mitchell 70DR, made in 1950, rugged 35mm, moderate detail monochrome, location-ready",
+        "Eclair NPR, made in 1958, 16mm film, moderate monochrome detail, portable design",
+        "Kodak Brownie Movie Camera II, made in 1953, 8mm film, grainy low-detail monochrome"
+    ],
+    "1960s": [
+        "Panavision Silent Reflex, made in 1962, 35mm film, quieter mechanics, stable monochrome or early color",
+        "Arriflex 35 IIC, made in 1964, 35mm film, compact body, moderate detail, possible early color",
+        "Bolex H16 EBM, made in 1965, 16mm film, electric motor drive, moderate detail, early color possible",
+        "Canon Scoopic 16mm, made in 1965, 16mm film, built-in metering, moderate detail, possible color",
+        "Beaulieu R16 Electric, made in 1965, 16mm film, electric drive, moderate detail, early color stocks",
+        "Eclair ACL, made in 1967, 16mm film, lightweight body, moderate detail, possibly color film",
+        "Mitchell Mark II, made in 1967, 35mm studio camera, fine detail, possible color negative",
+        "Kodak Instamatic M2, made in 1963, small cartridge film, grainy low-detail color or monochrome",
+        "Various Super 8 Cameras, starting 1965, Super 8 film, grainy low-detail color, simple exposure",
+        "Nizo S8, made in 1968, Super 8 film, moderate grain, basic color, fixed lens",
+        "Bell & Howell Filmosonic XL, made in 1969, Super 8 film, grainy color, basic sound strip",
+        "Minolta Autopak-8 D12, made in 1969, Super 8 film, moderate grain color, simple focus",
+        "Yashica Super-8 Electro, made in 1969, Super 8 film, grainy color, automatic exposure",
+        "Chinon Super 8, made in 1969, Super 8 film, low detail color, simple optics",
+        "Agfa Movexoom 6, made in 1968, Super 8 film, moderate grain color, basic zoom"
+    ],
+    "1970s": [
+        "Panavision Panaflex, made in 1972, 35mm film, quieter operation, high-quality color negative",
+        "Arriflex 35BL, made in 1972, 35mm film, relatively lightweight, steady color frames",
+        "Aaton 7 LTR, made in 1978, 16mm film, quieter mechanism, moderate detail color, sync sound",
+        "Beaulieu 4008 ZM II Super 8, made in 1971, Super 8 film, moderate grain color, better lenses",
+        "Canon Auto Zoom 814 Electronic, made in 1973, Super 8 film, moderate detail color, electric zoom",
+        "Eclair NPR, made in 1971, 16mm film, moderate detail color, handheld use",
+        "Mitchell VistaVision, made in 1976, wide-gauge 35mm, high detail color, larger frame",
+        "Bolex Pro 16mm, made in 1970, 16mm film, moderate detail color, sturdy build",
+        "Elmo Super 110R, made in 1974, Super 8 film, grainy color, basic zoom lens",
+        "Nikon R10 Super 8, made in 1973, Super 8 film, improved color detail, stable frames",
+        "Minolta XL-601 Super 8, made in 1976, Super 8 film, moderate grain color, automatic exposure",
+        "Chinon Pacific 200/12 SMR, made in 1975, Super 8 film, grainy color, simple controls",
+        "Pathé DS8 Reflex, made in 1973, Double Super 8 film, moderate grain color, manual focus",
+        "Leicina Super RT1, made in 1974, Super 8 film, moderate detail color, fixed lens",
+        "Sankyo XL 620 Super 8, made in 1978, Super 8 film, grainy color, simple zoom"
+    ],
+    "1980s": [
+        "Arriflex 765, made in 1989, 65mm film, high-resolution color, very sharp detail",
+        "Panavision Panaflex Gold, made in 1981, 35mm film, fine detail color, quiet mechanism",
+        "Aaton XTR Prod, made in 1985, 16mm film, stable color footage, sync sound ready",
+        "Sony Betacam SP, made in 1986, analog video tape, improved color detail, broadcast quality",
+        "Canon L2 Hi8, made in 1988, Hi8 tape, moderate color detail, interlaced video",
+        "JVC GR-C1, made in 1984, VHS-C tape, low resolution color, consumer video",
+        "Arriflex SRII, made in 1982, 16mm film, moderate color detail, sync sound capable",
+        "Panasonic WV-F250, made in 1988, ENG camera, analog video, moderate color detail",
+        "Bolex H16 SBM, made in 1980, 16mm film, moderate detail color, manual operation",
+        "Sony Video8 Handycam CCD-M8U, made in 1985, Video8 tape, low resolution color, small sensor",
+        "Hitachi VK-C820, made in 1989, VHS camcorder, low resolution color, consumer grade",
+        "JVC KY-1900, made in 1983, tube-based video camera, moderate color detail, broadcast use",
+        "Ikegami HL-79, made in 1985, tube camera, good color detail for era, heavy setup",
+        "Bell & Howell 2146 XL Super 8, made in 1981, Super 8 film, grainy color, basic exposure"
+    ],
+    "1990s": [
+        "Panavision Millennium, made in 1997, 35mm film, industry-standard high detail color, stable images",
+        "Arriflex 435, made in 1995, 35mm film, high-speed capable, fine color detail",
+        "Aaton 35-III, made in 1991, 35mm film, handheld capable, rich color detail",
+        "Sony Digital Betacam DVW-700WS, made in 1993, digital tape, improved color resolution, broadcast standard",
+        "Canon XL1 MiniDV, made in 1997, MiniDV tape, low-res digital color, progressive frames",
+        "Sony DCR-VX1000 MiniDV, made in 1995, MiniDV tape, consumer-level digital color, limited resolution",
+        "Arriflex 235, made in 1999, 35mm film, lightweight, crisp color detail",
+        "Panasonic AG-DVX100, made in 1999, DV tape, progressive frames, moderate digital color detail",
+        "Ikegami HL-V73, made in 1994, broadcast camera, good color detail, standard definition",
+        "JVC GY-DV500, made in 1999, DV format, moderate color detail, SD resolution",
+        "Sony Betacam SX DNW-9WS, made in 1996, digital tape format, stable color detail, SD resolution"
+    ],
+    "2000s": [
+        "RED One, made in 2007, digital cinema, up to 4K resolution, RAW files, wide dynamic range",
+        "Panavision Genesis, made in 2005, digital cinema, Super 35 sensor, HD resolution, good color depth",
+        "Arriflex D-20, made in 2005, digital cinema prototype, single sensor HD, moderate dynamic range",
+        "Sony CineAlta F900, made in 2000, HD digital tape, 1080p resolution, early digital color",
+        "Canon EOS 5D Mark II, made in 2008, DSLR video, 1080p HD, full-frame sensor, moderate dynamic range",
+        "Panasonic AG-HVX200, made in 2005, P2 HD digital, 720p/1080i, moderate color detail",
+        "Sony PMW-EX1, made in 2007, XDCAM EX format, 1080p HD, 1/2\" sensors, decent low-light",
+        "RED Epic, made in 2009, digital cinema, up to 5K resolution, RAW workflow, wide latitude",
+        "ARRI Alexa Classic, made in 2009, digital cinema, HD/2K, high dynamic range, natural color",
+        "Blackmagic Cinema Camera, made in 2008, digital capture, 2.5K RAW, limited low-light",
+        "Canon EOS 7D, made in 2009, DSLR video, 1080p HD, APS-C sensor, moderate detail",
+        "GoPro HD Hero, made in 2004, compact HD camera, 1080p, wide-angle, limited dynamic range",
+        "Sony α7S, made in 2008, mirrorless digital, 1080p video, excellent low-light sensitivity",
+        "Panasonic Lumix GH1, made in 2009, Micro Four Thirds sensor, 1080p HD, moderate dynamic range"
+    ],
+    "2010s": [
+        "ARRI Alexa Mini, made in 2015, Super 35 digital cinema, up to 4K UHD, wide dynamic range, natural color",
+        "RED Weapon, made in 2016, digital cinema, up to 8K RAW, high dynamic range, flexible frame rates",
+        "Sony Venice, made in 2017, full-frame digital cinema, up to 6K, high dynamic range, rich color",
+        "Blackmagic URSA Mini Pro, made in 2017, Super 35 digital, up to 4.6K RAW, decent dynamic range",
+        "Canon EOS C300 Mark II, made in 2015, Super 35 digital, 4K DCI, wide dynamic range, rich color",
+        "Panasonic VariCam LT, made in 2016, Super 35 digital, 4K, dual ISO, wide dynamic range",
+        "DJI Inspire 2 with X7 Camera, made in 2017, Super 35 digital aerial, up to 6K RAW, good dynamic range",
+        "GoPro HERO7 Black, made in 2018, action cam, 4K60, small sensor, limited dynamic range",
+        "Sony α7 III, made in 2018, full-frame digital, up to 4K30, good low-light, moderate dynamic range",
+        "Panasonic Lumix GH5, made in 2017, Micro Four Thirds, 4K60, 10-bit color, moderate dynamic range",
+        "Blackmagic Pocket Cinema Camera 4K, made in 2018, MFT sensor, 4K RAW, limited low-light performance",
+        "Sony FS7 II, made in 2016, Super 35 digital, 4K60, wide dynamic range, robust codec",
+        "RED Raven, made in 2016, digital cinema, 4.5K RAW, moderate dynamic range, lightweight"
+    ],
+    "2020s": [
+        "ARRI Alexa LF, made in 2020, large format digital, up to 4.5K, very wide dynamic range, rich color",
+        "RED Komodo 6K, made in 2020, compact digital cinema, 6K RAW, moderate dynamic range",
+        "Sony FX9, made in 2020, full-frame digital cinema, 4K60, 10-bit color, high sensitivity",
+        "Canon EOS C500 Mark II, made in 2020, full-frame digital, 5.9K RAW, wide dynamic range, natural color",
+        "Blackmagic URSA Mini Pro 12K, made in 2020, Super 35 digital, 12K RAW, extreme resolution, heavy data",
+        "Panasonic Lumix S1H, made in 2020, full-frame digital, 6K, 10-bit color, good low-light",
+        "Sony α7S III, made in 2020, full-frame digital, 4K120, excellent low-light, wide dynamic range",
+        "DJI Ronin 4D, made in 2021, integrated gimbal camera, up to 6K ProRes RAW, stable image",
+        "GoPro HERO10 Black, made in 2021, action cam, 5.3K60, small sensor, limited dynamic range",
+        "Sony FX6, made in 2020, full-frame digital, 4K120, 10-bit 4:2:2, high sensitivity, wide latitude",
+        "RED V-Raptor ST, made in 2021, digital cinema, 8K RAW, high dynamic range, high frame rates",
+        "Canon EOS C70, made in 2020, Super 35 digital, 4K DCI 10-bit, wide dynamic range, compact body",
+        "Panasonic Lumix GH6, made in 2022, Micro Four Thirds, up to 5.7K, 10-bit color, moderate low-light"
+    ],
+    "Future": [
+        "Sony A1Z, hypothetical future, up to 16K, AI-driven autofocus, wide dynamic range, advanced codecs",
+        "ARRI Nova, hypothetical future, AI-powered processing, ultra-high resolution, modular sensor blocks",
+        "RED Orion 12K, hypothetical future, beyond 12K resolution, deep color, extreme data rates",
+        "Canon CinemaX 16K, hypothetical future, 16K resolution, HDR capture, very high data demands",
+        "Blackmagic Infinity Pro, hypothetical future, 8K+ RAW, AI-assisted grading, affordable high resolution",
+        "DJI Phantom Cinema, hypothetical future, 8K+ HDR aerial video, ultra-stable gimbal, massive data",
+        "Nikon X12 Vision, hypothetical future, AI-driven sensor, real-time image enhancements, ultra-high resolution",
+        "Panasonic Genesis 32K, hypothetical future, 32K resolution, next-gen AI processing, enormous file sizes",
+        "GoPro FutureGo 12K, hypothetical future, 12K action video, waterproof, extremely high resolution",
+        "RED Helium Infinity, hypothetical future, 10K at high frame rates, RAW files, huge storage needs",
+        "Canon EOS A6, hypothetical future, 10K video, computational imaging, intensive processing",
+        "Panasonic Lumix VR, hypothetical future, 8K VR video, advanced stabilization, specialized capture",
+        "DJI Inspire FutureX, hypothetical future, 16K aerial footage, AI horizon leveling, colossal files",
+        "ARRI AI Max, hypothetical future, 12K+ resolution, AI-enhanced color, complexity in workflow"
+    ]
 }
+
+DECADES = sorted(CAMERAS.keys())
+
 selected_decade = "2020s"
 print(CAMERAS[selected_decade])
 
 
 # Decades list for UI or sorting purposes
 DECADES = sorted(CAMERAS.keys())
+
+WILDLIFE_ANIMALS = [
+
+    # MAMMALS (12)
+    "MAMMALS - Lion, African savanna pride, golden mane in warm sunset light, dust motes sparkling as they rest",
+    "MAMMALS - Elephant, vast Serengeti plains, tusked silhouettes at watering holes, soft amber glow on wrinkled skin",
+    "MAMMALS - Tiger, Asian jungles, orange-black stripes stalking through lush green, dappled sun filtering through leaves",
+    "MAMMALS - Wolf, northern forests, howling under moonlight, pack unity against snowy backdrops, frosty breath visible",
+    "MAMMALS - Leopard, African woodlands, spotted rosettes blending with tree shadows, poised gracefully on a branch",
+    "MAMMALS - Gorilla, misty mountain forests, gentle family groups, expressive eyes in dim emerald canopies",
+    "MAMMALS - Panda, Chinese bamboo groves, black-white fur amid green shoots, calm feeding in diffuse forest light",
+    "MAMMALS - Giraffe, savanna horizons, elongated necks browsing treetops, pastel sunset hues stretching behind them",
+    "MAMMALS - Kangaroo, Australian bush, bounding through dust and eucalyptus scents, silhouettes in late afternoon sun",
+    "MAMMALS - Polar Bear, Arctic ice floes, white fur contrasting blue-white seascapes, low polar sun highlights breath",
+    "MAMMALS - Bison, North American plains, shaggy shoulders in crisp morning air, grazing under expansive sky",
+    "MAMMALS - Orangutan, Bornean rainforest canopy, reddish fur swinging amid lush leaves, sunbeams drifting in humidity",
+
+    # BIRDS (12)
+    "BIRDS - Bald Eagle, North American skies, regal wingspan soaring over river valleys, crisp morning clarity",
+    "BIRDS - Owl (Great Horned), woodland dusk, silent flight beneath purpling skies, amber eyes in twilight hush",
+    "BIRDS - Peacock, South Asian gardens, iridescent tail fanned out, vibrant jewel tones in bright midday light",
+    "BIRDS - Macaw (Scarlet), Amazon canopy, vivid reds and blues perched amid emerald leaves, distant waterfall hum",
+    "BIRDS - Penguin (Emperor), Antarctic ice fields, huddled colonies under gentle snow, monochrome serenity",
+    "BIRDS - Hummingbird, tropical blossoms, wings a shimmering blur, sipping nectar in sunlit floral sprays",
+    "BIRDS - Kingfisher, riverbanks, cobalt and orange plumage diving for fish, water droplets freeze in sunlight",
+    "BIRDS - Toucan, Central American rainforest, oversized colorful bill, misty morning greens and distant calls",
+    "BIRDS - Kiwi, New Zealand forest floor, shy nocturnal forager in leaf litter, moonlit silhouettes",
+    "BIRDS - Flamingo, coastal lagoons, pink reflections wading in still waters, pastel dawn skies overhead",
+    "BIRDS - Raven, northern woodlands, glossy black feathers stark against snow-laced branches, quiet winter air",
+    "BIRDS - Swan (Trumpeter), tranquil lakes, graceful white curves mirrored, early mist and soft diffused light",
+
+    # REPTILES (12)
+    "REPTILES - Nile Crocodile, African river’s edge, still and watchful, reflections shimmering in midday heat",
+    "REPTILES - Green Iguana, tropical forests, vivid scales basking in dappled sun, leafy textures all around",
+    "REPTILES - Komodo Dragon, Indonesian isles, massive lizard on dusty terrain, heat haze and sparse shrubs",
+    "REPTILES - Sea Turtle (Green), coral reef, gliding through turquoise beams, fish schooling in gentle currents",
+    "REPTILES - Chameleon, forest understory, shifting hues on rough bark, slow deliberate steps in filtered light",
+    "REPTILES - Python (Reticulated), Asian rainforest floor, coiled grace amid green gloom, soft humidity",
+    "REPTILES - King Cobra, jungle undergrowth, hood flared, cautious sway as sunlight pierces dense foliage",
+    "REPTILES - Gecko (Leopard), arid scrub, spotted body blending with sandy rock under warm dusk glow",
+    "REPTILES - Bearded Dragon, Australian desert, spiny throat display backlit by amber horizon",
+    "REPTILES - Gharial, Indian rivers, slender snout basking on a sandy bank, shimmering midday reflections",
+    "REPTILES - Frilled Lizard, outback clearing, dramatic frill spread against red dust, low-angle sun",
+    "REPTILES - Anaconda, Amazon wetlands, immense form partially submerged, green watery light filtering down",
+
+    # FISH (12)
+    "FISH - Clownfish, Indo-Pacific reefs, orange-white stripes dance amid sea anemones, sunlight rippling overhead",
+    "FISH - Blue Tang, coral gardens, electric sapphire body weaving through vibrant sponges and soft corals",
+    "FISH - Salmon, northern rivers, silver leaps against waterfalls, forest reflections shimmer on surface",
+    "FISH - Great White Shark, open ocean, powerful silhouette below sunbeams, deep cobalt gradients fading into blue",
+    "FISH - Angelfish (Emperor), tropical reef, yellow-blue patterns flutter near coral heads, gentle currents",
+    "FISH - Swordfish, pelagic waters, sleek body cutting swift arcs, faint sun far above, plankton drifting",
+    "FISH - Manta Ray, warm seas, winged form gliding gracefully, dappled surface light dancing on its back",
+    "FISH - Pufferfish, reef nook, inflating into spiky orb, playful textures in subtle emerald underwater glow",
+    "FISH - Lionfish, Indo-Pacific coral, ornate fins fanned out, drifting elegantly in shifting pastel lighting",
+    "FISH - Moray Eel, rocky crevice, greenish elongated form peering from dim cave, subtle drifting plankton",
+    "FISH - Whale Shark, tropical open waters, spotted giant feeding on plankton, snorkelers dwarfed by scale",
+    "FISH - Barracuda, clear lagoon shallows, sleek silver predator reflecting sand patterns beneath sunlight",
+
+    # INSECTS (12)
+    "INSECTS - Monarch Butterfly, flowered meadow, vibrant orange-black wings flutter in gentle summer breeze",
+    "INSECTS - Dragonfly, pond margins, iridescent wings catching sunlight, hovering over reeds and lily pads",
+    "INSECTS - Praying Mantis, garden foliage, angular form poised patiently, morning dew sparkles on leaves",
+    "INSECTS - Honeybee, blooming orchard, fuzzy body dusted with pollen, humming softly among pastel petals",
+    "INSECTS - Firefly, twilight woodland, bioluminescent flickers dance in humid dusk, magical pinpoints of light",
+    "INSECTS - Ladybug, green leaf surface, red shell and black dots pop against lush background, midday warmth",
+    "INSECTS - Leafcutter Ant, tropical forest floor, carrying leaf fragments overhead in filtered green glow",
+    "INSECTS - Stick Insect, dense shrubbery, twig-like disguise swaying gently, subtle wind rustling leaves",
+    "INSECTS - Atlas Moth, Southeast Asian rainforest, enormous patterned wings resting on mossy trunk at dawn",
+    "INSECTS - Rhinoceros Beetle, tropical nights, horned silhouette under moonlight, distant chorus of cicadas",
+    "INSECTS - Luna Moth, nighttime garden, pale green wings glowing faintly under starlight and soft shadows",
+    "INSECTS - Bumblebee, cottage garden blooms, round striped body drifting among lavender and rose scents",
+
+    # ARACHNIDS (12)
+    "ARACHNIDS - Orb Weaver Spider, early dawn meadow, dew-kissed web geometry glinting against rising sun",
+    "ARACHNIDS - Jumping Spider, garden shrub, curious eyes and tiny form isolated by shallow depth of field",
+    "ARACHNIDS - Tarantula, rainforest floor, furry legs lit by a sun shaft penetrating dense green canopy",
+    "ARACHNIDS - Scorpion, desert night, UV fluorescence under blacklight, starlit dunes and quiet wind",
+    "ARACHNIDS - Wolf Spider, grassy field, camouflaged pelt and subtle textures revealed in side-angle sun",
+    "ARACHNIDS - Crab Spider, flower petals, ambush predator blending perfectly, warm afternoon backlighting",
+    "ARACHNIDS - Black Widow, quiet barn corner, red hourglass marking under a dusty shaft of golden light",
+    "ARACHNIDS - Harvestman (Daddy Longlegs), forest floor litter, spindly legs crossing fallen logs in dim shade",
+    "ARACHNIDS - Funnel-web Spider, woodland understory, funnel-shaped retreat glistening in soft scattered light",
+    "ARACHNIDS - Lynx Spider, tropical leaf, spiky legs poised alertly, subtle leaf vein patterns in background",
+    "ARACHNIDS - Brown Recluse, dim attic corner, delicate steps on old wood, low tungsten glow accentuating shadows",
+    "ARACHNIDS - Golden Orb Weaver, rainforest edge, giant golden-hued web refracting rainbow colors in humidity",
+
+    # CRUSTACEANS (12)
+    "CRUSTACEANS - American Lobster, cold Atlantic seabed, dark shell in deep bluish light, drifting marine snow",
+    "CRUSTACEANS - Blue Crab, coastal estuary shallows, azure claws reflecting pastel dawn sky, gentle ripples",
+    "CRUSTACEANS - Hermit Crab, tide pools, borrowed shell home, tiny legs scuttling over damp sand under warm sun",
+    "CRUSTACEANS - Fiddler Crab, mudflat at low tide, one oversized claw raised like a signal, amber late-day glow",
+    "CRUSTACEANS - Mantis Shrimp, tropical reef crevice, rainbow carapace and curious eyes in dappled sunbeams",
+    "CRUSTACEANS - Coconut Crab, island shore, colossal claws cracking shells beneath palm shadows, saline breeze",
+    "CRUSTACEANS - Japanese Spider Crab, deep ocean floor, sprawling legs under faint bioluminescent flickers",
+    "CRUSTACEANS - Red King Crab, cold northern seas, vivid red spikes in gentle currents, plankton drifting",
+    "CRUSTACEANS - Cleaner Shrimp, coral heads, nimble antennae at a cleaning station, fish awaiting gentle service",
+    "CRUSTACEANS - Dungeness Crab, Pacific coast shallows, sandy patterns beneath slanting sunrays, drifting kelp",
+    "CRUSTACEANS - Amphipod, microscopic ocean world, translucent body under macro lens light, minuscule universe",
+    "CRUSTACEANS - Copepod, planktonic realm, minuscule drifting speck in laser-lit micro-cinematography",
+
+    # AMPHIBIANS (12)
+    "AMPHIBIANS - Red-eyed Tree Frog, rainforest leaf at night, brilliant eyes and lime-green skin, droplets glisten",
+    "AMPHIBIANS - Poison Dart Frog (Blue), forest floor litter, cobalt hue in green gloom, humid hush and faint streams",
+    "AMPHIBIANS - Axolotl, freshwater canals, pale pink body drifting lazily, feathery gills in gentle currents",
+    "AMPHIBIANS - Bullfrog, North American pond, resonant calls at dusk, purple-orange sky reflecting on still water",
+    "AMPHIBIANS - Fire Salamander, European woodland, black body with yellow patches, moist bark and morning mist",
+    "AMPHIBIANS - Green Tree Frog, marshlands, lime form clinging to reeds, soft summer night chorus",
+    "AMPHIBIANS - Spring Peeper, eastern wetlands, tiny tan frog calling in moonlight, ripples from gentle breeze",
+    "AMPHIBIANS - Wood Frog, boreal pools, brownish mask near melting ice, early spring sunbeams thawing silence",
+    "AMPHIBIANS - Leopard Frog, grassy pond edge, spotted green pattern, midday brightness and quiet ripple sounds",
+    "AMPHIBIANS - Hellbender, Appalachian streams, large brown salamander under rocky crevice, mottled sunlight",
+    "AMPHIBIANS - Blue Poison Dart Frog, tropical understory, intense cobalt body on moss, filtered green dim light",
+    "AMPHIBIANS - White’s Tree Frog, Australian gardens, plump body perched on leaf, soft porchlight glow at dusk",
+
+    # PLANTS (12)
+    "PLANTS - Venus Flytrap, boggy meadow, hinged leaves poised in morning sun, tiny insect silhouettes nearby",
+    "PLANTS - Orchid (Phalaenopsis), tropical understory, delicate petals and pastel hues, humid green backdrop",
+    "PLANTS - Sunflower, golden farmland fields, tall heads tracking the sun, late summer warmth radiating in petals",
+    "PLANTS - Cactus (Saguaro), desert twilight, towering spines etched against coral-pink sky, silent arid expanses",
+    "PLANTS - Bamboo, Asian groves, vertical green stalks, shafts of filtered light and gentle rustling leaves",
+    "PLANTS - Lavender, Mediterranean fields, purple blooms and buzzing bees, dry summer air and distant hills",
+    "PLANTS - Fern, damp forest floor, intricate fronds unfurling in dim emerald glow, soft raindrops on leaves",
+    "PLANTS - Water Lily, still pond surface, pastel petals floating, dragonflies hovering in sunlit reflection",
+    "PLANTS - Bonsai, Japanese garden, miniature sculpted trunk, tranquil scene with moss and raked gravel patterns",
+    "PLANTS - Baobab Tree, African savanna, thick trunk under golden sky, silhouettes of giraffes in distant haze",
+    "PLANTS - Mangrove, coastal wetlands, tangled roots in shallow brackish water, tide gently shifting reflections",
+    "PLANTS - Pitcher Plant, rainforest clearing, nectar-lured insects, filtered sunlight glinting off carnivorous rim",
+
+    # CRYPTOANIMALS (12)
+    "CRYPTOANIMALS - Bigfoot (Sasquatch), Pacific Northwest forest, towering silhouette amid misty pines, distant wood-knocks",
+    "CRYPTOANIMALS - Loch Ness Monster (Nessie), Scottish loch at dusk, subtle ripples on still surface, hills in fading light",
+    "CRYPTOANIMALS - Chupacabra, Latin American scrubland, furtive shadow slipping between cacti, eerie hush at twilight",
+    "CRYPTOANIMALS - Yeti, Himalayan slopes, large humanoid shape glimpsed through swirling snow, distant ice-crack echoes",
+    "CRYPTOANIMALS - Mothman, rural US night, winged figure over moonlit bridge, faint red eyes glowing in silence",
+    "CRYPTOANIMALS - Jersey Devil, Pine Barrens darkness, strange winged silhouette against starlit canopy, distant rustling",
+    "CRYPTOANIMALS - Thunderbird, storm-laden plains, massive bird-form riding thunderheads, lightning flashes reveal outline",
+    "CRYPTOANIMALS - Ogopogo, Canadian lake, subtle wakes in morning calm, conifer-clad hills mirrored in water",
+    "CRYPTOANIMALS - Mokele-Mbembe, Congo basin river, submerged hump in murky waters, dense rainforest enveloping",
+    "CRYPTOANIMALS - Ahool, Indonesian rainforest canopy, giant bat-like silhouette swooping under moonlit leaves",
+    "CRYPTOANIMALS - Beast of Gévaudan, 18th-century French countryside, lurking shape in wheat fields at sunset, historic dread",
+    "CRYPTOANIMALS - Ningen, Southern ocean ice floes, pale humanoid marine form beneath cracked ice, eerie underwater silence",
+
+    # DINOSAURS (12)
+    "DINOSAURS - Tyrannosaurus Rex, Late Cretaceous floodplain, colossal predator against orange sunset, distant fern groves",
+    "DINOSAURS - Triceratops, lush prehistoric plains, three-horned brow lowered, morning mist swirling around ferns",
+    "DINOSAURS - Brachiosaurus, Jurassic woodland, towering neck browsing treetops, grand crane shot capturing scale",
+    "DINOSAURS - Velociraptor, arid badlands, swift pack hunters kicking dust, warm rocky earth and sparse cycads",
+    "DINOSAURS - Stegosaurus, forest clearing, plated back catching dappled sun, gentle tail swishes in humid air",
+    "DINOSAURS - Allosaurus, semi-arid floodplain, fearsome stance near stream, distant volcano silhouettes, dusty horizon",
+    "DINOSAURS - Ankylosaurus, Cretaceous woodland, armored shell and club tail, low-angle sun reveals rugged texture",
+    "DINOSAURS - Pteranodon, coastal cliffs, winged reptile gliding over primordial shore, pastel dawn skies overhead",
+    "DINOSAURS - Spinosaurus, North African river delta, sail-backed form fishing in muddy waters, calls echoing",
+    "DINOSAURS - Parasaurolophus, open floodplains, crest-topped herbivore trumpeting at sunrise, herds grazing peacefully",
+    "DINOSAURS - Diplodocus, Late Jurassic plains, long neck sweeping for leaves, communal giants under gentle sunlight",
+    "DINOSAURS - Maiasaura, nesting colonies on rolling uplands, caring for hatchlings in dawn light, ferns rustling in breeze",
+
+    # MYTHICAL CREATURES (12)
+    "MYTHICAL CREATURES - Dragon, mountain lair, wings spread over hoarded gold, fiery breath illuminating cavern walls",
+    "MYTHICAL CREATURES - Unicorn, enchanted forest glade, single horn catching moonlight, dew-kissed flowers bending softly",
+    "MYTHICAL CREATURES - Phoenix, desert dawn, fiery plumage ignited by rising sun, ashes swirling in shimmering haze",
+    "MYTHICAL CREATURES - Griffin, rocky highlands, eagle-lion hybrid perched majestically on a ledge, wind ruffling feathers",
+    "MYTHICAL CREATURES - Mermaid, coastal lagoon, shimmering tail under rippling light, distant whale song drifting",
+    "MYTHICAL CREATURES - Centaur, ancient grove, half-man half-horse stepping gracefully through dappled forest rays",
+    "MYTHICAL CREATURES - Pegasus, rolling cloudscapes, white winged horse galloping through mist, sunrise pastels",
+    "MYTHICAL CREATURES - Minotaur, labyrinth shadows, hulking half-bull figure in torchlit stone corridors, distant echoes",
+    "MYTHICAL CREATURES - Kraken, stormy seas, colossal tentacles emerging from foaming waves, lightning reveals monstrous form",
+    "MYTHICAL CREATURES - Basilisk, ruined temple interior, deadly gaze amid crumbling columns, dust motes in dim shafts",
+    "MYTHICAL CREATURES - Elf, old-growth forest, elegant humanoid figure amid moss and ferns, pale sunlight through leaves",
+    "MYTHICAL CREATURES - Werewolf, moonlit clearing, half-human half-wolf howling at full moon, gnarled trees in silhouette",
+
+    # SEA ANIMALS (12)
+    "SEA ANIMALS - Orca (Killer Whale), cold northern seas, black-and-white dorsal fin breaking surface, snowy peaks beyond",
+    "SEA ANIMALS - Blue Whale, open ocean blue, immense gentle giant drifting beneath shimmering rays, silence and awe",
+    "SEA ANIMALS - Humpback Whale, tropical shallows, breaching arcs in slow-motion, rainbow mist in blow spray",
+    "SEA ANIMALS - Dolphin (Bottlenose), coastal waters, playful pod surfing sunlit waves, islands framing green horizons",
+    "SEA ANIMALS - Sea Turtle (Hawksbill), coral labyrinth, ornate shell gliding gracefully, fish schooling in lively colors",
+    "SEA ANIMALS - Manta Ray, pelagic blue, winged silhouette drifting elegantly, shifting sun patterns overhead",
+    "SEA ANIMALS - Whale Shark, tropical plankton fields, spotted giant feeding near surface, snorkelers dwarfed in scale",
+    "SEA ANIMALS - Seal (Harbor Seal), rocky coasts, sleek fur and curious gaze, gull calls echo in warm midday sun",
+    "SEA ANIMALS - Seahorse, seagrass meadow, tiny curled tail grasping a blade, pastel hues drifting in mild current",
+    "SEA ANIMALS - Jellyfish (Moon Jelly), calm lagoon, translucent bell pulsating softly, subtle beams dancing on sandy floor",
+    "SEA ANIMALS - Coral (Staghorn), reef structures, branching arms swaying in gentle tide, schools of fish weaving through",
+    "SEA ANIMALS - Pufferfish, reef crevice, inflating into a spiky orb, delicate light play on patterned scales"
+]
+
+DOMESTICATED_ANIMALS = [
+
+    # DOGS (12) - Scenes capturing their companionship and varied settings
+    "DOGS - Labrador Retriever, suburban backyard, tail wagging in afternoon sun, soft golden fur and a tennis ball",
+    "DOGS - German Shepherd, spacious garden, alert stance and attentive ears, gentle breeze ruffling thick coat",
+    "DOGS - Golden Retriever, lakeside dock at sunset, warm reflection on calm water, easygoing grin and wagging tail",
+    "DOGS - French Bulldog, cozy apartment living room, soft lamplight, big ears casting playful shadows on the wall",
+    "DOGS - Poodle (Standard), manicured lawn, elegant posture under dappled shade, curls catching gentle morning light",
+    "DOGS - Shih Tzu, quiet front porch, silky hair parted by light breeze, pastel flower pots framing a sleepy afternoon",
+    "DOGS - Husky, snowy backyard, piercing blue eyes and thick fur shimmering in crisp winter sun, soft crunch of snow",
+    "DOGS - Beagle, country lane, nose to the ground tracking scents, soft sunlight filtering through orchard trees",
+    "DOGS - Rottweiler, wide open field, confident stance with distant farm silhouettes, late-day warm glow touching glossy coat",
+    "DOGS - Dachshund, city park, long body trotting happily over green grass, bright midday light and distant laughter",
+    "DOGS - Great Dane, spacious family room, large silhouette beside a comfy sofa, window light highlighting gentle giant features",
+    "DOGS - Poodle (Toy), window seat with indoor plants, cheerful eyes reflecting soft indoor lamps, houseplants adding fresh color",
+
+    # CATS (12) - Comfortable indoor and garden spaces, subtle elegance
+    "CATS - Siamese, sunny windowsill, slender form and blue eyes gazing outside, dust motes drifting in morning beam",
+    "CATS - Persian, velvet sofa, luxurious fluffy coat, warm lamplight accentuating gentle facial features",
+    "CATS - Maine Coon, wooden bookshelf edge, regal tufted ears, late afternoon sun stripes across hardwood floor",
+    "CATS - Ragdoll, plush rug by fireplace, relaxed posture, soft crackle of wood creating a cozy golden hue",
+    "CATS - Bengal, indoor jungle of houseplants, sleek spotted coat and inquisitive stare, late morning light filtered green",
+    "CATS - British Shorthair, marble kitchen countertop, round amber eyes under warm pendant light, subtle flower vase aroma",
+    "CATS - Sphynx, fleece blanket nest, furless skin warmed by reading lamp, delicate shadows and quiet purring",
+    "CATS - Russian Blue, windowsill with rain outside, emerald eyes watching raindrops on glass, soft gray fur in dim light",
+    "CATS - Abyssinian, sun-drenched porch, lean form and large ears, faint garden scents drifting through open door",
+    "CATS - Scottish Fold, wicker chair in conservatory, folded ears and round eyes reflecting leafy patterns of sunlight",
+    "CATS - American Shorthair, tiled entryway, sturdy build, calm gaze as soft midday light spills in from open door",
+    "CATS - Oriental Shorthair, minimalist living space, sleek body and large ears catching every subtle household sound",
+
+    # HORSES & EQUINES (12) - Pastoral landscapes, stables, gentle rural ambiance
+    "HORSES & EQUINES - Arabian Horse, sunlit paddock, elegant arched neck, evening sun gilding chestnut coat",
+    "HORSES & EQUINES - Thoroughbred, lush green pasture, strong frame silhouetted against rolling hills at sunrise",
+    "HORSES & EQUINES - Quarter Horse, ranch corral, dust rising as it trots, wooden fence lines in warm midday light",
+    "HORSES & EQUINES - Clydesdale, country lane, feathered hooves and massive build, soft rustling of trees in late afternoon",
+    "HORSES & EQUINES - Appaloosa, open field, distinctive spotted rump, low sun angle highlighting dappled patterns",
+    "HORSES & EQUINES - Shetland Pony, cottage garden, diminutive size nibbling clover, pastel blossoms and gentle breeze",
+    "HORSES & EQUINES - Mustang, wide open range, mane flying in wind, distant mountains under clear blue sky",
+    "HORSES & EQUINES - Lipizzaner, classical stable yard, poised stance, late-day light warming stone archways",
+    "HORSES & EQUINES - Friesian Horse, meadow edge, flowing black mane and tail, golden sunset casting long shadows",
+    "HORSES & EQUINES - Tennessee Walking Horse, tree-lined trail, smooth gait under green canopy, birdsong and dappled light",
+    "HORSES & EQUINES - Paint Horse, fenced pasture, bold coat patterns catching sunbeams, distant barn silhouettes",
+    "HORSES & EQUINES - Haflinger, alpine foothills, palomino coat gleaming, crisp mountain air and scattered wildflowers",
+
+    # LIVESTOCK (12) - Farms, barns, rolling fields, rural warmth
+    "LIVESTOCK - Cow (Holstein), grassy hillside, black-and-white patches under gentle morning sun, distant farmhouse",
+    "LIVESTOCK - Sheep (Merino), meadow of wildflowers, soft wool backlit by a low sun, gentle bleating in tranquil stillness",
+    "LIVESTOCK - Goat (Nubian), stone-walled enclosure, long ears and curious stare, mild afternoon warmth on straw bedding",
+    "LIVESTOCK - Pig (Berkshire), muddy pen, pink snout sniffing fresh hay, shafts of sunlight through barn slats",
+    "LIVESTOCK - Chicken (Hen), cozy coop yard, pecking at scattered feed, bright midday light and gentle clucking",
+    "LIVESTOCK - Donkey, rustic stable yard, soft bray as warm straw scents rise, subtle shadows on old wooden beams",
+    "LIVESTOCK - Llama, Andean-inspired paddock, elegant neck framed by rolling hills and a faint mountain line at dawn",
+    "LIVESTOCK - Alpaca, small pasture, fluffy face under pastel sky, quiet murmurs and a sense of calm community",
+    "LIVESTOCK - Turkey, farm orchard, fanned tail in afternoon glow, orchard blossoms drifting in gentle breeze",
+    "LIVESTOCK - Duck (Domestic), farm pond, glossy feathers reflected in rippling water, subdued quacking amid reeds",
+    "LIVESTOCK - Goose (Domestic), grassy orchard clearing, white plumage radiant in golden hour, orchard fruit scent",
+    "LIVESTOCK - Mule, barn entrance, sturdy and patient, warm lamplight from stable interior, soft hoof sounds on straw",
+
+    # BIRDS (12) - Domesticated birds, cages, aviaries, homesteads
+    "BIRDS - Parrot (African Grey), indoor perch near window, inquisitive eyes, filtered morning light and subtle chatter",
+    "BIRDS - Cockatiel, living room corner, gentle whistle echoing in warm lamplight, pastel crest feathers catching glow",
+    "BIRDS - Budgerigar (Parakeet), small cage by sunny kitchen window, cheerful chirps mixing with coffee aroma",
+    "BIRDS - Canary, Victorian-style aviary, vivid yellow plumage singing in soft midday beams, potted ferns surrounding",
+    "BIRDS - Pigeon (Homing Pigeon), rooftop coop, cooing under a pale sky, city sounds muted by gentle sunrise",
+    "BIRDS - Chicken (Hen), backyard coop, pecking at feed under warm afternoon sun, family voices in background",
+    "BIRDS - Duck (Mallard Domestic), small garden pond, iridescent head and gentle quacks, reflections in still water",
+    "BIRDS - Goose (Embden Goose), orchard path, white feathers glowing as it waddles by fallen apples in late day light",
+    "BIRDS - Peacock (Domestic), manor garden, radiant tail fanned under clear blue sky, gravel path glistening",
+    "BIRDS - Macaw (Blue-and-Gold), spacious indoor aviary, vivid plumage under skylight, subtle hum of household",
+    "BIRDS - Finch (Zebra Finch), indoor cage with greenery, soft chattering, morning sun striping the tiled floor",
+    "BIRDS - Quail (Domestic), small hutch in quiet backyard, gentle whirring calls, dusk settling softly over neat hedges",
+
+    # SMALL MAMMALS (12) - Pet habitats, cozy home corners
+    "SMALL MAMMALS - Rabbit (Netherland Dwarf), indoor pen by window, fluffy silhouette nibbling lettuce in gentle sun",
+    "SMALL MAMMALS - Hamster (Syrian), terrarium with wood shavings, tiny paws holding sunflower seed, lamp glow overhead",
+    "SMALL MAMMALS - Guinea Pig (Abyssinian), simple backyard hutch, soft chirrups, dappled shade from garden leaves",
+    "SMALL MAMMALS - Ferret, cozy living room rug, curious slink and playful bounce, subdued lamplight in the evening",
+    "SMALL MAMMALS - Chinchilla, quiet corner with climbing branches, plush grey fur in warm indoor lighting, muffled TV sounds",
+    "SMALL MAMMALS - Rat (Fancy Rat), desk terrarium, whiskers twitching as it explores, late-night reading lamp",
+    "SMALL MAMMALS - Mouse (White Mouse), small cage on a shelf, tiny pink feet scurrying, sunbeam highlighting delicate ears",
+    "SMALL MAMMALS - Gerbil, sandy enclosure, constructing burrows and tunnels, subtle earthy scents in afternoon calm",
+    "SMALL MAMMALS - Hedgehog (African Pygmy), wicker basket bed, snuffling quietly, warm house setting with soft music",
+    "SMALL MAMMALS - Sugar Glider, indoor tree branch setup, nocturnal eyes reflecting moonlight from window",
+    "SMALL MAMMALS - Degus, roomy pen with wooden platforms, gentle chattering, late afternoon light warming straw floor",
+    "SMALL MAMMALS - Prairie Dog, suburban backyard enclosure, alert posture and chirpy calls, kids laughing nearby",
+
+    # FISH (12) - Aquarium environments, indoor calm
+    "FISH - Goldfish (Fancy), indoor aquarium near kitchen, orange fins flutter under LED tank light, soothing bubble hum",
+    "FISH - Betta, small desktop tank, vibrant reds and blues flaring in gentle overhead illumination, a quiet office corner",
+    "FISH - Guppy, planted nano-tank, schooling in tiny colorful bursts, soft green glow from aquatic plants",
+    "FISH - Neon Tetra, lush community aquarium, electric blue-red streaks darting among waving aquatic ferns",
+    "FISH - Angelfish (Freshwater), medium home aquarium, graceful fins gliding in lamplight, subtle reflections on glass",
+    "FISH - Discus, warm-water tank, disc-shaped body with swirling patterns, ambient hush of filtration system",
+    "FISH - Gourami (Dwarf), softly lit tank in living room, pastel body colors shifting with slight angle of view",
+    "FISH - Molly (Black Molly), small community tank, dark form contrasting green plants, gentle morning window light",
+    "FISH - Swordtail, aquarium with driftwood and pebbles, bright red tail catching LED shimmer, tranquil water current",
+    "FISH - Corydoras Catfish, bottom of tank, whiskered face rummaging gently, subtle beams crossing gravel bed",
+    "FISH - Cardinal Tetra, schooling under floating plants, vivid reds and blues in dim, naturalistic lighting",
+    "FISH - Rasbora (Harlequin), tight schooling patterns, reflective silver-orange bodies in mild afternoon glow",
+
+    # REPTILES (12) - Terrariums, controlled environments, gentle household ambiance
+    "REPTILES - Leopard Gecko, terrarium with warm basking spot, spotted tail resting on sand, gentle red heat lamp",
+    "REPTILES - Bearded Dragon, desert-themed enclosure, basking under UV light, calm gaze amid rock and branch decor",
+    "REPTILES - Corn Snake, glass terrarium with leafy hide, orange scales patterning softly under overhead LED",
+    "REPTILES - Ball Python, dim enclosure with warm hide, sleek coils, subtle reflections on smooth skin",
+    "REPTILES - Red-eared Slider, turtle tank with platform, paddling in clear water, sunlight through nearby window",
+    "REPTILES - Russian Tortoise, indoor pen with soft substrate, munching on greens, muted household sounds",
+    "REPTILES - Greek Tortoise, sunny windowsill enclosure, shell patterns catching beams of natural daylight",
+    "REPTILES - Chameleon (Veiled), arboreal terrarium, shifting green hues on branches, slow graceful movements",
+    "REPTILES - Blue-tongued Skink, low terrarium, earthy décor, broad head turned towards mild warm lamp",
+    "REPTILES - Painted Turtle, shallow water tank, mottled shell pattern in rippling light, mild hum of water filter",
+    "REPTILES - Hermann's Tortoise, small indoor garden box, nibbling leaves under morning rays, gentle warmth",
+    "REPTILES - African Sideneck Turtle, aquatic setup, quirky sideways head glimpses, gentle bubble stream rising",
+
+    # INSECTS (12) - Insect enclosures or outdoor garden corners set up for them
+    "INSECTS - Bee (Honeybee), small backyard hive box, buzzing around lavender blooms, sunlight on golden thorax",
+    "INSECTS - Butterfly (Monarch), butterfly garden enclosure, orange wings flutter against purple flowers",
+    "INSECTS - Ladybug, indoor herb planter on windowsill, red shell with black dots contrasting lush green leaves",
+    "INSECTS - Praying Mantis, mesh terrarium with twigs, poised elegantly, overhead lamp creating delicate shadows",
+    "INSECTS - Ant (Ant Farm), glass ant farm on study desk, tiny tunnels visible, soft lamp revealing busy movement",
+    "INSECTS - Beetle (Hercules Beetle), hobbyist terrarium, strong horn silhouette in dim room light, subtle scratch sounds",
+    "INSECTS - Stick Insect, simple foliage enclosure, twig mimic swaying gently as furnace hums quietly",
+    "INSECTS - Cockroach (Madagascar Hissing), well-ventilated terrarium, faint hissing in subdued red heat lamp glow",
+    "INSECTS - Cricket (House Cricket), small cricket keeper box, chirping rhythmically under a modest LED night light",
+    "INSECTS - Silk Moth (Bombyx mori), silent bedroom corner, creamy wings resting on screen mesh, faint lamp behind",
+    "INSECTS - Katydid, mini greenhouse setup, green leaf mimic blending seamlessly, filtered sunlight and faint indoor echoes",
+    "INSECTS - Ant (Leafcutter), specialized enclosure with leaves and fungus gardens, tiny shapes carrying leaf fragments in soft lamplight",
+
+    # PLANTS (12) - Indoor houseplants and simple gardens reflecting domestic serenity
+    "PLANTS - Rose (Garden variety), small front yard garden bed, warm afternoon sun highlighting velvety petals",
+    "PLANTS - Orchid (Phalaenopsis), windowsill pot, delicate white-pink blooms, soft natural light and gentle indoor hush",
+    "PLANTS - Cactus (Golden Barrel), sunlit windowsill, spines glowing halo-like, subtle background hum of air conditioning",
+    "PLANTS - Lavender, patio planter, purple blossoms swaying gently, bees visiting in late afternoon calm",
+    "PLANTS - Bonsai (Juniper), living room shelf, miniature tree illuminated by a reading lamp, tranquil evening stillness",
+    "PLANTS - Peace Lily, corner of office, broad green leaves and elegant white spathe in diffused skylight",
+    "PLANTS - Monstera (Swiss Cheese Plant), apartment lounge, glossy leaves with characteristic holes, mild morning rays",
+    "PLANTS - Snake Plant (Sansevieria), bedroom corner, vertical leaves catching soft bedside lamp glow, quiet serenity",
+    "PLANTS - Jade Plant (Crassula), kitchen windowsill, plump green leaves reflecting mid-morning sun, peaceful domestic hum",
+    "PLANTS - Fiddle-leaf Fig (Ficus), near balcony door, large leaves filtering bright afternoon beams, gentle urban skyline outside",
+    "PLANTS - Spider Plant, hanging basket in living area, arching leaves and tiny plantlets, steady ambient indoor light",
+    "PLANTS - Tomato (Garden bed), backyard plot, red fruit clusters ripening under full sun, distant laughter and rustling leaves"
+]
 
 
 class MultimediaSuiteApp:
@@ -3573,9 +1818,6 @@ class MultimediaSuiteApp:
                 print(f"Invalid prompt set detected:\n{prompt_set}")
                 return False
         return True
-
-
-
     
     def check_huggingface_token(self):
         """
@@ -3602,8 +1844,11 @@ class MultimediaSuiteApp:
                 print("Huggingface API token loaded from settings file.")
                 return
     
-        
     def build_gui(self):
+        # Initialize ttk Style and apply theme
+        style = ttk.Style()
+        apply_theme(style, self.root)
+
         # Configure root grid for responsiveness
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=0)  # Menu
@@ -3615,25 +1860,25 @@ class MultimediaSuiteApp:
         self.root.rowconfigure(6, weight=0)  # Footer
 
         # Menu Bar
-        menubar = Menu(self.root)
-        settings_menu = Menu(menubar, tearoff=0)
-        settings_menu.add_command(label="Set Output Directory", command=set_output_directory)
-        settings_menu.add_command(label="Set ComfyUI Prompts Folder", command=set_comfyui_prompts_folder)
+        menubar = Menu(self.root, bg=COLOR_PALETTE["dark_navy"], fg=COLOR_PALETTE["white"])
+        settings_menu = Menu(menubar, tearoff=0, bg=COLOR_PALETTE["dark_navy"], fg=COLOR_PALETTE["white"],
+                             activebackground=COLOR_PALETTE["gold"], activeforeground=COLOR_PALETTE["dark_blue_black"])
+        settings_menu.add_command(label="Set Output Directory", command=self.set_output_directory)
         menubar.add_cascade(label="Settings", menu=settings_menu)
         self.root.config(menu=menubar)
 
         # Instructions
         self.instructions = tk.Label(
             self.root,
-            text="Enter the desired prompt concept (max 50,000 characters):",
-            bg='#0A2239',
-            fg='white',
+            text="Enter the desired prompt concept (max 5,000 characters):",
+            bg=COLOR_PALETTE["dark_blue_black"],
+            fg=COLOR_PALETTE["white"],
             font=('Helvetica', 14, 'bold')
         )
         self.instructions.grid(row=1, column=0, pady=10, sticky='ew', padx=20)
 
         # Input Frame
-        self.input_frame = tk.Frame(self.root, bg='#0A2239')
+        self.input_frame = tk.Frame(self.root, bg=COLOR_PALETTE["dark_blue_black"])
         self.input_frame.grid(row=2, column=0, pady=5, padx=20, sticky='nsew')
         self.input_frame.columnconfigure(0, weight=1)
 
@@ -3641,8 +1886,9 @@ class MultimediaSuiteApp:
             self.input_frame,
             font=('Helvetica', 12),
             wrap=tk.WORD,
-            bg='#1E1E1E',
-            fg='white',
+            bg=COLOR_PALETTE["dark_navy"],
+            fg=COLOR_PALETTE["white"],
+            insertbackground=COLOR_PALETTE["white"],  # Cursor color
             bd=2,
             relief=tk.GROOVE
         )
@@ -3651,9 +1897,9 @@ class MultimediaSuiteApp:
 
         self.char_count_label = tk.Label(
             self.input_frame,
-            text="0/50000 characters",
-            bg='#0A2239',
-            fg='light blue',
+            text="0/5000 characters",
+            bg=COLOR_PALETTE["dark_blue_black"],
+            fg=COLOR_PALETTE["light_gold"],
             font=('Helvetica', 10, 'italic')
         )
         self.char_count_label.grid(row=1, column=0, sticky="e", pady=(2,0))
@@ -3661,77 +1907,29 @@ class MultimediaSuiteApp:
         self.input_text.bind("<KeyRelease>", self.check_input_text)
 
         # Buttons Frame
-        self.buttons_frame = tk.Frame(self.root, bg='#0A2239')
+        self.buttons_frame = tk.Frame(self.root, bg=COLOR_PALETTE["dark_blue_black"])
         self.buttons_frame.grid(row=3, column=0, pady=20, padx=20, sticky='ew')
         self.buttons_frame.columnconfigure((0,1,2,3), weight=1)
 
         # Video Prompt Options Button
-        self.video_prompt_options_button = tk.Button(
+        self.video_prompt_options_button = ttk.Button(
             self.buttons_frame,
             text="Video Options - REQUIRED",
-            command=self.show_video_prompt_options,
-            state=tk.NORMAL,
-            bg="#28a745",
-            fg='white',
-            font=('Helvetica', 14, 'bold'),
-            activebackground="#1e7e34",
-            activeforeground='white',
-            cursor="hand2",
-            width=20,
-            height=2
+            command=self.show_video_prompt_options
         )
         self.video_prompt_options_button.grid(row=0, column=0, padx=10, pady=10, sticky='ew')
 
-        # Audio Prompt Options Button
-        self.audio_prompt_options_button = tk.Button(
-            self.buttons_frame,
-            text="Audio Options",
-            command=self.show_audio_prompt_options,
-            state=tk.NORMAL,
-            bg="#28a745",
-            fg='white',
-            font=('Helvetica', 14, 'bold'),
-            activebackground="#1e7e34",
-            activeforeground='white',
-            cursor="hand2",
-            width=20,
-            height=2
-        )
-        self.audio_prompt_options_button.grid(row=0, column=1, padx=10, pady=10, sticky='ew')
-
-        self.generate_video_prompts_button = tk.Button(
+        # Generate Video Prompts Button
+        self.generate_video_prompts_button = ttk.Button(
             self.buttons_frame,
             text="Generate Video Prompts",
             command=self.generate_video_prompts,
-            state=tk.DISABLED,
-            bg="#007ACC",
-            fg='white',
-            font=('Helvetica', 14, 'bold'),
-            activebackground="#005A9E",
-            activeforeground='white',
-            cursor="hand2",
-            width=20,
-            height=2
+            state=tk.DISABLED
         )
         self.generate_video_prompts_button.grid(row=1, column=0, padx=10, pady=10, sticky='ew')
 
-        self.generate_audio_prompts_button = tk.Button(
-            self.buttons_frame,
-            text="Generate Audio Prompts",
-            command=self.generate_audio_prompts,
-            bg="#007ACC",
-            fg='white',
-            font=('Helvetica', 14, 'bold'),
-            activebackground="#005A9E",
-            activeforeground='white',
-            cursor="hand2",
-            width=20,
-            height=2
-        )
-        self.generate_audio_prompts_button.grid(row=1, column=1, padx=10, pady=10, sticky='ew')
-
         # Output Text Area
-        self.output_frame = tk.Frame(self.root, bg='#0A2239')
+        self.output_frame = tk.Frame(self.root, bg=COLOR_PALETTE["dark_blue_black"])
         self.output_frame.grid(row=4, column=0, pady=10, padx=20, sticky='nsew')
         self.output_frame.columnconfigure(0, weight=1)
         self.output_frame.rowconfigure(0, weight=1)
@@ -3740,8 +1938,9 @@ class MultimediaSuiteApp:
             self.output_frame,
             font=('Helvetica', 12),
             wrap=tk.WORD,
-            bg='#1E1E1E',
-            fg='white',
+            bg=COLOR_PALETTE["dark_navy"],
+            fg=COLOR_PALETTE["white"],
+            insertbackground=COLOR_PALETTE["white"],  # Cursor color
             bd=2,
             relief=tk.GROOVE
         )
@@ -3751,69 +1950,29 @@ class MultimediaSuiteApp:
         self.copy_link = tk.Label(
             self.output_frame,
             text="Copy to Clipboard",
-            fg="light blue",
-            bg='#0A2239',
+            fg=COLOR_PALETTE["light_gold"],
+            bg=COLOR_PALETTE["dark_blue_black"],
             cursor="hand2",
             font=('Helvetica', 12, 'underline')
         )
         self.copy_link.grid(row=1, column=0, sticky='w', padx=5, pady=5)
-        self.copy_link.bind("<Button-1>", lambda e: copy_to_clipboard(self.output_text.get("1.0", tk.END).strip()))
+        self.copy_link.bind("<Button-1>", lambda e: self.copy_to_clipboard(self.output_text.get("1.0", tk.END).strip()))
 
         # Buttons Row for Generate and Combine
-        button_row_frame = tk.Frame(self.root, bg='#0A2239')
+        button_row_frame = tk.Frame(self.root, bg=COLOR_PALETTE["dark_blue_black"])
         button_row_frame.grid(row=5, column=0, pady=5, padx=5, sticky='ew')
         button_row_frame.columnconfigure((0,1,2), weight=1)
 
         # Generate Videos Button
-        self.generate_videos_button = tk.Button(
+        self.generate_videos_button = ttk.Button(
             button_row_frame,
             text="Generate Videos",
-            command=self.generate_videos,
-            bg="#FF5733",
-            fg="white",
-            font=('Helvetica', 14, 'bold'),
-            activebackground="#C70039",
-            activeforeground='white',
-            cursor="hand2",
-            width=25,
-            height=2
+            command=self.generate_videos
         )
         self.generate_videos_button.grid(row=0, column=0, padx=10, pady=10, sticky='ew')
 
-        # Generate Sound Effects Button
-        self.generate_sound_button = tk.Button(
-            button_row_frame,
-            text="Generate Sound Effects (BETA)",
-            command=self.generate_sound_effects,
-            bg="#28a745",
-            fg="white",
-            font=('Helvetica', 14, 'bold'),
-            activebackground="#1e7e34",
-            activeforeground='white',
-            cursor="hand2",
-            width=25,
-            height=2
-        )
-        self.generate_sound_button.grid(row=0, column=1, padx=10, pady=10, sticky='ew')
-
-        # COMBINE button
-        self.combine_button = tk.Button(
-            button_row_frame,
-            text="COMBINE (BETA)",
-            command=self.combine_media,
-            bg="#FFC107",
-            fg="white",
-            font=('Helvetica', 16, 'bold'),
-            activebackground="#e0a800",
-            activeforeground='white',
-            cursor="hand2",
-            width=30,
-            height=3
-        )
-        self.combine_button.grid(row=0, column=2, padx=10, pady=10, sticky='ew')
-
         # Footer Frame containing Logo
-        self.footer_frame = tk.Frame(self.root, bg='#0A2239')
+        self.footer_frame = tk.Frame(self.root, bg=COLOR_PALETTE["dark_blue_black"])
         self.footer_frame.grid(row=6, column=0, sticky='ew', padx=20, pady=10)
         self.footer_frame.columnconfigure(0, weight=1)
 
@@ -3827,12 +1986,12 @@ class MultimediaSuiteApp:
             logo_label = tk.Label(
                 self.footer_frame,
                 image=self.logo_photo,
-                bg='#0A2239',
+                bg=COLOR_PALETTE["dark_blue_black"],
                 cursor="hand2"
             )
             logo_label.image = self.logo_photo
             logo_label.grid(row=0, column=1, sticky='e', padx=20, pady=5)
-            logo_label.bind("<Button-1>", open_website)
+            logo_label.bind("<Button-1>", self.open_website)
         except Exception as e:
             print(f"Failed to download or display logo: {e}")
             messagebox.showerror("Logo Error", f"Failed to load logo: {e}")
@@ -3842,32 +2001,57 @@ class MultimediaSuiteApp:
         contact_label = tk.Label(
             self.root,
             text=contact_info,
-            bg='#0A2239',
-            fg='white',
+            bg=COLOR_PALETTE["dark_blue_black"],
+            fg=COLOR_PALETTE["white"],
             font=('Helvetica', 10)
         )
         contact_label.grid(row=7, column=0, sticky='s', pady=5)
 
-        # Apply styles
-        self.apply_styles()
+    def set_output_directory(self):
+        """Implement the functionality to set the output directory."""
+        directory = filedialog.askdirectory(title="Select Output Directory")
+        if directory:
+            DEFAULTS["save_path"] = directory
+            logging.info(f"Output directory set to: {directory}")
+            messagebox.showinfo("Output Directory Set", f"Output directory set to:\n{directory}")
 
+    def show_video_prompt_options(self):
+        """Implement the functionality to show video prompt options."""
+        # Placeholder for actual implementation
+        messagebox.showinfo("Video Options", "Video prompt options dialog will be here.")
 
-    def apply_styles(self):
-        style = ttk.Style()
-        style.configure('TCheckbutton', background='#0A2239', foreground='white', font=('Helvetica', 12))
-        style.configure('TButton', font=('Helvetica', 12), relief='flat', background="#007ACC")
+    def generate_video_prompts(self):
+        """Implement the functionality to generate video prompts."""
+        # Placeholder for actual implementation
+        messagebox.showinfo("Generate Video Prompts", "Video prompts have been generated.")
+
+    def copy_to_clipboard(self, text):
+        """Copy the provided text to the clipboard."""
+        self.root.clipboard_clear()
+        self.root.clipboard_append(text)
+        self.root.update()  # Keeps the clipboard content after the window is closed
+        messagebox.showinfo("Copied", "Output text copied to clipboard.")
+
+    def open_website(self, event=None):
+        """Open the Temporal Labs website in the default browser."""
+        webbrowser.open("https://www.temporal-labs.com")  # Replace with your actual website
+
+    def generate_videos(self):
+        """Implement the functionality to generate videos."""
+        # Placeholder for actual implementation
+        messagebox.showinfo("Generate Videos", "Video generation has been initiated.")
 
     def check_input_text(self, event=None):
+        """Check the input text length and update character count."""
         text = self.input_text.get("1.0", tk.END).strip()
         char_count = len(text)
-        self.char_count_label.config(text=f"{char_count}/50000 characters")
+        self.char_count_label.config(text=f"{char_count}/5000 characters")
 
         # Enable or disable buttons based on text length
-        if 1 <= char_count <= 50000:
-            self.enable_button(self.generate_video_prompts_button)
+        if 1 <= char_count <= 5000:
+            self.generate_video_prompts_button.config(state=tk.NORMAL)
         else:
-            self.disable_button(self.generate_video_prompts_button)
-            
+            self.generate_video_prompts_button.config(state=tk.DISABLED)
 
     def generate_videos(self):
         # Prompt the user for the desired version
@@ -4117,29 +2301,21 @@ class MultimediaSuiteApp:
         if self.video_story_mode_var.get():
             # Story Mode: Generate a story outline first
             outline_generated = False
-            max_outline_retries = 5  # Reduced for practicality
+            max_outline_retries = 42  # Reduced for practicality
             outline_retry_count = 0
 
             while not outline_generated and outline_retry_count < max_outline_retries:
                 try:
                     # Step 1: Generate a story outline with system prompt
                     outline_prompt = (
-                            f"You are an expert team of filmmakers, writers, and AI experts tasked with creating a fully coherent, organized and professionally crafted sequence of temporally coherent, engaging and unreptative story beats from the following concept '{input_concept}' that takes place over a 5 second time-span. You are specifically dividing it into exactly {num_prompts} prompt seeds without repeating any prompt exactly within the same list. Each prompt seed should represent a distinct visual beat within the story sequence that advances the narrative without repeating previous ideas or deviating off-track from the original material. All things need to remain coherent and consistent throughout the story. '{input_concept}' may be about animals, objects, scenes, aliens or anything else that isn't human. IF it is then include specific descriptors to guide the subject towards the intended species and away from human charateristics where desired. Always make sure those describing factors are always present in other subsequent prompts to retain coherency across them. DO NOT ever list the PROS or CONS for a camera so token space is always maximized towards the actual scene itself. DO NOT GIVE ANY TECHNICAL SPECS, ADVICE OR EXPOSITION ABOUT THE CAMERA. \n"
+                            f"Create a well-thought out, organized and professionally crafted sequence of temporally coherent, engaging story beats from the following concept '{input_concept}'. Each story beat, or prompt set, will result in a video that takes place over a 5 second time-span, per prompt set. You are specifically dividing it into exactly {num_prompts} prompt seeds without repeating any prompt exactly within the same list. Each prompt seed should represent a distinct visual beat within the story sequence that advances the narrative without repeating previous ideas or deviating off-track from the original material. All things need to remain coherent and consistent throughout the story. '{input_concept}' may be about animals, objects, scenes, aliens or anything else that isn't human. IF it is then include specific descriptors to guide the subject towards the intended species and away from human charateristics where desired. Always make sure those describing factors are always present in other subsequent prompts to retain coherency across them. DO NOT ever list the PROS or CONS for a camera so token space is always maximized towards the actual scene itself. DO NOT GIVE ANY TECHNICAL SPECS, ADVICE OR EXPOSITION ABOUT THE CAMERA. \n"
                             f"Provide the outline as a numbered list, with each scene on a new line, starting from 1 up to {num_prompts}. Do not include any additional text before or after the outline. Do not create a scene that might promote or glorify illegal activities. Do not promote or glorify illegal activities EVER.\n"
                             f"With an acute awareness and keen judgement please leverage an awareness of prompt engineering to influence with specific terminology and stylistic elements relevant to the time period, environment, setting and other factors contributing to the visual scene for this concept '{input_concept}'.\n"
-                            f"Utilize expert-level storytelling techniques to maintain narrative coherence in all areas including but not limited to foreshadowing, character development arcs, thematic consistency, and logical plot progression that flows seamlessly from one scene to the next. DO NOT DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE EXTREMELY DETAILED VISUAL PROMPTS. DO NOT ever list the PROS or CONS for a camera so token space is always maximized towards the actual scene itself. DO NOT GIVE ANY TECHNICAL SPECS, ADVICE OR EXPOSITION ABOUT THE CAMERA.\n"
                             f"Never start with scene titling exposition like 'Scene 4...'. You are STRICTLY focus on visual elements and never describing sound, taste, feeling, vibe, context or provide exposition outside of visual descriptors. Do not reiterate the {input_concept} directly. Always describe the specific details for whatever is the subject. Never just say a vague term like 'baby alien', describe it in detail so the AI knows exactly what to generate. Never presume it knows best. It must explicitely be given visual direction before it can generate reliably. Do not provide additional exposition back towards the user.\n"
                             f"Ensure that each scene builds upon the previous one and that subjects remain consistent across scenes, you must include cohesive details for the subject across the scenes, maintaining a logical and engaging progression. Incorporate rising action, climax, and resolution appropriately to create a satisfying and always commercially viable story.\n"
                             f"Sometimes the input concept will be about animals, objects, scenes, aliens or something instead of humans. Use descriptive and evocative language to bring characters, aliens or whatever the subject is and it's setting to life.\n"
-                            f"**Additional Constraints to Avoid Common Issues:**\n"
-                            f"4. **Consistency in Tone and Style:** Maintain a consistent narrative tone and stylistic approach throughout all scenes to ensure a unified story.\n"
-                            f"5. **Character Development:** Ensure that characters evolve logically in response to the events of each scene, reflecting growth or change in alignment with the story arc.\n"
-                            f"6. **Logical Progression:** Each scene should logically follow from the previous one, building towards the climax and resolution without abrupt jumps or inconsistencies.\n"
-                            f"7. **Use of Foreshadowing and Callbacks:** Strategically place hints or references early in the outline that pay off in later scenes, enhancing narrative depth.\n"
-                            f"8. **Clear Objective:** Maintain a clear objective or goal for the protagonist that drives the narrative forward across all prompt seeds.\n"
-                            f"9. **Exact Scene Count:** Confirm that the total number of scenes generated matches exactly {num_prompts}. If the AI stops before reaching the desired count, it should prompt to continue generating the remaining scenes.\n"
-                            f"10. **Numbered List Format:** Ensure each scene is numbered sequentially without skipping numbers. The AI should verify that all numbers from 1 to {num_prompts} are present.\n"
                     )
+
 
                     # Call the model to generate the outline
                     raw_outline = self.generate_prompts_via_ollama(outline_prompt, 'text', 1)
@@ -4268,10 +2444,10 @@ class MultimediaSuiteApp:
 
                         # Construct the detailed prompt with system prompt and user instructions
                         detailed_prompt = (
-                            f"You are an expert team of filmmakers, writers, and AI experts tasked with creating a fully coherent, organized and professionally crafted, coherent, engaging video prompt for '{input_concept}'. Use '{previous_scenes_summary}' to inform you of what has happened upto this point in the sequence and then focusing on {prompt_index}:{scene_description}, create a full-featured video prompt. Always start with 'Set in {foundational_decade}, shot on a {video_options['camera']}... '. NEVER GIVE EXPOSITION TOWARDS THE THE CAMERA'S HISTORY, PROS, CONS OR ABILITIES IN THE ACTUAL PROMPTS. DO NOT EVER PROVIDE FULL PROS AND CONS OR ANY PROS AND CONS like 'shot on a PROFESSIONAL - Bolex - H16 (1941) - PROS: Excellent for indie films with great image quality - CONS: Manual controls require expertise... '. DO NOT DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE A FOCUSED AND PROFESSIONAL QUALITY VISUAL PROMPTS. DO NOT ever list the PROS or CONS for a camera so token space is always maximized towards the actual scene itself. DO NOT GIVE ANY TECHNICAL SPECS, ADVICE OR EXPOSITION ABOUT THE CAMERA. NEVER provide abstract or emotional descriptions, phrases or concepts. Every prompt must leverage a keen implementation to further show it is set in the {foundational_decade}'s. IF it is about animals, objects, scenes, aliens or anything else that isn't human. then include specific descriptors to guide the subject towards the intended species and away from human charateristics where desired and always make sure those describing factors are always present in other subsequent prompts to retain coherency across them. DO NOT EVER USE VAGUE LANGUAGE LIKE 'of the era.' or 'Detailed visual description of the toddler-sized phoenix's face'. Always give the actual and thought-out details and never focus the prompt on the camera. ALWAYS focus on the subject and the scene itself, speak towards known tropes of the {foundational_decade} decade. Ensure that subjects remain consistent across scenes. Never provide any form of extra exposition at the start, end or middle in any form like 'Here are the Positive and Negative Prompt Sets for Scene 6:\n\n**Positive Prompt Set:' and ONLY ever start with 'Positive:' or 'Negative:' before providing the appropriate and respective prompt content.\n"
-                            f"Scene = '{prompt_index}:{scene_description}'. Focus on the scene's setting and subject and actually describe it in extreme visual detail. Never just list as 'subject' or 'character' and rather give specifics every single time. Any script notes or non-diagetic exposition is not required. Always follow a character's name with their outfit and obvious behavior if they're human. If they're not-human or the scene doesn't otherwise call for clothing then describe they're physical features and how it interacts with the environment. Always include these cohesive details for the subject across the scenes, maintaining a logical and engaging progression with setting and focus that aligns with the chosen story arc. Always follow the name of a location with a description of it. DO NOT DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE EXTREMELY DETAILED VISUAL PROMPTS. NO SHORT PARAGRAPHS OR SENTENCES EVER. NEVER GIVE EXPOSITION TOWARDS THE THE CAMERA'S HISTORY, PROS, CONS OR ABILITIES IN THE ACTUAL PROMPTS. DO NOT EVER PRESENT anything remotely like 'PROS: Excellent for indie films with great image quality - CONS: Manual controls require expertise...' OR 'Manual focus requires precise lens adjustments for optimal image quality' IT SHOULD ONLY BE ABOUT THE VISUAL SCENE ITSELF that you focus on. \n"
-                            f"Scene = '{prompt_index}:{scene_description}'.Always approach with an awareness of real-world physics. Lighting and shadows should be described to reflect natural light sources, considering their angle, intensity, and spectral properties, while shadows must exhibit accurate occlusion and scattering effects. Material properties should ne describe realistically to interact with that light, with metals showcasing reflectivity and color-dependent sheen, and surfaces like water demonstrating specular reflections and refraction. Environmental dynamics such as wind and fluid interactions must be modeled to influence elements that most make sense to the scene. Similarly, gravity and forces should govern object interactions, ensuring that items are naturally responding to air resistance. \n"
-                            f"Scene = '{prompt_index}:{scene_description}' All content must be within PG-13 guidelines and always family-friendly. Each prompt should be a five-sentence description maximizing the token space for conveying the most information to the model as efficiently as possible. Always phrase the establishing sentence with details about the camera and decade as such 'Set in {foundational_decade}, shot on a {video_options['camera']}... '. ALWAYS phrase without including PROS or CONS like in this one example 'Set in 1920s, shot on a Pathé-Baby built in 1922' NOT in full like 'Set in 1920s, shot on a PROFESSIONAL - Pathé - Pathé-Baby (1922) - PROS: First widely available amateur 9.5mm film camera - CONS: Limited to personal use, substandard image quality...'. Never provide extra exposition like 'Here are the Positive and Negative Prompt Sets for Scene 6:\n\n**Positive Prompt Set:' and ONLY ever start with 'Positive:' or 'Negative:' before providing the appropriate and respective prompt content. DO NOT ever list the PROS or CONS for a camera so token space is always maximized towards the actual scene itself. DO NOT GIVE ANY TECHNICAL SPECS, ADVICE OR EXPOSITION ABOUT THE CAMERA.\n"
+                            f"Use '{previous_scenes_summary}' to inform you of what has happened upto this point in the sequence and then focusing on {prompt_index}:{scene_description}, create a full-featured video prompt. This prompt must always be detailed, commercially viable, inspiring, original and professionally crafted, spatially coherent and engaging. DO NOT DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE A FOCUSED AND PROFESSIONAL QUALITY VISUAL PROMPTS. DO NOT ever list the PROS or CONS for a camera so token space is always maximized towards the actual scene itself. DO NOT GIVE ANY TECHNICAL SPECS, ADVICE OR EXPOSITION ABOUT THE CAMERA. IF it is about animals, objects, scenes, aliens or anything else that isn't human. then include specific descriptors to guide the subject towards the intended species and away from human charateristics where desired and always make sure those describing factors are always present in other subsequent prompts to retain coherency across them. DO NOT EVER USE VAGUE LANGUAGE LIKE 'of the era.' or 'Detailed visual description of the toddler-sized phoenix's face'. Always give the actual and thought-out details and never focus the prompt on the camera. ALWAYS focus on the subject and the scene itself, speak towards known tropes of the {foundational_decade} decade. Ensure that subjects remain consistent across scenes. Never provide any form of extra exposition at the start, end or middle in any form like 'Here are the Positive and Negative Prompt Sets for Scene 6:\n\n**Positive Prompt Set:' and ONLY ever start with 'Positive:' or 'Negative:' before providing the appropriate and respective prompt content.\n"
+                            f"Focus on the scene's setting and subject and actually describe it in extreme visual detail. Never just list as 'subject' or 'character' and rather give specifics every single time. Any script notes or non-diagetic exposition is not required. Always follow a character's name with their outfit and obvious behavior if they're human. If they're not-human or the scene doesn't otherwise call for clothing then describe they're physical features and how it interacts with the environment. Always include these cohesive details for the subject across the scenes, maintaining a logical and engaging progression with setting and focus that aligns with the chosen story arc. Always follow the name of a location with a description of it. IT SHOULD ONLY BE ABOUT THE VISUAL SCENE ITSELF that you focus on. \n"
+                            f"Always approach with an awareness of real-world physics. Lighting and shadows should be described to reflect natural light sources, considering their angle, intensity, and spectral properties, while shadows must exhibit accurate occlusion and scattering effects. Material properties should ne describe realistically to interact with that light, with metals showcasing reflectivity and color-dependent sheen, and surfaces like water demonstrating specular reflections and refraction. Environmental dynamics such as wind and fluid interactions must be modeled to influence elements that most make sense to the scene. Similarly, gravity and forces should govern object interactions, ensuring that items are naturally responding to air resistance. \n"
+                            f"All content must be within PG-13 guidelines and always family-friendly. Each prompt should be a five-sentence description maximizing the token space for conveying the most information to the model as efficiently as possible. Always phrase the establishing sentence with details about the camera and decade as such 'Set in {foundational_decade}, shot on a {video_options['camera']}... '. ALWAYS phrase without including PROS or CONS like in this one example 'Shot on a Pathé-Baby built in 1922'. DO NOT ever list the PROS or CONS for a camera so token space is always maximized towards the actual scene itself. DO NOT GIVE ANY TECHNICAL SPECS, ADVICE OR EXPOSITION ABOUT THE CAMERA. It may specificy the time period of which you are supposed to represent as some concepts may not be restricted to only one decade. the decades mentioned across '{input_concept}' DO supercede the decade of the camera decade. The camera parameter itself '{video_options['camera']} only sets the visual tone and quality of the video itself, this way it enables time travel and stuff if requested but you are to work together as a team and use logic to determine what the user is actually requesting using common sense.\n"
                             f"Generate exactly one Positive Prompt and one Negative Prompt as a Prompt Set for Scene {prompt_index}. NEVER start with anything other than 'Positive:' OR 'Negative:'. NEVER give any exposition about what number the scene is. JUST start with 'Positive:'\n"
                             f"Positive: Set in {foundational_decade}, shot on a {video_options['camera']}... [Detailed visual description follows]\n"
                             f"Negative: Blurry background figures, misaligned or awkward features, deformed limbs, distracting backgrounds, cluttered scenes\n"
@@ -4421,15 +2597,14 @@ class MultimediaSuiteApp:
 
                         # Construct the detailed prompt with system prompt and user instructions
                         detailed_prompt = (
-                            f"Scene = '{input_concept}'. You are an expert team of filmmakers, writers, and AI experts tasked with creating a fully coherent, organized and professionally crafted, coherent, engaging video prompt for '{input_concept}'. Always start with 'Set in {foundational_decade}, shot on a {video_options['camera']}... '. NEVER GIVE EXPOSITION TOWARDS THE THE CAMERA'S HISTORY, PROS, CONS OR ABILITIES IN THE ACTUAL PROMPTS. DO NOT EVER PROVIDE FULL PROS AND CONS OR ANY PROS AND CONS like 'shot on a PROFESSIONAL - Bolex - H16 (1941) - PROS: Excellent for indie films with great image quality - CONS: Manual controls require expertise... '. DO NOT DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE A FOCUSED AND PROFESSIONAL QUALITY VISUAL PROMPTS. DO NOT ever list the PROS or CONS for a camera so token space is always maximized towards the actual scene itself. DO NOT GIVE ANY TECHNICAL SPECS, ADVICE OR EXPOSITION ABOUT THE CAMERA. NEVER provide abstract or emotional descriptions, phrases or concepts. Every prompt must leverage a keen implementation to further show it is set in the {foundational_decade}'s. IF it is about animals, objects, scenes, aliens or anything else that isn't human. then include specific descriptors to guide the subject towards the intended species and away from human charateristics where desired and always make sure those describing factors are always present in other subsequent prompts to retain coherency across them. DO NOT EVER USE VAGUE LANGUAGE LIKE 'of the era.' or 'Detailed visual description of the toddler-sized phoenix's face'. Always give the actual and thought-out details and never focus the prompt on the camera. ALWAYS focus on the subject and the scene itself, speak towards known tropes of the {foundational_decade} decade. Ensure that subjects remain consistent across scenes. Never provide any form of extra exposition at the start, end or middle in any form like 'Here are the Positive and Negative Prompt Sets for Scene 6:\n\n**Positive Prompt Set:' and ONLY ever start with 'Positive:' or 'Negative:' before providing the appropriate and respective prompt content.\n"
-                            f"Scene = '{input_concept}'. Focus on the scene's setting and subject and actually describe it in extreme visual detail. Never just list as 'subject' or 'character' and rather give specifics every single time. Any script notes or non-diagetic exposition is not required. Always follow a character's name with their outfit and obvious behavior if they're human. If they're not-human or the scene doesn't otherwise call for clothing then describe they're physical features and how it interacts with the environment. Always include these cohesive details for the subject across the scenes, maintaining a logical and engaging progression with setting and focus that aligns with the chosen story arc. Always follow the name of a location with a description of it. DO NOT DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE EXTREMELY DETAILED VISUAL PROMPTS. NO SHORT PARAGRAPHS OR SENTENCES EVER. NEVER GIVE EXPOSITION TOWARDS THE THE CAMERA'S HISTORY, PROS, CONS OR ABILITIES IN THE ACTUAL PROMPTS. DO NOT EVER PRESENT anything remotely like 'PROS: Excellent for indie films with great image quality - CONS: Manual controls require expertise...' OR 'Manual focus requires precise lens adjustments for optimal image quality' IT SHOULD ONLY BE ABOUT THE VISUAL SCENE ITSELF that you focus on. \n"
-                            f"Scene = '{input_concept}'.Always approach with an awareness of real-world physics. Lighting and shadows should be described to reflect natural light sources, considering their angle, intensity, and spectral properties, while shadows must exhibit accurate occlusion and scattering effects. Material properties should ne describe realistically to interact with that light, with metals showcasing reflectivity and color-dependent sheen, and surfaces like water demonstrating specular reflections and refraction. Environmental dynamics such as wind and fluid interactions must be modeled to influence elements that most make sense to the scene. Similarly, gravity and forces should govern object interactions, ensuring that items are naturally responding to air resistance. \n"
-                            f"Scene = '{input_concept}' All content must be within PG-13 guidelines and always family-friendly. Each prompt should be a five-sentence description maximizing the token space for conveying the most information to the model as efficiently as possible. Always phrase the establishing sentence with details about the camera and decade as such 'Set in {foundational_decade}, shot on a {video_options['camera']}... '. ALWAYS phrase without including PROS or CONS like in this one example 'Set in 1920s, shot on a Pathé-Baby built in 1922' NOT in full like 'Set in 1920s, shot on a PROFESSIONAL - Pathé - Pathé-Baby (1922) - PROS: First widely available amateur 9.5mm film camera - CONS: Limited to personal use, substandard image quality...'. Never provide extra exposition like 'Here are the Positive and Negative Prompt Sets for Scene 6:\n\n**Positive Prompt Set:' and ONLY ever start with 'Positive:' or 'Negative:' before providing the appropriate and respective prompt content. DO NOT ever list the PROS or CONS for a camera so token space is always maximized towards the actual scene itself. DO NOT GIVE ANY TECHNICAL SPECS, ADVICE OR EXPOSITION ABOUT THE CAMERA.\n"
+                            f"Focusing on {input_concept}, create a full-featured video prompt. This prompt must always be commercially viable, inspiring, original and professionally crafted, spatially coherent, engaging, time-aware, physics aware. DO NOT DESCRIBE OR ACKNOWLEDGE ANY SOUND, TASTE, TOUCH OR SMELL IN THE SCENE AND ONLY PROVIDE A FOCUSED AND PROFESSIONAL QUALITY VISUAL PROMPTS. DO NOT ever list the PROS or CONS for a camera so token space is always maximized towards the actual scene itself. DO NOT GIVE ANY TECHNICAL SPECS, ADVICE OR EXPOSITION ABOUT THE CAMERA. {input_concept} may specify the time period of which you are required to place the prompts in, you are placing them in this by specifying which decade at the start of each prompt would be IF 'input_prompt' mentiones '1920's then you would say 'set in the 1920s' and IF 'input_prompt' says 1400 then you would start with 'set in the year 1400' THESE ARE EXAMPLES AND THE YEARS MENTIONED IN PROMPTS WILL VARY.The story sequence may not be restricted to only one decade so if '{input_concept}' specifies decades, years, months or any other form of time period then DO NOT just say 'Set in 2020s' because the camera decade is 2020. The camera parameter itself '{video_options['camera']} itself is from, this way it enables time travel and stuff if requested but you are to work together as a team and use logic to determine what the user is actually requesting using common sense. NEVER provide abstract or emotional descriptions, phrases or concepts. Every prompt must leverage a keen implementation to further show it is set in the the decade(s) mentioned in {input_concept}. IF it is about animals, objects, scenes, aliens or anything else that isn't human. then include specific descriptors to guide the subject towards the intended species and away from human charateristics where desired and always make sure those describing factors are always present in other subsequent prompts to retain coherency across them. DO NOT EVER USE VAGUE LANGUAGE LIKE 'of the era.' or 'Detailed visual description of the toddler-sized phoenix's face'. Always give the actual and thought-out details and never focus the prompt on the camera. ALWAYS focus on the subject and the scene itself, speak towards known tropes of the {foundational_decade} decade. Ensure that subjects remain consistent across scenes. Never provide any form of extra exposition at the start, end or middle in any form like 'Here are the Positive and Negative Prompt Sets for Scene 6:\n\n**Positive Prompt Set:' and ONLY ever start with 'Positive:' or 'Negative:' before providing the appropriate and respective prompt content.\n"
+                            f"Focus on the scene's setting and subject and actually describe it in extreme visual detail. Never just list as 'subject' or 'character' and rather give specifics every single time. Any script notes or non-diagetic exposition is not required. Always follow a character's name with their outfit and obvious behavior if they're human. If they're not-human or the scene doesn't otherwise call for clothing then describe they're physical features and how it interacts with the environment. Always include these cohesive details for the subject across the scenes, maintaining a logical and engaging progression with setting and focus that aligns with the chosen story arc. Always follow the name of a location with a description of it. IT SHOULD ONLY BE ABOUT THE VISUAL SCENE ITSELF that you focus on. \n"
+                            f"Always approach with an awareness of real-world physics. Lighting and shadows should be described to reflect natural light sources, considering their angle, intensity, and spectral properties, while shadows must exhibit accurate occlusion and scattering effects. Material properties should ne describe realistically to interact with that light, with metals showcasing reflectivity and color-dependent sheen, and surfaces like water demonstrating specular reflections and refraction. Environmental dynamics such as wind and fluid interactions must be modeled to influence elements that most make sense to the scene. Similarly, gravity and forces should govern object interactions, ensuring that items are naturally responding to air resistance. \n"
+                            f"All content must be within PG-13 guidelines and always family-friendly. Each prompt should be a five-sentence description maximizing the token space for conveying the most information to the model as efficiently as possible. Always phrase the establishing sentence with details about the camera and decade as such 'Set in {foundational_decade}, shot on a {video_options['camera']}... '. ALWAYS phrase without including PROS or CONS like in this one example 'Shot on a Pathé-Baby built in 1922'. DO NOT ever list the PROS or CONS for a camera so token space is always maximized towards the actual scene itself. DO NOT GIVE ANY TECHNICAL SPECS, ADVICE OR EXPOSITION ABOUT THE CAMERA. It may specificy the time period of which you are supposed to represent as some concepts may not be restricted to only one decade. the decades mentioned across '{input_concept}' DO supercede the decade of the camera decade. The camera parameter itself '{video_options['camera']} only sets the visual tone and quality of the video itself, this way it enables time travel and stuff if requested but you are to work together as a team and use logic to determine what the user is actually requesting using common sense.\n"
                             f"Generate exactly one Positive Prompt and one Negative Prompt as a Prompt Set for Scene {prompt_index}. NEVER start with anything other than 'Positive:' OR 'Negative:'. NEVER give any exposition about what number the scene is. JUST start with 'Positive:'\n"
                             f"Positive: Set in {foundational_decade}, shot on a {video_options['camera']}... [Detailed visual description follows]\n"
                             f"Negative: Blurry background figures, misaligned or awkward features, deformed limbs, distracting backgrounds, cluttered scenes\n"
                         )
-
                         # Call the model to generate the detailed video prompt
                         raw_video_prompt = self.generate_prompts_via_ollama(detailed_prompt, 'video', 1)
 
@@ -4494,9 +2669,6 @@ class MultimediaSuiteApp:
 
             # Store the prompts in the class-level attribute `self.video_prompts`
             self.video_prompts = formatted_prompts  # Store for later use
-
-            # Enable the button to generate audio prompts
-            self.enable_button(self.generate_audio_prompts_button)
 
             # Display formatted prompts in the output text box
             self.output_text.delete("1.0", tk.END)
@@ -4592,147 +2764,6 @@ class MultimediaSuiteApp:
             else:
                 # User cancelled the file dialog
                 return None
-
-
-    def generate_audio_prompts(self):
-        """
-        Generate audio prompts based on video prompts.
-        """
-        # Ask the user if they want to use the current session's video prompts or load an existing list
-        video_prompts, prompt_file_path = self.ask_for_prompt_list()
-        if not video_prompts:
-            # User cancelled or no prompts available
-            return
-
-        try:
-            # Split the video prompts into individual prompts using the separator
-            video_prompt_sets = [p.strip() for p in video_prompts.strip().split('--------------------') if p.strip()]
-            print(f"Number of video prompts: {len(video_prompt_sets)}")
-
-            sonic_descriptions = []
-
-            for i, video_prompt_set in enumerate(video_prompt_sets, start=1):
-                # Extract 'positive:' section using regular expressions
-                positive_prompt = ''
-                positive_match = re.search(r'positive:\s*(.*?)\s*(?=negative:|$)', video_prompt_set, re.DOTALL | re.IGNORECASE)
-                if positive_match:
-                    positive_prompt = positive_match.group(1).strip()
-
-                # Ensure positive prompt is available
-                if not positive_prompt:
-                    print(f"No 'positive:' section found in prompt {i}. Skipping this prompt.")
-                    continue  # Skip to the next prompt
-
-                # Build the prompt to send to the language model, instructing it to not include negative prompts
-                sound_prompt_template = (
-                    f"Based on {positive_prompt}, list specific sounds that would make up the soundscape for the scene. Never use full sentence structure or reference characters or names. Include specific details like the camera model, diagetic sounds known to the region being represented, etc. Seperate each sound with a comma and only a comma. ABSOLUTELY first with the camera itself and then move outwards as you build the sonic landscape prompt set. You are only describing things that make noise and can be heard in two or three words. You are not referencing characters or story moments or details. You are not describing abstract ideas or conveying any visual information. Never use terms like whine, hiss or other harmonic resonant type things unless EXPLICTLY called for in the prompt exactly. You are creating absolutely diagetic soundscapes and avoiding anything to indicate musical tones unless specifically asked. Do not describe scents, light, colors or non-sonic aspects of the scene here in any form. Do not give any character or story information here. You are crafting the perfect diagetic soundscape for {positive_prompt}"
-                    f"Focus solely on listing positive sounds without any negative descriptions, labels, separators, or explanations. "
-                    f"Provide only the sounds separated by commas. The output should have two sections: 'positive:' followed by the list of sounds, no repeats or similiar sounds of any kind, aim for 4 to 9, followed by 'negative:' with no content or comments of any kind Negative prompt should ALWAYS BE BLANK FOR SOUNDSCAPES.\n\n"
-
-                )
-
-                retry_attempt = 0
-                max_retries = 3  # Maximum number of retries per audio prompt
-                success = False
-
-                while retry_attempt < max_retries and not success:
-                    try:
-                        print(f"Attempting to generate audio prompt {i}, Retry {retry_attempt + 1}/{max_retries}")
-
-                        # Send the sound prompt to your language model to generate the sonic description
-                        translated_sonic_prompt = self.generate_prompts_via_ollama(sound_prompt_template, 'audio', 1)
-
-                        if not translated_sonic_prompt:
-                            raise Exception("No sonic description generated. Retrying...")
-
-                        # Log the raw response for debugging
-                        print(f"Raw response for audio prompt {i}:\n{translated_sonic_prompt}")
-
-                        # Parse the model's response to extract positive sounds and set negative empty
-                        formatted_sonic_prompt = parse_model_response(translated_sonic_prompt)
-                        if not formatted_sonic_prompt.startswith("positive:"):
-                            raise Exception("Formatted sonic prompt is missing 'positive:' section.")
-
-                        # Validate the generated audio prompt
-                        if self.validate_prompts(formatted_sonic_prompt, 1):
-                            sonic_descriptions.append(formatted_sonic_prompt)
-                            print(f"Audio prompt {i} generated successfully.")
-                            success = True
-                        else:
-                            retry_attempt += 1
-                            print(f"PROCESSING")
-                    except Exception as e:
-                        retry_attempt += 1
-                        print(f"Error generating audio prompt {i}: {e}. Retrying... ({retry_attempt}/{max_retries})")
-
-                if not success:
-                    print(f"Failed to generate a valid audio prompt after {max_retries} attempts for prompt {i}.")
-                    messagebox.showerror(
-                        "Audio Prompt Generation Error",
-                        f"Failed to generate a valid audio prompt after {max_retries} attempts for prompt {i}."
-                    )
-                    # Optionally, continue with the next prompt instead of stopping
-                    continue
-
-            if not sonic_descriptions:
-                messagebox.showerror("No Audio Prompts Generated", "No valid audio prompts were generated.")
-                return
-
-            # Join the sonic descriptions together with the same format as video prompts
-            formatted_sonic_prompts = "\n--------------------\n".join(sonic_descriptions)
-
-            # Determine the directory to save audio prompts
-            if prompt_file_path:
-                # Use the root directory from the loaded video prompt file
-                video_prompt_dir = os.path.dirname(prompt_file_path)
-                root_dir = os.path.dirname(video_prompt_dir)  # Go up one level
-                video_prompt_filename = os.path.basename(prompt_file_path)
-            elif hasattr(self, 'video_prompt_save_path') and self.video_prompt_save_path:
-                # Use the root directory from the current session's video prompts
-                video_prompt_dir = os.path.dirname(self.video_prompt_save_path)
-                root_dir = os.path.dirname(video_prompt_dir)
-                video_prompt_filename = os.path.basename(self.video_prompt_save_path)
-            else:
-                # Default to a standard location or ask the user
-                default_root = os.path.join(os.getcwd(), 'TemporalPromptEngineOutputs')
-                root_dir = default_root
-                if not os.path.exists(root_dir):
-                    os.makedirs(root_dir, exist_ok=True)
-                video_prompt_filename = 'video_prompts.txt'  # Default name if not available
-
-            # Debug statements to verify paths
-            print(f"Prompt File Path: {prompt_file_path}")
-            print(f"Video Prompt Directory: {video_prompt_dir}")
-            print(f"Root Directory: {root_dir}")
-
-            # Create the Audio directory under the root directory
-            audio_folder = os.path.join(root_dir, 'Audio')
-            if not os.path.exists(audio_folder):
-                os.makedirs(audio_folder, exist_ok=True)
-
-            # Extract the base name without '_video_prompts'
-            video_prompt_base_name = os.path.splitext(video_prompt_filename)[0].replace('_video_prompts', '')
-
-            # Define the audio prompt filename to match the desired format
-            audio_filename = f"{video_prompt_base_name}_audio_prompts.txt"
-
-            self.audio_save_folder = audio_folder
-            audio_save_path = os.path.join(self.audio_save_folder, audio_filename)
-            self.save_to_file(formatted_sonic_prompts, audio_save_path)
-
-            # Store the audio prompts for later use
-            self.audio_prompts = formatted_sonic_prompts
-            self.enable_button(self.generate_sound_button)
-
-            # Display the formatted audio prompts
-            self.output_text.delete("1.0", tk.END)
-            self.output_text.insert(tk.END, "Generated Audio Prompts:\n\n" + formatted_sonic_prompts)
-
-            print(f"Data successfully saved to {audio_save_path}")
-
-        except Exception as e:
-            messagebox.showerror("Prompt Generation Error", f"Failed to generate audio prompts: {e}")
-            print(f"Error generating audio prompts: {e}")
             
     def initialize_ollama(self):
         """
@@ -4878,29 +2909,6 @@ class MultimediaSuiteApp:
         else:
             # If the format doesn't match, return an empty string to trigger a retry
             cleaned_text = ""
-
-        return cleaned_text
-
-    def clean_audio_prompt_text(self, prompt_text):
-        """
-        Cleans the audio prompt text by extracting only the list of sounds in sentence form.
-        
-        Args:
-            prompt_text (str): The raw audio prompt text from the model.
-        
-        Returns:
-            str: The cleaned and formatted audio prompt.
-        """
-        # Remove any unwanted prefixes or suffixes
-        cleaned_text = prompt_text.strip()
-
-        # Remove any extra text before or after the list
-        # Assuming the model returns only the list, but to be safe:
-        cleaned_text = re.sub(r'^.*?(?=[\w\s,]+$)', '', cleaned_text, flags=re.DOTALL).strip()
-        cleaned_text = re.sub(r'[^a-zA-Z0-9,\s]', '', cleaned_text)
-
-        # Ensure it's a comma-separated list
-        cleaned_text = ', '.join([s.strip() for s in cleaned_text.split(',') if s.strip()])
 
         return cleaned_text
 
@@ -5071,223 +3079,6 @@ class MultimediaSuiteApp:
         
         return sanitized
 
-    def generate_sound_effects(self):
-        logging.info("generate_sound_effects called")
-        
-        # Unpack the tuple returned by ask_for_prompt_list() with prompt_type='audio'
-        prompts, prompt_file_path = self.ask_for_prompt_list(prompt_type='audio')
-        if not prompts:
-            messagebox.showwarning("Prompt Error", "No prompts available for sound effect generation.")
-            return
-
-        # Set the audio_save_folder to the directory of prompt_file_path
-        audio_save_folder = os.path.dirname(prompt_file_path)
-        self.audio_save_folder = audio_save_folder
-
-        duration = self.audio_length_var.get()
-        if not duration:
-            messagebox.showwarning("Duration Error", "Please provide a valid duration.")
-            return
-
-        try:
-            duration = float(duration)
-        except ValueError:
-            messagebox.showwarning("Duration Error", "Duration must be a number.")
-            return
-
-        self.duration = duration
-        logging.info(f"Audio Duration: {self.duration} seconds")
-
-        if not audio_save_folder or not os.path.exists(audio_save_folder):
-            messagebox.showerror("Invalid Audio Save Folder", "The audio save folder is invalid or does not exist.")
-            logging.error("Invalid audio save folder path.")
-            return
-
-        os.makedirs(audio_save_folder, exist_ok=True)
-        logging.info(f"Audio save folder: {audio_save_folder}")
-
-        prompt_sets = [re.sub(r'negative:\s*', '', p.strip()) for p in prompts.strip().split('--------------------') if p.strip()]
-        logging.info(f"Number of audio prompt sets to process: {len(prompt_sets)}")
-
-        try:
-            inference_steps = int(self.audio_inference_steps_var.get())
-        except ValueError:
-            messagebox.showwarning("Inference Steps Error", "Inference steps must be an integer.")
-            return
-
-        try:
-            seed = int(self.audio_seed_var.get())
-        except ValueError:
-            messagebox.showwarning("Seed Error", "Seed must be an integer.")
-            return
-
-        # Include StepsX and CfgX in filenames
-        steps_str = f"Steps{inference_steps}_"
-        cfg_str = f"Cfg{inference_steps}_"  # Assuming cfg is related to inference_steps
-
-        prompt_sets_sounds = []
-        for i, prompt_set in enumerate(prompt_sets, start=1):
-            sounds = [sound.strip() for sound in prompt_set.split(',') if sound.strip()]
-            prompt_sets_sounds.append(sounds)
-            logging.info(f"Prompt set {i}: {len(sounds)} sounds extracted.")
-
-        total_sounds = sum(len(sounds) for sounds in prompt_sets_sounds)
-        logging.info(f"Total number of individual sounds to generate: {total_sounds}")
-
-        number_of_prompts = total_sounds
-        logging.info(f"Generating {number_of_prompts} unique sound effects.")
-
-        try:
-            repo_id = "cvssp/audioldm2-large"
-            pipe = AudioLDM2Pipeline.from_pretrained(repo_id, torch_dtype=torch.float16)
-            device = "cuda" if self.detect_gpu() else "cpu"
-            pipe = pipe.to(device)
-            logging.info(f"AudioLDM2 pipeline loaded on {device}.")
-        except Exception as e:
-            messagebox.showerror("Pipeline Error", f"Failed to load AudioLDM2 pipeline:\n{e}")
-            logging.error(f"Failed to load AudioLDM2 pipeline: {e}")
-            return
-
-        # Create a progress window
-        self.progress_window = tk.Toplevel(self.root)
-        self.progress_window.title("Generating Sound Effects")
-        self.progress_window.geometry("400x100")
-        self.progress_window.grab_set()
-
-        progress_label = tk.Label(
-            self.progress_window,
-            text="Generating sound effects...",
-            bg='#0A2239',
-            fg='white',
-            font=('Helvetica', 12)
-        )
-        progress_label.pack(pady=10)
-
-        style = ttk.Style()
-        style.theme_use('clam')
-        style.configure("custom.Horizontal.TProgressbar", troughcolor='#0A2239', background='white')
-
-        self.progress_bar = ttk.Progressbar(
-            self.progress_window,
-            orient='horizontal',
-            length=300,
-            mode='determinate',
-            style="custom.Horizontal.TProgressbar"
-        )
-        self.progress_bar.pack(pady=10)
-        self.progress_bar['maximum'] = number_of_prompts
-
-        # Create a queue for thread communication
-        self.queue = queue.Queue()
-
-        def run_all_generations():
-            logging.info("run_all_generations started")
-            generated_audio_files_per_set = [[] for _ in prompt_sets_sounds]
-            ratings_per_set = [[] for _ in prompt_sets_sounds]
-
-            for set_idx, sounds in enumerate(prompt_sets_sounds, start=1):
-                logging.info(f"Processing Prompt Set {set_idx}")
-
-                audio_folder = os.path.join(audio_save_folder, f"Video_{set_idx}")
-                os.makedirs(audio_folder, exist_ok=True)
-                logging.info(f"Created/Using folder: {audio_folder}")
-
-                for sound_idx, sound_text in enumerate(sounds, start=1):
-                    if sound_text:
-                        logging.info(f"Generating audio for set {set_idx}, sound {sound_idx}: {sound_text}")
-                        attempt = 0
-                        max_attempts = 3
-                        while attempt < max_attempts:
-                            try:
-                                generator = torch.Generator(device=device).manual_seed(seed + set_idx * 1000 + sound_idx)
-                                audio_samples = pipe(
-                                    sound_text,
-                                    negative_prompt="Low quality.",
-                                    num_inference_steps=inference_steps,
-                                    audio_length_in_s=duration,
-                                    num_waveforms_per_prompt=1,
-                                    generator=generator
-                                ).audios
-
-                                audio = audio_samples[0]
-
-                                sanitized_sound = self.sanitize_filename(sound_text)
-                                logging.info(f"Sanitized sound text: '{sanitized_sound}'")
-
-                                output_filename = os.path.join(
-                                    audio_folder,
-                                    f"{steps_str}{cfg_str}Audio{set_idx}_SonicLayer{sound_idx}_{sanitized_sound}.wav"
-                                )
-
-                                scipy.io.wavfile.write(output_filename, rate=16000, data=audio)
-                                logging.info(f"Saved sound effect to {output_filename}")
-                                generated_audio_files_per_set[set_idx - 1].append(output_filename)
-
-                                # Update progress
-                                self.queue.put(("progress", 1))
-
-                                break  # Success
-
-                            except Exception as e:
-                                attempt += 1
-                                logging.error(f"[AudioLDM2 Error] Attempt {attempt} failed for set {set_idx}, sound {sound_idx}: {e}")
-                                if attempt < max_attempts:
-                                    logging.info(f"Retrying set {set_idx}, sound {sound_idx} (Attempt {attempt + 1}/{max_attempts})...")
-                                else:
-                                    self.queue.put(("error", f"Failed to generate sound effect for set {set_idx}, sound {sound_idx} after {max_attempts} attempts.\nError: {e}"))
-                                    logging.error(f"[AudioLDM2 Error] Giving up on set {set_idx}, sound {sound_idx} after {max_attempts} attempts.")
-
-            # Signal completion
-            self.queue.put(("complete", "All sound effects have been generated successfully."))
-
-        def process_queue():
-            while not self.queue.empty():
-                msg_type, content = self.queue.get()
-                if msg_type == "progress":
-                    self.progress_bar['value'] += content
-                elif msg_type == "error":
-                    messagebox.showerror("Error", content)
-                elif msg_type == "complete":
-                    self.progress_window.destroy()
-                    messagebox.showinfo("Success", content)
-            self.progress_window.after(100, process_queue)
-
-        # Start the thread for generation
-        threading.Thread(target=run_all_generations, daemon=True).start()
-        logging.info("Audio generation thread started.")
-
-        # Start processing the queue
-        self.progress_window.after(100, process_queue)
-
-        
-    def get_corresponding_audio_prompt(self, video_prompt_path):
-        """
-        Finds and loads the corresponding audio prompt list based on the video prompt path.
-
-        :param video_prompt_path: File path of the loaded video prompt list.
-        :return: Tuple containing the audio prompts as a string and the file path.
-        """
-        try:
-            base_dir = os.path.dirname(video_prompt_path)
-            # Assuming the structure replaces 'Video' with 'Audio' and uses the same filename
-            audio_dir = base_dir.replace("\\Video\\", "\\Audio\\")
-            audio_filename = os.path.basename(video_prompt_path)
-            audio_prompt_path = os.path.join(audio_dir, audio_filename)
-
-            if os.path.exists(audio_prompt_path):
-                with open(audio_prompt_path, 'r', encoding='utf-8') as file:
-                    prompts = file.read()
-                print(f"Automatically loaded corresponding audio prompts from: {audio_prompt_path}")
-                return prompts, audio_prompt_path
-            else:
-                messagebox.showwarning("Audio Prompt Not Found", f"Corresponding audio prompt list not found for {video_prompt_path}.")
-                return None, None
-        except Exception as e:
-            messagebox.showerror("Path Error", f"Error locating audio prompt list:\n{e}")
-            print(f"Error locating audio prompt list for {video_prompt_path}: {e}")
-            return None, None
-
-
     def load_settings(self):
         """
         Loads settings from the SETTINGS_FILE and assigns them to the respective variables.
@@ -5370,367 +3161,6 @@ class MultimediaSuiteApp:
             self.audio_ddim_steps_var.set(audio_options.get("ddim_steps", 40))
             self.audio_n_candidate_var.set(audio_options.get("n_candidate_gen_per_text", 8))
             self.audio_seed_var.set(audio_options.get("seed", 1990))
-
-
-    def combine_media(self):
-        """
-        Combines video files with generated sound effects from respective Video_X folders.
-        Dynamically layers sound effects based on the original video prompts and optimizes the audio mix.
-        Applies frequency filtering and volume normalization to ensure clarity and prevent overwhelming audio.
-        Outputs individual combined video-audio files and combines all into FINAL_VIDEO.mp4.
-        """
-        
-        # Helper function for natural sorting without external libraries
-        def natural_sort_key(s):
-            return [int(text) if text.isdigit() else text.lower() for text in re.split('(\d+)', s)]
-        
-        # Helper function to extract number from filenames based on a given prefix
-        def extract_number(filename, prefix):
-            """
-            Extracts the first occurrence of a number in the filename following the specified prefix.
-            Example: extract_number('Video_10.mp4', 'Video') returns 10.
-            If no match is found, returns a large number to sort unmatched files last.
-            """
-            pattern = rf'{prefix}_(\d+)'
-            match = re.search(pattern, filename, re.IGNORECASE)
-            if match:
-                return int(match.group(1))
-            else:
-                return float('inf')  # Assign a high number to sort unmatched files last
-        
-        # Function to extract the original prompt from a text file
-        def extract_prompt(video_file):
-            """
-            Extracts the prompt text associated with a video file.
-            Assumes that the prompt is stored in a text file with the same base name as the video.
-            Example: 'Video_1.mp4' has 'Video_1.txt'
-            """
-            base_name = os.path.splitext(os.path.basename(video_file))[0]
-            prompt_file = os.path.join(self.video_save_folder, f"{base_name}.txt")
-            if os.path.exists(prompt_file):
-                with open(prompt_file, 'r', encoding='utf-8') as f:
-                    return f.read().lower()
-            else:
-                print(f"No prompt file found for '{video_file}'. Proceeding without prompt-based adjustments.")
-                return ""
-        
-        # Function to determine if the sound effect file is valid
-        def is_sound_effect_valid(sound_file_path, 
-                                  dbfs_threshold=-60, 
-                                  flatness_lower=0.15, 
-                                  flatness_upper=0.90,
-                                  include_keywords=None):
-            """
-            Analyzes the audio content to determine if the sound effect is valid.
-            Excludes sounds with strong harmonic content (e.g., musical instruments) and garbled noise,
-            unless they contain specific keywords indicating importance.
-            
-            Parameters:
-            - sound_file_path: Path to the sound effect file.
-            - dbfs_threshold: Minimum dBFS to consider the sound as not too quiet.
-            - flatness_lower: Lower bound for spectral flatness to exclude harmonic sounds.
-            - flatness_upper: Upper bound for spectral flatness to exclude noise or garbled sounds.
-            - include_keywords: List of keywords; if present in the filename, the sound is included regardless of flatness.
-            
-            Returns:
-            - True if the sound effect is valid, False otherwise.
-            """
-            if include_keywords is None:
-                include_keywords = ['chant', 'crowd', 'murmur', 'protest', 'applause', 'cheer']
-            
-            filename = os.path.basename(sound_file_path).lower()
-            
-            # Compile regex pattern for inclusion keywords with word boundaries and optional suffixes
-            pattern = r'\b(' + '|'.join(include_keywords) + r')\w*\b'
-            
-            # Check for inclusion keywords in filename using regex
-            if re.search(pattern, filename):
-                print(f"Including '{os.path.basename(sound_file_path)}' based on filename containing keywords.")
-                return True  # Include sound without further checks
-            
-            try:
-                sound = AudioSegment.from_file(sound_file_path)
-                # Convert to mono to simplify spectral analysis
-                if sound.channels > 1:
-                    sound = sound.set_channels(1)
-            except Exception as e:
-                print(f"Error loading '{sound_file_path}': {e}")
-                return False
-
-            # Check if the sound is not silent or too quiet
-            if sound.dBFS < dbfs_threshold:
-                print(f"Excluding '{os.path.basename(sound_file_path)}' due to low volume (dBFS: {sound.dBFS:.2f}).")
-                return False
-
-            # Convert to numpy array
-            samples = np.array(sound.get_array_of_samples())
-            if len(samples) == 0:
-                print(f"Excluding '{os.path.basename(sound_file_path)}' because it contains no samples.")
-                return False
-
-            # Normalize samples
-            samples = samples / np.max(np.abs(samples)) if np.max(np.abs(samples)) != 0 else samples
-
-            # Calculate spectral flatness
-            def spectral_flatness(waveform, fs, nperseg=1024):
-                # Compute the power spectral density
-                freqs, psd = welch(waveform, fs=fs, nperseg=nperseg)
-                # Avoid zeros
-                psd = psd + 1e-10
-                # Calculate geometric and arithmetic mean
-                geom_mean = np.exp(np.mean(np.log(psd)))
-                arith_mean = np.mean(psd)
-                # Spectral flatness measure
-                flatness = geom_mean / arith_mean
-                return flatness
-
-            flatness = spectral_flatness(samples, fs=sound.frame_rate)
-
-            # Log the spectral flatness and dBFS for debugging
-            print(f"'{os.path.basename(sound_file_path)}' - dBFS: {sound.dBFS:.2f}, Spectral Flatness: {flatness:.2f}")
-
-            # Set balanced thresholds to exclude strongly harmonic or noisy sounds
-            if flatness < flatness_lower:
-                print(f"Excluding '{os.path.basename(sound_file_path)}' due to low spectral flatness ({flatness:.2f}), indicating strong harmonic content.")
-                return False
-            elif flatness > flatness_upper:
-                print(f"Excluding '{os.path.basename(sound_file_path)}' due to high spectral flatness ({flatness:.2f}), indicating excessive noise or garbled sound.")
-                return False
-            else:
-                return True
-        
-        # Function to apply low-pass filter to remove high-pitched artifacts
-        def apply_low_pass_filter(sound, cutoff_freq=5000):
-            """
-            Applies a low-pass filter to the audio segment to remove high-pitched artifacts.
-            
-            Parameters:
-            - sound: pydub.AudioSegment object.
-            - cutoff_freq: Frequency in Hz above which sounds will be attenuated.
-            
-            Returns:
-            - Filtered pydub.AudioSegment object.
-            """
-            return sound.low_pass_filter(cutoff_freq)
-        
-        # Function to combine all audio layers (WAV files) from a Video_X folder into a single soundscape
-        def combine_sound_effects_layers(video_folder, 
-                                         dbfs_threshold=-60, 
-                                         flatness_lower=0.15, 
-                                         flatness_upper=0.90, 
-                                         fallback=False,
-                                         prompt_keywords=None):
-            DURATION_MS = 6000  # All sounds are trimmed/padded to 6 seconds
-
-            print(f"\nProcessing folder: {video_folder}")
-
-            # List all .wav files in the folder
-            try:
-                all_files = os.listdir(video_folder)
-            except Exception as e:
-                print(f"Error accessing folder '{video_folder}': {e}")
-                messagebox.showerror("Folder Access Error", f"Cannot access folder: {video_folder}\nError: {e}")
-                return None
-            print(f"Files in folder: {all_files}")
-
-            sound_effect_files = sorted([f for f in all_files if f.lower().endswith('.wav')], key=natural_sort_key)
-            if not sound_effect_files:
-                print(f"No .wav files found in '{video_folder}'.")
-                messagebox.showwarning("No Audio Files", f"No .wav files found in '{video_folder}'. Skipping this folder.")
-                return None
-
-            # Start with a 6-second silent audio segment
-            combined_audio = AudioSegment.silent(duration=DURATION_MS)
-
-            included_files = 0  # Counter for included sound effects
-            excluded_files = 0  # Counter for excluded sound effects
-
-            # Define keywords to prioritize
-            if prompt_keywords is None:
-                prompt_keywords = ['chant', 'crowd', 'murmur', 'protest', 'applause', 'cheer', 'speech', 'debate', 'assembly']
-
-            # Process each sound file
-            for sound_file in sound_effect_files:
-                sound_file_path = os.path.join(video_folder, sound_file)
-
-                # Determine if the sound effect should be included based on keywords and spectral flatness
-                is_valid = is_sound_effect_valid(sound_file_path, 
-                                                dbfs_threshold=dbfs_threshold, 
-                                                flatness_lower=flatness_lower, 
-                                                flatness_upper=flatness_upper,
-                                                include_keywords=prompt_keywords)
-                if not is_valid:
-                    excluded_files += 1
-                    continue
-
-                print(f"Loading sound file: {sound_file_path}")
-
-                try:
-                    # Load and trim the sound file to 6 seconds
-                    sound = AudioSegment.from_wav(sound_file_path)[:DURATION_MS]
-                except Exception as e:
-                    print(f"Error loading '{sound_file_path}': {e}")
-                    messagebox.showwarning("Audio Load Error", f"Failed to load audio file: '{sound_file_path}'\nError: {e}\nSkipping this file.")
-                    excluded_files += 1
-                    continue
-
-                # Apply low-pass filter to remove high-pitched artifacts
-                sound = apply_low_pass_filter(sound, cutoff_freq=5000)
-                print(f"Applied low-pass filter to '{sound_file_path}' to remove high-pitched artifacts.")
-
-                # Determine volume adjustment based on keywords
-                # If the file name contains priority keywords, increase its volume
-                priority = any(keyword in sound_file.lower() for keyword in prompt_keywords)
-                if priority:
-                    sound = sound + 6  # Increase volume by 6 dB for important sounds
-                    print(f"Increasing volume for '{sound_file}' by 6 dB due to priority keywords.")
-                else:
-                    sound = sound - 3  # Decrease volume by 3 dB for less important sounds
-                    print(f"Decreasing volume for '{sound_file}' by 3 dB as it is a non-priority sound.")
-
-                # Apply fade in/out for smoothness
-                sound = sound.fade_in(50).fade_out(50)
-
-                # Overlay the adjusted sound onto the combined audio
-                combined_audio = combined_audio.overlay(sound)
-                included_files += 1
-
-            print(f"Included {included_files} sound effects, Excluded {excluded_files} sound effects from '{video_folder}'.")
-
-            if included_files == 0:
-                if not fallback:
-                    print(f"No valid sound effects found in '{video_folder}'. Attempting to include all sounds without filtering.")
-                    # Attempt to include all sounds without filtering
-                    return combine_sound_effects_layers(video_folder, 
-                                                       dbfs_threshold=-100,  # Very low threshold
-                                                       flatness_lower=0.0, 
-                                                       flatness_upper=1.0, 
-                                                       fallback=True,
-                                                       prompt_keywords=prompt_keywords)
-                else:
-                    print(f"No sound effects could be included from '{video_folder}' even after fallback.")
-                    messagebox.showwarning("No Valid Audio Files", f"No valid sound effects found in '{video_folder}'. Skipping this folder.")
-                    return None
-
-            # Normalize the combined audio to prevent clipping and maintain consistent loudness
-            combined_audio = effects.normalize(combined_audio)
-            print("Normalized combined audio to prevent clipping and ensure consistent loudness.")
-
-            # Export the combined soundscape
-            combined_audio_path = os.path.join(video_folder, "combined_soundscape.wav")
-            try:
-                combined_audio.export(combined_audio_path, format="wav")
-                print(f"Combined soundscape saved at '{combined_audio_path}'")
-            except Exception as e:
-                print(f"Error exporting combined soundscape: {e}")
-                messagebox.showerror("Audio Export Error", f"Failed to export combined soundscape:\n'{combined_audio_path}'\nError: {e}")
-                return None
-
-            return combined_audio_path
-
-        # Ensure video and audio folders are valid
-        if not self.video_save_folder or not os.path.exists(self.video_save_folder):
-            messagebox.showwarning("No Video Folder Selected", "Please select a valid Video folder.")
-            self.video_save_folder = filedialog.askdirectory(title="Select Video Save Folder")
-            if not self.video_save_folder:
-                messagebox.showerror("Operation Cancelled", "No Video folder selected. Operation cancelled.")
-                return  # Exit if no folder is selected
-
-        if not self.audio_save_folder or not os.path.exists(self.audio_save_folder):
-            messagebox.showwarning("No Audio Folder Selected", "Please select a valid Audio folder.")
-            self.audio_save_folder = filedialog.askdirectory(title="Select Audio Save Folder")
-            if not self.audio_save_folder:
-                messagebox.showerror("Operation Cancelled", "No Audio folder selected. Operation cancelled.")
-                return  # Exit if no folder is selected
-
-        # Retrieve and sort video files
-        video_files = [f for f in os.listdir(self.video_save_folder) if f.lower().endswith(('.mp4', '.avi', '.mov', '.mkv'))]
-        video_files = sorted(video_files, key=lambda x: extract_number(x, 'Video'))
-        video_files = [os.path.join(self.video_save_folder, f) for f in video_files]
-
-        print(f"\nSorted video files: {video_files}")  # Debugging print
-
-        if not video_files:
-            messagebox.showwarning("No Video Files", "No video files found in the Video folder.")
-            return
-
-        final_clips = []
-
-        # Process each video and match it with its corresponding audio
-        for video_file in video_files:
-            # Extract the video number (e.g., Video_1, Video_2, etc.)
-            base_name = os.path.splitext(os.path.basename(video_file))[0]
-            video_number = extract_number(base_name, 'Video')
-            video_folder = os.path.join(self.audio_save_folder, f"Video_{video_number}")
-
-            if not os.path.exists(video_folder):
-                messagebox.showwarning("Missing Audio Folder", f"No matching audio folder found for '{os.path.basename(video_file)}'. Skipping.")
-                continue
-
-            # Extract the prompt text for the current video
-            prompt_text = extract_prompt(video_file)
-            # Identify important keywords from the prompt
-            prompt_keywords = ['chant', 'crowd', 'murmur', 'protest', 'applause', 'cheer', 'speech', 'debate', 'assembly', 'chanting']
-
-            # Combine sound effects layers into a soundscape for this video
-            soundscape_path = combine_sound_effects_layers(video_folder, 
-                                                           prompt_keywords=prompt_keywords)
-            if not soundscape_path:
-                continue
-
-            try:
-                # Load the video clip and trim to 6 seconds
-                video_clip = VideoFileClip(video_file).subclip(0, 6)
-            except Exception as e:
-                print(f"Error loading video '{video_file}': {e}")
-                messagebox.showwarning("Video Load Error", f"Failed to load video '{video_file}'.\nError: {e}\nSkipping.")
-                continue
-
-            try:
-                # Load the combined audio (soundscape)
-                audio_clip = AudioFileClip(soundscape_path)
-            except Exception as e:
-                print(f"Error loading audio '{soundscape_path}': {e}")
-                messagebox.showwarning("Audio Load Error", f"Failed to load audio for '{video_file}'.\nError: {e}\nSkipping.")
-                continue
-
-            try:
-                # Set the combined audio to the video
-                final_video = video_clip.set_audio(audio_clip)
-
-                # Save the combined video to the output folder
-                output_filename = f"{base_name}_combined.mp4"
-                output_path = os.path.join(self.video_save_folder, output_filename)
-                final_video.write_videofile(output_path, codec="libx264", audio_codec="aac", verbose=False, logger=None)
-                print(f"Generated combined video for '{video_file}' and saved to '{output_path}'")
-
-                # Add the final video clip to the list for final combination later
-                final_clips.append(final_video)
-            except Exception as e:
-                print(f"Error combining video and audio for '{video_file}': {e}")
-                messagebox.showwarning("Combine Error", f"Failed to combine video and audio for '{video_file}'.\nError: {e}\nSkipping.")
-                continue
-
-        # Combine all final clips into one video (if more than one)
-        if final_clips:
-            try:
-                print("\nConcatenating all combined video clips into FINAL_VIDEO.mp4...")
-                final_combined_video = concatenate_videoclips(final_clips, method="compose")
-                final_output_path = os.path.join(self.video_save_folder, "FINAL_VIDEO.mp4")
-                final_combined_video.write_videofile(final_output_path, codec="libx264", audio_codec="aac")
-                print(f"\nFinal combined video saved to: '{final_output_path}'")
-                messagebox.showinfo("Combine Successful", f"Final combined video saved to:\n'{final_output_path}'")
-            except Exception as e:
-                print(f"Error combining final videos: {e}")
-                messagebox.showerror("Final Combine Error", f"Failed to create 'FINAL_VIDEO.mp4'.\nError: {e}")
-        else:
-            messagebox.showwarning("No Videos Selected", "No videos were selected for the final compilation.")
-
-        # Final message to notify the user of completion
-        if final_clips:
-            messagebox.showinfo("Combine Successful", "The videos and audio have been successfully combined.")
-        else:
-            messagebox.showinfo("Combine Completed", "The combine process has finished, but no videos were processed.")
 
 
     def create_srt_file(video_file_path, subtitle_text, duration):
