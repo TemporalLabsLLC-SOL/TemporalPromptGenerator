@@ -31,21 +31,20 @@ I am looking for a volunteer assistant if you're interested reach out at Sol@Tem
 <a name="1-introduction"></a>
 ## Introduction
 
-Welcome to the **Temporal Prompt Engine**, your ultimate tool for crafting immersive video and audio experiences. This engine empowers you to generate high-quality prompts with unparalleled control over cinematic elements, all while being intuitive and accessible for users. I'm still currently experimenting with options a lot and will be honing the variety down a bit as I go.
+Welcome to the **Temporal Prompt Engine** a comprehensive framework for building out batch variations or story sequences for video prompt generators. This idea was original started as a comfyUI workflow for CogVideoX but has since evolved into a modular framework that has proven to scale with new foundational models and pipelines.
 
 <a name="2-features-overview"></a>
 ## Features Overview
 
 - **Cinematic Video Prompts**: Tailor every aspect of your scene—from camera type and lens to lighting and framing.
-- **Adaptive Audio Prompts**: Generate immersive soundscapes that perfectly match your visuals.
-- **Historical and Futuristic Perspectives**: Choose from ancient viewpoints to futuristic visions, adding depth and context to your scenes.
-- **Dynamic Variables**: Adjust settings like resolution, frame rate, and aspect ratio to guide the AI in generating content that matches your vision.
+- **Temporal Awareness**: Pick a decade and the camera options will represent that time, adding depth and context to your scenes.
+- **Dynamic Variables**: Adjust settings like lighting, camera movement, lighting, time of day and more through easy to use drop-down options.
 - **Special Modes**:
   - **Story Mode**: Seamlessly blend prompts across frames to create cohesive narratives, enabling you to craft epic stories or intimate tales.
   - **Holiday Mode**: Generate seasonal content tailored to holidays, perfect for festive branding and marketing.
   - **Chaos Mode**: Add unpredictability with Chaos Mode.
 - **Interconnected Settings**: Experience how choices like selecting an ancient art style influence other variables like color palette and texture, creating a cohesive and authentic output.
-- **Cross-Platform Compatibility**: Available for **Windows**, with **Linux** support coming soon.
+- **Cross-Platform Compatibility**: Available for **Windows** & **Linux**
 
 ---
 
@@ -234,7 +233,6 @@ IF YOU DID NOT ADD SHORTCUT TO DESKTOP DURING SETUP
 
 5. **Generate Video and Audio Prompts**:
    - Click **Generate Video Prompts**.
-   - Click **Generate Audio Prompts**.
 
 6. **Save and Export**:
    All media and prompts are saved in your designated output directory.
@@ -242,76 +240,28 @@ IF YOU DID NOT ADD SHORTCUT TO DESKTOP DURING SETUP
 ---
 
 <a name="6-story-mode-unleash-epic-narratives"></a>
-## 6. Story Mode: Unleash Epic Narratives
+## Story Mode: Unleash Epic Narratives
 
-**Story Mode** allows you to create cohesive stories by blending prompts across frames. Adjust variables like pacing, lighting, and camera movement to reflect the progression of your narrative.
-
+**Story Mode** cohesively crafts a story outline and then turns each beat within that sequence into  a full-fledged and optimized video prompts allowing for seamless batch processing of longer content pools. This isn't just throwing key-words into prompts. There are several layers of back-end logic focused on cinematic practice, theory and history.
 ---
 
-<a name="7-inspirational-use-cases"></a>
-## 7. Inspirational Use Cases
-
-Explore the full potential of the Temporal Prompt Engine with these unique configurations:
-
-1. **Ancient Philosophical Journey**:
-   > "Through the eyes of an ancient philosopher, journey from the bustling streets of Athens to the serene temples of the Far East."
-
-2. **Crypto-Animal Documentary**:
-   > "Track the elusive 'cryptowolf' through digital forests where code and nature intertwine."
-
-3. **Visions of the Future**:
-   > "A day in the life of a future city powered by renewable energy and AI."
-
----
-
-
-<a name="9-local-video-generation-using-cogvideo"></a>
-## 8. Local Video Generation Using CogVideo
-
-You can generate videos locally using **CogVideo** directly through the Temporal Prompt Engine. The engine now simplifies the entire CogVideo process for video generation.
-
-### Streamlined Video Generation Workflow:
-
-1. **Select CogVideo Version**:
-   - Click **Local Video Generation** from the Temporal Prompt Engine interface.
-   - Enter the desired version of **CogVideo** (e.g., **CogVideoX** or another available version).
-  
-   - On Lower Vram (20gb-ish) you may benefit from running the script individually outside of the python app to do that follow the instructions below:
-   **Navigate to VideoGeneratorUtilities Folder**
-   ```bash
-   Open VideoGeneratorUtilities folder within the cloned repo directory
-   ```
-   **Run 5b Video Generation Script**
-   ```bash
-   One-Click-Utility-TemporalCog-5b
-   ```
-
-2. **Prompt List Selection**:
-   - Once the version is entered, the engine will initialize.
-   - Simply select the **video prompt list** to generate the videos using the settings you provide.
-
-3. **Automated Processing**:
-   - The Temporal Prompt Engine manages the entire video generation process, allowing you to focus on creativity rather than configuration.
-   - Videos will be generated locally using your **NVIDIA GPU** for optimal performance. You will have the opportunity to entered your desired Guidance Scale and Steps during this intial setup.
-
----
 
 <a name="10-join-the-temporal-labs-journey"></a>
-## 10. Join the Temporal Labs Journey
+## Join the Temporal Labs Journey
 
 Support the mission of pushing the boundaries of AI and technology. Join as an investor, developer, or client.
 
 ---
 
 <a name="12-additional-services-offered"></a>
-## 12. Additional Services Offered
+##  Additional Services Offered
 
 - **Tutoring**, **Development**, **Design**, **Consulting**, and **Workshops** are available to meet your AI and technology needs.
 
 ---
 
 <a name="14-contact"></a>
-## 14. Contact
+##  Contact
 
 For questions, support, collaboration opportunities, or to discuss how we can work together:
 
@@ -321,6 +271,6 @@ For questions, support, collaboration opportunities, or to discuss how we can wo
 ---
 
 <a name="15-acknowledgments"></a>
-## 15. Acknowledgments
+##  Acknowledgments
 
 Thanks to the developers and communities behind **Git**, **Python**, **FFmpeg**,**HunYuanVideo**,**MMAudio**, **Ollama**, **AudioLDM2**, **CogVideo**, **ComfyUI**, and **HuggingFace** for making this project possible.
